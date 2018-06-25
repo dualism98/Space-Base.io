@@ -22,6 +22,7 @@ console.log("server started");
 var numOfAstroids = 5000;
 var numOfPlanets = 100;
 var numOfMoons = 200;
+var numOfSuns = 10;
 var gridSize = 20000;
 var gridBoxScale = 200;
 var spawnTries = 5;
@@ -161,10 +162,24 @@ function generateWorld(){
         var colorindex = getRndInteger(0, moonColors.length - 1);
         var color = moonColors[colorindex];
         var size = getRndInteger(50, 75);
-        var health = size * .5;
+        var health = size;
 
-        var drops = {astroidBits: Math.round(size * 2.5), water: Math.round(size * 2.3), iron: Math.round(size)};
+        var drops = {astroidBits: Math.round(size * 1.2), water: Math.round(size / 2), iron: Math.round(size * 1.2)};
 
+        generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects);
+        
+    }
+    for(var i = 0; i < numOfSuns; i++){
+
+        var sunColors = ["#ffd13f", "#fffc70", "#ff7023", "#d6fff6"];
+
+        var colorindex = getRndInteger(0, sunColors.length - 1);
+        var color = sunColors[colorindex];
+
+        var size = getRndInteger(700, 1200);
+        var health = size * 2;
+
+        var drops = {starDust: Math.round(size / 100), gem: Math.round(size / 200), astroidBits: Math.round(size), iron: Math.round(size)};
         generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects);
         
     }

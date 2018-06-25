@@ -259,7 +259,7 @@ function setupLocalWorld(data){
         client = data.existingPlayers[i];
 
         if(client.id != clientId){
-            otherPlayers.push(new NetworkSpaceShip(client.coordX, client.coordY, client.maxHealth, client.health, 0, client.radius, client.username, client.id));
+            otherPlayers.push(new NetworkSpaceShip(client.coordX, client.coordY, client.maxHealth, client.health, 0, client.level, client.radius, client.username, client.id));
         }
         
     }
@@ -1157,7 +1157,7 @@ function isCollidingCircles(projectile, subject) {
     //var distance = Math.sqrt(Math.pow(projectile.pos.x - subject.x, 2) + Math.pow(projectile.pos.y - subject.y, 2));
     return(distance < projectile.radius + subject.radius);
 }
-function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, radius, username, id){
+function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, radius, username, id){
     this.x;
     this.y;
     this.maxHealth = maxHealth;
@@ -1166,7 +1166,7 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, radius, u
     this.radius = radius;
     this.username = username;
     this.id = id;
-    this.level = 0;
+    this.level = level;
 
     this.coordX = coordX;
     this.coordY = coordY;
