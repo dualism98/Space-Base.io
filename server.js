@@ -163,7 +163,7 @@ function generateWorld(){
         var size = getRndInteger(50, 75);
         var health = size * .5;
 
-        var drops = {astroidBits: Math.round(size * 2.5), water: Math.round(size * 2.3), iron: Math.round(size * 2.2)};
+        var drops = {astroidBits: Math.round(size * 2.5), water: Math.round(size * 2.3), iron: Math.round(size)};
 
         generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects);
         
@@ -298,7 +298,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 200, iron: 5},
+            costs: {astroidBits: 100, iron: 5},
             speed: 90,
             fireRate: 15,
             maxHealth: 75,
@@ -308,7 +308,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 800, iron: 20},
+            costs: {astroidBits: 300, iron: 10},
             speed: 80,
             fireRate: 18,
             maxHealth: 120,
@@ -318,7 +318,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 2500, iron: 50},
+            costs: {astroidBits: 750, iron: 50},
             speed: 70,
             fireRate: 21,
             maxHealth: 200,
@@ -328,7 +328,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 10000, iron: 200},
+            costs: {astroidBits: 1200, iron: 100},
             speed: 60,
             fireRate: 25,
             maxHealth: 350,
@@ -338,7 +338,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 40000, iron: 800},
+            costs: {astroidBits: 2000, iron: 300},
             speed: 50,
             fireRate: 30,
             maxHealth: 600,
@@ -348,7 +348,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 160000, iron: 2500},
+            costs: {astroidBits: 5000, iron: 800},
             speed: 40,
             fireRate: 46,
             maxHealth: 600,
@@ -358,7 +358,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 640000, iron: 12000},
+            costs: {astroidBits: 7000, iron: 2500},
             speed: 30,
             fireRate: 52,
             maxHealth: 600,
@@ -368,7 +368,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 2500000, iron: 50000},
+            costs: {astroidBits: 10000, iron: 5000},
             speed: 20,
             fireRate: 60,
             maxHealth: 600,
