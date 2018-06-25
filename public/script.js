@@ -94,33 +94,6 @@ function allWorldObjects(){
     return objects;
 }
 
-// function allWorldObjects(){
-//     var objects = [];
-
-//     for(var i = 0; i < worldObjects.planets.length; i++){
-//         objects.push(worldObjects.planets[i]);
-//         if(worldObjects.planets[i].health <= 0)
-//             worldObjects.planets.splice(i, 1);
-//     }
-//     for(var i = 0; i < worldObjects.astroids.length; i++){
-//         objects.push(worldObjects.astroids[i]);
-
-//         if(worldObjects.astroids[i].health <= 0)
-//             worldObjects.astroids.splice(i, 1);
-//     }
-//     for(var i = 0; i < otherPlayers.length; i++){
-//         objects.push(otherPlayers[i]);
-
-//         if(otherPlayers[i].health <= 0)
-//             otherPlayers.splice(i, 1);
-//     }
-
-//     if(spaceShip)
-//         objects.push(spaceShip);
-
-//     return objects;
-// }
-
 function allStructures(){
     var structures = [];
 
