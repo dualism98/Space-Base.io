@@ -507,11 +507,11 @@ function mineProduce(data){
         if(localMine)
             localMine.object.productionEffect(mine.ammount);
     
-        if(playerItems["water"])
-            playerItems["water"] += mine.ammount;
+        if(playerItems[mine.item])
+            playerItems[mine.item] += mine.ammount;
         else 
         {
-            playerItems["water"] = mine.ammount;
+            playerItems[mine.item] = mine.ammount;
         }
 
     });
@@ -1541,7 +1541,7 @@ function animate() {
             c.fillStyle = "white";
             displayResources();
             c.font = " 30px Helvetica";
-            c.fillText(spaceShip.health +  "/" + spaceShip.maxHealth, xPadding + 10, yPadding + 35);  
+            c.fillText(Math.round(spaceShip.health)+  "/" + Math.round(spaceShip.maxHealth), xPadding + 10, yPadding + 35);  
         }
 
         if(showUpgradesPannel && !clickedUpgrade)

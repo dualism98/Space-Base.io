@@ -137,7 +137,7 @@ function generateWorld(){
         var color = planetColors[colorindex];
         var planetSize = getRndInteger(100, 300);
         var planetHealth = planetSize * 2;
-        var drops = {astroidBits: Math.round(planetSize / 2), water: Math.round(planetSize / 10)};
+        var drops = {astroidBits: Math.round(planetSize * 3), water: Math.round(planetSize * 2)};
 
         generatePlanet(planetSize, color, planetHealth, drops, generatedWorldObjects, generatedHittableObjects);
     }
@@ -163,7 +163,7 @@ function generateWorld(){
         var size = getRndInteger(50, 75);
         var health = size * .5;
 
-        var drops = {astroidBits: Math.round(size / 5), water: Math.round(size / 10,), iron: Math.round(size / 15)};
+        var drops = {astroidBits: Math.round(size * 2.5), water: Math.round(size * 2.3), iron: Math.round(size * 2.2)};
 
         generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects);
         
