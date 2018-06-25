@@ -1,5 +1,5 @@
 {
-  "name": "dotio",
+  "name": "iogame",
   "version": "1.0.0",
   "description": "socket for an online .io genere game",
   "main": "script.js",
@@ -11,6 +11,10 @@
     "sockets",
     "node"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:tsamop/Zach-NodeWebGame.git"
+  },
   "author": "Zachary Richards",
   "license": "ISC",
   "dependencies": {
