@@ -140,7 +140,7 @@ function generateWorld(){
         var colorindex = getRndInteger(0, sunColors.length - 1);
         var color = sunColors[colorindex];
 
-        var size = getRndInteger(700, 1200);
+        var size = getRndInteger(500, 700);
         var health = size * 2;
 
         var drops = {starDust: Math.round(size / 100), gem: Math.round(size / 200), astroidBits: Math.round(size), iron: Math.round(size)};
