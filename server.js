@@ -132,6 +132,21 @@ function generateWorld(){
 
     var generatedHittableObjects = [];
 
+
+    for(var i = 0; i < numOfSuns; i++){
+
+        var sunColors = ["#ffd13f", "#fffc70", "#ff7023", "#d6fff6"];
+
+        var colorindex = getRndInteger(0, sunColors.length - 1);
+        var color = sunColors[colorindex];
+
+        var size = getRndInteger(700, 1200);
+        var health = size * 2;
+
+        var drops = {starDust: Math.round(size / 100), gem: Math.round(size / 200), astroidBits: Math.round(size), iron: Math.round(size)};
+        generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects);
+        
+    }
     for(var i = 0; i < numOfPlanets; i++){
 
         var colorindex = Math.round(getRndInteger(0, planetColors.length - 1));
@@ -169,20 +184,6 @@ function generateWorld(){
         generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects);
         
     }
-    for(var i = 0; i < numOfSuns; i++){
-
-        var sunColors = ["#ffd13f", "#fffc70", "#ff7023", "#d6fff6"];
-
-        var colorindex = getRndInteger(0, sunColors.length - 1);
-        var color = sunColors[colorindex];
-
-        var size = getRndInteger(700, 1200);
-        var health = size * 2;
-
-        var drops = {starDust: Math.round(size / 100), gem: Math.round(size / 200), astroidBits: Math.round(size), iron: Math.round(size)};
-        generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects);
-        
-    }
 
     console.log('world generation complete: /n', generatedWorldObjects.astroids.length, ' astroids spawned /n', generatedWorldObjects.planets.length, ' planets spawned');
 
@@ -198,7 +199,6 @@ function SpaceMatter(x, y, radius, color, maxHealth, drops, id){
     this.maxHealth = maxHealth;
     this.drops = drops;
     this.id = id;
-
 }
 
 function Player(x, y, rotation, level, id, worldId){
@@ -708,8 +708,6 @@ function newConnetcion(socket){
             return;
         }
 
-        
- 
         var shooter = findObjectWithId(worldsData[worldId].clients.concat(allStructures(worldId)), data.shooterId);
 
         if(!shooter){

@@ -400,7 +400,7 @@ function destroyNetworkedProjectile(data){
     if(deadProjOther)
         otherProjectiles.splice(deadProjOther.index, 1);
     else if(deadProjOwn)
-        projectiles.splice(projectiles.index, 1);
+        projectiles.splice(deadProjOwn.index, 1);
 }
 
 function updatePlanetOccupier(data){
@@ -1191,6 +1191,12 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, id){
     this.coordY = coordY;
 
     this.draw = function(){
+
+        if(this.type == "sun"){
+            c.shadowBlur = 40;
+            c.shadowColor = this.color;
+        }
+
         var healthBarWidth = 30;
         var healthBarHeight = 5;
 
@@ -1199,7 +1205,6 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, id){
         displayBar(this.x - healthBarWidth / 2, this.y - this.radius + yOffset, healthBarWidth, healthBarHeight, this.health / this.maxHealth, "#36a52c");
 
         c.fillStyle = this.color;
-        // c.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
         c.beginPath();
         c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
         c.fill();
@@ -1209,8 +1214,7 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, id){
         c.fillStyle = shadeColorHex(this.color, 10);
         c.fill();
 
-        // var img = document.getElementById("astroid1");
-        // c.drawImage(img, -this.size / 2, -this.size / 2, this.size, this.size);
+        c.shadowBlur = 0;
     }
     this.update = function(){
 
