@@ -3,8 +3,10 @@ var socket = require('socket.io');
 var DoublyList = require('./doublyLinkedList');
 
 var app = express();
+
 var server = require('http').Server(app);
 server.listen(process.env.OPENSHIFT_NODEJS_PORT || 8080 , process.env.OPENSHIFT_NODEJS_IP || '127.0.0.1');
+
 //var server = app.listen(8080, "0.0.0.0");
 
 app.use(express.static('public'));

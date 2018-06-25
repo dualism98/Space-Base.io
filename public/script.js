@@ -211,7 +211,7 @@ var requestAnimationFrameId;
 var scale = 1;
 
 function setup(){
-    socket = io.connect('https://innate-conquest-208303.appspot.com/');
+    socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
