@@ -722,7 +722,7 @@ function newConnetcion(socket){
                     var shieldRadius = planet.radius + 100;    
                     var newHittableObj = {x: data.x, y: data.y, radius: shieldRadius, health: upgrades.maxHealth, maxHealth: upgrades.maxHealth, id: data.id, structure: true, planet: planet};
                     worldsData[data.worldId].hittableObjects.push(newHittableObj);
-                    syncDamage(data.worldId);
+                    syncDamage(data.worldId, [data.id]);
                 }
     
                 if(data.type == "mine"){
@@ -789,7 +789,7 @@ function newConnetcion(socket){
 
         if(hasResourceCounter == neededResources){
             upgrade(upgradee, upgrades[upgradee.level + 1], costsForNextLvl, playerUpgrading, data.worldId);
-            syncDamage(data.worldId);
+            syncDamage(data.worldId, [data.id]);
         }
         else{
             io.sockets.connected[data.senderId].emit("unsuccessfulUpgrade", "Not enough resources");
@@ -1018,11 +1018,11 @@ function damageObject(worldId, id, senderId, damage){
             if(target.object.drops && senderId)
                 itemDropped(target.object.drops, senderId, worldId); 
         }
+
+        syncDamage(worldId, [target.object.id]);
     }
     else
         console.log(id, " is not accounted for on the sever");
-    
-    syncDamage(worldId);
 }
 
 function itemDropped(drops, playerRecivingId, worldId){
@@ -1039,18 +1039,37 @@ function itemDropped(drops, playerRecivingId, worldId){
     }
 }
 
-function syncDamage(worldId){
+function syncDamage(worldId, changedIds){
 
     var healthData = {};
     var deadObejcts = [];
 
     var worldHittableObjects = worldsData[worldId].hittableObjects;
 
-    for(var i = 0; i < worldHittableObjects.length; i++){
-        healthData[worldHittableObjects[i].id] = worldHittableObjects[i].health;
-    }
+    if(changedIds){
 
-    healthData.hittableObjects = worldHittableObjects;
+        var changedObjects = [];
+
+        changedIds.forEach(id => {
+            changedObject = findObjectWithId(worldHittableObjects, id);
+
+            if(changedObject){
+                healthData[id] = changedObject.object.health;
+                changedObjects.push(changedObject.object);
+            }
+        });
+        
+        healthData.hittableObjects = changedObjects;
+
+    }
+    else{
+
+        for(var i = 0; i < worldHittableObjects.length; i++){
+            healthData[worldHittableObjects[i].id] = worldHittableObjects[i].health;
+        }
+
+        healthData.hittableObjects = worldHittableObjects;
+    }
 
     io.to(worldId).emit('damageSync', healthData);
 }
@@ -1060,7 +1079,7 @@ setInterval(sunDamage, sunDamageRate);
 
 function sunDamage()
 {
-    var syncWorldIds = [];
+    var syncWorldIds = {};
 
     allClients().forEach(client => {
 
@@ -1077,23 +1096,28 @@ function sunDamage()
 
                     damageObject(player.worldId, player.id, null, damage);
 
-                    syncWorldIds.push(player.worldId);
+                    if(syncWorldIds[player.worldId])
+                        syncWorldIds[player.worldId].push(player.id)
+                    else
+                        syncWorldIds[player.worldId] = [player.id];
                 }
 
             }
         });
 
-        for(var i = 0; i < syncWorldIds.length; i++)
-            syncDamage(syncWorldIds[i]);
-
     });
+
+    for (var syncWorldId in syncWorldIds) {
+        if (syncWorldIds.hasOwnProperty(syncWorldId)) 
+            syncDamage(syncWorldId, syncWorldIds[syncWorldId]);
+    }
 
 }
 
 setInterval(playerHeal, playerHealRate);
 function playerHeal()
 {
-    var syncWorldIds = [];
+    var syncWorldIds = {};
 
     allClients().forEach(client => {
 
@@ -1107,19 +1131,24 @@ function playerHeal()
             else
                 player.health = player.maxHealth;
 
-            syncWorldIds.push(player.worldId);
+            if(syncWorldIds[player.worldId])
+                syncWorldIds[player.worldId].push(player.id)
+            else
+                syncWorldIds[player.worldId] = [player.id];
         }
         
     });
 
-    for(var i = 0; i < syncWorldIds.length; i++)
-        syncDamage(syncWorldIds[i]);
+    for (var syncWorldId in syncWorldIds) {
+        if (syncWorldIds.hasOwnProperty(syncWorldId)) 
+            syncDamage(syncWorldId, syncWorldIds[syncWorldId]);
+    }
 }
 
 setInterval(shieldHeal, shieldHealRate);
 function shieldHeal()
 {
-    var syncWorldIds = [];
+    var syncWorldIds = {};
 
     allStructures().forEach(structure => {
         if(structure.type == "shield"){
@@ -1135,13 +1164,20 @@ function shieldHeal()
                     shield.health = shield.maxHealth;
 
 
+                if(syncWorldIds[structure.worldId])
+                    syncWorldIds[structure.worldId].push(structure.id)
+                else
+                    syncWorldIds[structure.worldId] = [structure.id];
+
                 syncWorldIds.push(structure.worldId);
             }
         }
     });
 
-    for(var i = 0; i < syncWorldIds.length; i++)
-        syncDamage(syncWorldIds[i]);
+    for (var syncWorldId in syncWorldIds) {
+        if (syncWorldIds.hasOwnProperty(syncWorldId)) 
+            syncDamage(syncWorldId, syncWorldIds[syncWorldId]);
+    }
     
 }
 

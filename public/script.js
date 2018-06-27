@@ -142,7 +142,7 @@ var currentPlanet;
 var closestAvailablePlanet;
 var planetEditMode = false;
 
-var healthDict;
+var healthDict = {};
 
 var playerItems = {};
 
@@ -291,26 +291,47 @@ function newWorldObjectSync(data){
 
 function receiveDamageSync(data){
 
-    hittableObjects = data.hittableObjects;
+    for (let i = 0; i < data.hittableObjects.length; i++) {
+        const hittableObject = data.hittableObjects[i];
+        
+        healthDict[hittableObject.id] = hittableObject.health;
 
-    localPlayer = findObjectWithId(hittableObjects, clientId);
+        var obj = findObjectWithId(hittableObjects, hittableObject.id);
 
-    if(localPlayer)
-        hittableObjects.splice(localPlayer.index, 1);
-
-    healthDict = data;
-
-    for(var i = hittableObjects.length - 1; i >= 0; i--){
-
-        if(hittableObjects[i].health <= 0)
-            hittableObjects.splice(i, 1);
-        else{
-            // var pos = cordsToScreenPos(hittableObjects[i].x, hittableObjects[i].y); 
-            // hittableObjects[i].x = pos.x;
-            // hittableObjects[i].y = pos.y;
+        if(obj){
+            if(hittableObject.health > 0)
+                hittableObjects[obj.index].health = obj.object.health;
+            else
+                hittableObjects.splice(obj.index, 1);
         }
+        else{
+            if(hittableObject.health > 0)
+                hittableObjects.push(hittableObject);
+        }
+        
 
     }
+
+    //hittableObjects = data.hittableObjects;
+
+    // localPlayer = findObjectWithId(hittableObjects, clientId);
+
+    // if(localPlayer)
+    //     hittableObjects.splice(localPlayer.index, 1);
+
+   
+
+    // for(var i = hittableObjects.length - 1; i >= 0; i--){
+
+    //     if(hittableObjects[i].health <= 0)
+    //         hittableObjects.splice(i, 1);
+    //     else{
+    //         // var pos = cordsToScreenPos(hittableObjects[i].x, hittableObjects[i].y); 
+    //         // hittableObjects[i].x = pos.x;
+    //         // hittableObjects[i].y = pos.y;
+    //     }
+
+    // }
 }
 
 function showWorld(){
