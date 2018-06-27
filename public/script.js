@@ -116,8 +116,6 @@ var centerY;
 var planetColors = ["#CB7C43", "#433F53", "#8C8070", "#94A6BF", "#9DC183", "#CC4D00"];
 var spaceShip;
 
-//var MOVE_SCALE_FACTOR = 1000;
-var MAX_SPEED = 10;
 var PLANET_GRAVITY = .0025;
 var PLANET_GRAVITY_EXPONENT = 2.5;
 
@@ -149,14 +147,11 @@ var healthDict;
 var playerItems = {};
 
 function getImage(item){
-
     var img = new Image();
         img.src = item + '.png';
         
         return img;
 }
-// var playerItemImages = {astroidBits: document.getElementById("astroidBitsImg"),
-//                         water: document.getElementById("waterItemImg")};
 
 var upgradeables = [];
 var structureUpgradeables = [];
@@ -184,7 +179,8 @@ var requestAnimationFrameId;
 var scale = 1;
 
 function setup(){
-    socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
+    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -248,11 +244,7 @@ function setupLocalWorld(data){
         if(astroid.health <= 0)
             continue;
 
-        // var pos = Vector(astroid.x, astroid.y); 
-        // astroid.x = pos.x;
-        // astroid.y = pos.y;
-
-        var astroidObject = new SpaceMatter(astroid.x, astroid.y, astroid.radius, astroid.color, astroid.maxHealth, astroid.health, astroid.id);
+        var astroidObject = new SpaceMatter(astroid.x, astroid.y, astroid.radius, astroid.color, astroid.maxHealth, astroid.health, astroid.type, astroid.id);
         worldObjects.astroids.push(astroidObject);
     }
 
@@ -263,10 +255,6 @@ function setupLocalWorld(data){
 
         if(planet.health <= 0)
             continue;
-
-        // var pos = Vector(planet.x, planet.y); 
-        // planet.x = pos.x;
-        // planet.y = pos.y;
 
         var planetObject = new Planet(planet.x, planet.y, planet.radius, planet.color, planet.health, planet.maxHealth, planet.id);
         planetObject.occupiedBy = planet.occupiedBy;
@@ -285,24 +273,13 @@ function newWorldObjectSync(data){
 
     var changedObject = findObjectWithId(allWorldObjects(), data.id);
     
-    if(data.newObject.type == "spaceMatter"){
-        // var pos = Vector(data.newObject.x, data.newObject.y); 
-        // data.newObject.x = pos.x;
-        // data.newObject.y = pos.y;
-    
-        var newSpaceMatter = new SpaceMatter(data.newObject.x, data.newObject.y, data.newObject.radius, data.newObject.color, data.newObject.maxHealth, data.newObject.health, data.id);
-
+    if(data.newObject.type){
+        var newSpaceMatter = new SpaceMatter(data.newObject.x, data.newObject.y, data.newObject.radius, data.newObject.color, data.newObject.maxHealth, data.newObject.health, data.newObject.type, data.id);
         var changedSpaceMatter = findObjectWithId(worldObjects.astroids, data.id)
         worldObjects.astroids[changedSpaceMatter.index] = newSpaceMatter;
     }
-    else if(data.newObject.type == "planet"){
-
+    else{
         var planet = data.newObject;
-
-        // var pos = Vector(planet.x, planet.y); 
-        // planet.x = pos.x;
-        // planet.y = pos.y;
-
         var planetObject = new Planet(planet.x, planet.y, planet.radius, planet.color, planet.health, planet.maxHealth, data.id);
         planetObject.occupiedBy = planet.occupiedBy;
 
@@ -347,16 +324,15 @@ function showWorld(){
 }
 
 function startLocalPlayer(data){
-
     gridPos = new Vector(gridSize / -2 - data.x, gridSize / -2 - data.y);//new Vector(gridSize / -2, gridSize / -2);
     upgradeables.push(clientId);
     friendlyObjectIds = [clientId];
 
     //Spawn client player
-    spaceShip = new SpaceShip(centerX, centerY, data.maxHealth, data.health, data.radius, data.speed, data.turningSpeed, data.fireRate, clientId);
+    spaceShip = new SpaceShip(centerX, centerY, data.maxHealth, data.health, data.level, data.radius, data.speed, data.turningSpeed, data.fireRate, clientId);
 }
 function newPlayer(data){
-    otherPlayers.push(new NetworkSpaceShip(data.x, data.y, data.maxHealth, data.health, data.rotation, data.radius, data.username, data.id));
+    otherPlayers.push(new NetworkSpaceShip(data.x, data.y, data.maxHealth, data.health, data.rotation, data.level, data.radius, data.username, data.id));
 }
 
 function respawn(){
@@ -565,6 +541,7 @@ function sendDamage(projectileId, subjectId){
 
     socket.emit('damage', data);
 }
+
 //Events
 window.addEventListener('mousemove', 
     function(event){
@@ -637,7 +614,7 @@ $(document).keypress(function(e){
 
         if(e.keyCode == 32){ //SPACE
             if(playerReloadTimer <= 0){
-                shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, PROJECTIILE_SPEED, 5, "red", clientId);
+                shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, PROJECTIILE_SPEED, spaceShip.radius / 4, "red", clientId);
                 playerReloadTimer = 1000;
             }
         } 
@@ -712,7 +689,6 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         c.fill();
     }
     this.update = function(){
-
         var pos = cordsToScreenPos(this.coordX, this.coordY);
         this.x = pos.x;
         this.y = pos.y
@@ -722,7 +698,8 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
 
         if(this.shield == null){
             healthBarWidth = 100;
-            displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, healthBarWidth, 20, this.health / this.maxHealth, "green");
+            if(this.health != this.maxHealth)
+                displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, healthBarWidth, 20, this.health / this.maxHealth, "green");
         }
 
         if(planetEditMode && currentPlanet == this){
@@ -1157,7 +1134,8 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, ra
         c.rotate(-this.rotation);
         c.translate(-this.x, -this.y);
 
-        displayBar(this.x - healthBarWidth / 2, this.y - (this.radius + 10), healthBarWidth, 5, this.health / this.maxHealth, "#36a52c");
+        if(this.health != this.maxHealth)
+            displayBar(this.x - healthBarWidth / 2, this.y - (this.radius + 10), healthBarWidth, 5, this.health / this.maxHealth, "#36a52c");
     }
     this.update = function(){
         var pos = cordsToScreenPos(this.coordX, this.coordY);
@@ -1178,13 +1156,14 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, ra
     }
 }
 
-function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, id){
+function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id){
     this.x;
     this.y;
     this.radius = radius;
     this.color = color;
     this.maxHealth = maxHealth;
     this.health = health;
+    this.type = type;
     this.id = id;
 
     this.coordX = coordX;
@@ -1192,32 +1171,69 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, id){
 
     this.draw = function(){
 
-        if(this.type == "sun"){
-            c.shadowBlur = 40;
-            c.shadowColor = this.color;
-        }
-
         var healthBarWidth = 30;
         var healthBarHeight = 5;
 
         var yOffset = -10;
 
-        displayBar(this.x - healthBarWidth / 2, this.y - this.radius + yOffset, healthBarWidth, healthBarHeight, this.health / this.maxHealth, "#36a52c");
+        if(this.type == "crystal"){
+    
+            c.beginPath();
+            spikyBall(c, this.x, this.y, this.radius, 20, 0, -Math.PI/2, .75);
+            c.fillStyle = this.color;
+            c.fill();
 
-        c.fillStyle = this.color;
-        c.beginPath();
-        c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-        c.fill();
+            c.beginPath();
+            spikyBall(c, this.x, this.y, this.radius - 5, 20, 0, -Math.PI/2, .75);
+            c.fillStyle = shadeColorHex(this.color, 10);
+            c.fill();
+        }
+        else if(this.type == "astroid"){
+            c.fillStyle = this.color;
+            c.beginPath();
+            c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+            c.fill();
+    
+            c.beginPath();
+            c.arc(this.x, this.y, this.radius - 4, 0, Math.PI * 2, false);
+            c.fillStyle = shadeColorHex(this.color, 10);
+            c.fill();
+        }
+        else if(this.type == "sun"){
+            c.shadowBlur = 500;
+            c.shadowColor = this.color;
 
-        c.beginPath();
-        c.arc(this.x, this.y, this.radius - 4, 0, Math.PI * 2, false);
-        c.fillStyle = shadeColorHex(this.color, 10);
-        c.fill();
+            c.fillStyle = this.color;
+            c.beginPath();
+            c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+            c.fill();
+    
+            c.beginPath();
+            c.arc(this.x, this.y, this.radius - 4, 0, Math.PI * 2, false);
+            c.fillStyle = shadeColorHex(this.color, 10);
+            c.fill();
+        }
+        else if(this.type == "moon"){
 
+            c.fillStyle = this.color;
+            c.beginPath();
+            c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+            c.fill();
+
+            c.beginPath();
+            polygon(c, this.x, this.y, this.radius - 5, 11, 0, -Math.PI/2);
+            c.fillStyle = shadeColorHex(this.color, 10);
+            c.fill();
+            
+        }
+
+        if(this.health != this.maxHealth)
+            displayBar(this.x - healthBarWidth / 2, this.y - this.radius + yOffset, healthBarWidth, healthBarHeight, this.health / this.maxHealth, "#36a52c");
+
+    
         c.shadowBlur = 0;
     }
     this.update = function(){
-
         var pos = cordsToScreenPos(this.coordX, this.coordY);
         this.x = pos.x;
         this.y = pos.y;
@@ -1225,7 +1241,7 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, id){
     }
 }
 
-function SpaceShip(x, y, maxHealth, health, radius, speed, turningSpeed, fireRate, id){
+function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, fireRate, id){
 
     this.pos = new Vector(x, y);
     this.rotation = 0;
@@ -1237,7 +1253,7 @@ function SpaceShip(x, y, maxHealth, health, radius, speed, turningSpeed, fireRat
     this.turningSpeed = turningSpeed;
     this.id = id;
 
-    this.level = 0;
+    this.level = level;
 
     this.draw = function(){
 
@@ -1419,7 +1435,6 @@ function animate() {
     }
     
     //Draw -----------------------------------------------------------------------------------------------------------
-
     c.scale(scale, scale);
 
     drawGrid(gridPos.x + centerX, gridPos.y +  centerY, gridSize, gridSize, gridBoxScale);
@@ -1845,6 +1860,46 @@ function drawGrid(x, y, width, height, gridScale){
     }
 
 } 
+
+function spikyBall(ctx, x, y, radius, sides, startAngle, anticlockwise, spikyAmount) {
+    if (sides < 3) return;
+    var a = (Math.PI * 2)/sides;
+    a = anticlockwise?-a:a;
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(startAngle);
+    ctx.moveTo(radius,0);
+
+    var inSpike = spikyAmount;
+
+    for (var i = 1; i < sides; i++) {
+      ctx.lineTo(radius * Math.cos(a*i) * inSpike,radius*Math.sin(a*i) * inSpike);
+
+      if(inSpike == spikyAmount)
+        inSpike = 1;
+    else
+        inSpike = spikyAmount;
+
+    }
+    ctx.closePath();
+    ctx.restore();
+  }
+
+function polygon(ctx, x, y, radius, sides, startAngle, anticlockwise) {
+    if (sides < 3) return;
+    var a = (Math.PI * 2)/sides;
+    a = anticlockwise?-a:a;
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(startAngle);
+    ctx.moveTo(radius,0);
+    for (var i = 1; i < sides; i++) {
+      ctx.lineTo(radius*Math.cos(a*i),radius*Math.sin(a*i));
+    }
+    ctx.closePath();
+    ctx.restore();
+  }
+
 function drawPointAroundCircle(startx, starty, radius, angle, distance){
     var x = startx + radius * Math.cos(-angle*Math.PI/180) * distance;
     var y = starty + radius * Math.sin(-angle*Math.PI/180) * distance;

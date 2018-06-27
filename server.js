@@ -19,17 +19,23 @@ var worldIds = [];
 console.log("server started");
 
 //Server Config Options
-var numOfAstroids = 5000;
-var numOfPlanets = 100;
+var numOfAstroids = 4000;
+var numOfPlanets = 50;
 var numOfMoons = 200;
 var numOfSuns = 10;
-var gridSize = 20000;
+var numOfCrystals = 100;
+var gridSize = 15000;
 var gridBoxScale = 200;
 var spawnTries = 5;
+
 var mineProductionRate = 2500;
 var despawnProjectilesRate = 10;
-var shieldRespawnRate = 1000;
+var shieldHealRate = 1000;
+var playerHealRate = 10000;
 var projectileDespawnTime = 100;
+var sunDamageRate = 1000;
+
+
 var planetColors = ["#CB7C43", "#433F53", "#8C8070", "#94A6BF", "#9DC183", "#CC4D00"];
 var numberOfWorlds = 1;
 
@@ -76,7 +82,7 @@ function generatePlanet(size, color, health, drops, worldObjectsRef, hittableObj
     return planet;
 }
 
-function generateSpaceMatter(size, color, health, drops, worldObjectsRef, hittableObjectsRef, id = uniqueId()){
+function generateSpaceMatter(size, color, health, drops, worldObjectsRef, hittableObjectsRef, type, id = uniqueId()){
     var position = {};
     var reptitions = 0;
 
@@ -94,7 +100,7 @@ function generateSpaceMatter(size, color, health, drops, worldObjectsRef, hittab
 
     } while (!positonAviable(size, position.x, position.y, hittableObjectsRef));
 
-    var astroid = new SpaceMatter(position.x, position.y, size, color, health, drops, id);
+    var astroid = new SpaceMatter(position.x, position.y, size, color, health, drops, type, id);
     
     hittableObjectsRef.push(astroid);
     worldObjectsRef.astroids.push(astroid);
@@ -139,12 +145,12 @@ function generateWorld(){
 
         var colorindex = getRndInteger(0, sunColors.length - 1);
         var color = sunColors[colorindex];
-
+        var type = "sun";
         var size = getRndInteger(500, 700);
         var health = size * 2;
 
-        var drops = {starDust: Math.round(size / 100), gem: Math.round(size / 200), astroidBits: Math.round(size), iron: Math.round(size)};
-        generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects);
+        var drops = {starDust: 1};
+        generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
         
     }
     for(var i = 0; i < numOfPlanets; i++){
@@ -153,7 +159,7 @@ function generateWorld(){
         var color = planetColors[colorindex];
         var planetSize = getRndInteger(100, 300);
         var planetHealth = planetSize * 2;
-        var drops = {astroidBits: Math.round(planetSize * 3), water: Math.round(planetSize * 2)};
+        var drops = {astroidBits: Math.round(planetSize * 3), water: Math.round(planetSize * 2), earth: Math.round(planetSize * 2.2)};
 
         generatePlanet(planetSize, color, planetHealth, drops, generatedWorldObjects, generatedHittableObjects);
     }
@@ -163,10 +169,25 @@ function generateWorld(){
         var astroidSize = getRndInteger(10, 30);
         var astroidColor = getRandomGray();
         var astroidHealth = astroidSize * .2;
-
+        var type = "astroid";
         var drops = {astroidBits: Math.round(astroidSize / 5), water: Math.round(astroidSize / 10)};
 
-        generateSpaceMatter(astroidSize, astroidColor, astroidHealth, drops, generatedWorldObjects, generatedHittableObjects);
+        generateSpaceMatter(astroidSize, astroidColor, astroidHealth, drops, generatedWorldObjects, generatedHittableObjects, type);
+        
+    }
+
+    for(var i = 0; i < numOfCrystals; i++){
+
+        var crystalColors = ["#5b94ef", "#d957ed", "#f9f454", "#85f954"];
+
+        var colorindex = getRndInteger(0, crystalColors.length - 1);
+        var color = crystalColors[colorindex];
+        var type = "crystal";
+        var size = getRndInteger(10, 20);
+        var health = size * 8;
+
+        var drops = {crystal: 5};
+        generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
         
     }
 
@@ -178,10 +199,10 @@ function generateWorld(){
         var color = moonColors[colorindex];
         var size = getRndInteger(50, 75);
         var health = size;
-
+        var type = "moon";
         var drops = {astroidBits: Math.round(size * 1.2), water: Math.round(size / 2), iron: Math.round(size * 1.2)};
 
-        generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects);
+        generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
         
     }
 
@@ -190,7 +211,7 @@ function generateWorld(){
     return {worldObjects: generatedWorldObjects, hittableObjects: generatedHittableObjects};
 }
 
-function SpaceMatter(x, y, radius, color, maxHealth, drops, id){
+function SpaceMatter(x, y, radius, color, maxHealth, drops, type, id){
     this.x = x;
     this.y = y;
     this.radius = radius;
@@ -198,6 +219,7 @@ function SpaceMatter(x, y, radius, color, maxHealth, drops, id){
     this.health = maxHealth;
     this.maxHealth = maxHealth;
     this.drops = drops;
+    this.type = type;
     this.id = id;
 }
 
@@ -208,7 +230,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {gem: 1};
+    this.drops = {};
 
     this.turningSpeed = playerUpgrades[level].turningSpeed;
     this.radius = playerUpgrades[level].radius;
@@ -278,7 +300,7 @@ var playerUpgrades = [
             fireRate: 10,
             maxHealth: 20,
             damage: 1,
-            radius: 20,
+            radius: 10,
             turningSpeed: .1,
             identifier: "spaceship"
         },
@@ -288,7 +310,7 @@ var playerUpgrades = [
             fireRate: 11,
             maxHealth: 25,
             damage: 2,
-            radius: 21,
+            radius: 15,
             turningSpeed: .1,
             identifier: "spaceship"
         },
@@ -298,7 +320,7 @@ var playerUpgrades = [
             fireRate: 12,
             maxHealth: 35,
             damage: 3,
-            radius: 22,
+            radius: 20,
             turningSpeed: .09,
             identifier: "spaceship"
         },
@@ -308,7 +330,7 @@ var playerUpgrades = [
             fireRate: 13,
             maxHealth: 50,
             damage: 5,
-            radius: 23,
+            radius: 25,
             turningSpeed: .08,
             identifier: "spaceship"
         },
@@ -318,7 +340,7 @@ var playerUpgrades = [
             fireRate: 15,
             maxHealth: 75,
             damage: 8,
-            radius: 24,
+            radius: 30,
             turningSpeed: .07,
             identifier: "spaceship"
         },
@@ -328,7 +350,7 @@ var playerUpgrades = [
             fireRate: 18,
             maxHealth: 120,
             damage: 13,
-            radius: 30,
+            radius: 35,
             turningSpeed: .06,
             identifier: "spaceship"
         },
@@ -338,7 +360,7 @@ var playerUpgrades = [
             fireRate: 21,
             maxHealth: 200,
             damage: 21,
-            radius: 50,
+            radius: 40,
             turningSpeed: .05,
             identifier: "spaceship"
         },
@@ -348,7 +370,7 @@ var playerUpgrades = [
             fireRate: 25,
             maxHealth: 350,
             damage: 34,
-            radius: 55,
+            radius: 45,
             turningSpeed: .04,
             identifier: "spaceship"
         },
@@ -358,7 +380,7 @@ var playerUpgrades = [
             fireRate: 30,
             maxHealth: 600,
             damage: 55,
-            radius: 60,
+            radius: 50,
             turningSpeed: .03,
             identifier: "spaceship"
         },
@@ -368,7 +390,7 @@ var playerUpgrades = [
             fireRate: 46,
             maxHealth: 600,
             damage: 55,
-            radius: 70,
+            radius: 55,
             turningSpeed: .02,
             identifier: "spaceship"
         },
@@ -378,7 +400,7 @@ var playerUpgrades = [
             fireRate: 52,
             maxHealth: 600,
             damage: 55,
-            radius: 80,
+            radius: 60,
             turningSpeed: .01,
             identifier: "spaceship"
         },
@@ -388,7 +410,7 @@ var playerUpgrades = [
             fireRate: 60,
             maxHealth: 600,
             damage: 55,
-            radius: 90,
+            radius: 65,
             turningSpeed: .009,
             identifier: "spaceship"
         }
@@ -556,129 +578,19 @@ function newConnetcion(socket){
         syncDamage(worldId);
     });
 
+
     socket.on('damage', function(data){
 
-        if(!worldIds.contains(data.worldId)){
-            console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "world Id not accounted for on server. most likely old session.");
-            return;
-        }
-
-        var projectile = findObjectWithId(worldsData[worldId].projectiles, data.projectileId);
-
-        var worldWorldObjects = worldsData[data.worldId].worldObjects;
-        var worldHittableObjects = worldsData[data.worldId].hittableObjects;
-
-        var target = findObjectWithId(worldHittableObjects, data.id);
-
+        var projectile = findObjectWithId(worldsData[data.worldId].projectiles, data.projectileId);
         if(!projectile){
             console.log('\x1b[31m%s\x1b[0m', "[ERROR]","projectile not found.");
             return;
         }
-        
-        if(!target){
-            console.log('\x1b[31m%s\x1b[0m', "[ERROR]","projectile hit target not found.");
-            return;
-        }
 
-        if(target.object){
+        var damageDealt = projectile.object.damage;
 
-            if(target.object.health - projectile.object.damage > 0){
-                target.object.health -= projectile.object.damage;
-            }
-            else {
-                target.object.health = 0;
-
-                if(target.object.structure){
-                    worldWorldObjects.planets.forEach(function(planet){
-                        var possibleStructure = findObjectWithId(planet.structures, target.object.id)
-                        if(possibleStructure){
-                            planet.structures.splice(possibleStructure.index, 1);
-                            console.log("destroyed structure off planet");
-                        }
-                    });
-                }
-                else {
-
-                    //If the thing killed was a player
-                    var possibleClient = findObjectWithId(worldsData[data.worldId].clients, target.object.id);
-                    var possiblePlanet = findObjectWithId(worldWorldObjects.planets, target.object.id);
-                    var possibleSpaceMatter = findObjectWithId(worldWorldObjects.astroids, target.object.id);
-
-                    if(possibleClient){
-                        disconnectPlayer(target.object.id, socket, data.worldId);
-
-                        playerObject = {id: target.object.id};
-                        worldsData[data.worldId].lobbyClients.push(playerObject);
-                        io.sockets.connected[target.object.id].emit("respawn");
-                    }
-                    else{
-
-                        var newObject;
-
-                        if(possiblePlanet){
-                            var color = possiblePlanet.object.color;
-                            var planetSize = possiblePlanet.object.size
-                            var planetHealth = possiblePlanet.object.maxHealth;
-                            var drops = possiblePlanet.drops;
-
-                            worldHittableObjects.splice(target.index, 1);
-                            worldWorldObjects.planets.splice(possiblePlanet.index, 1);
-                            newObject = generatePlanet(planetSize, color, planetHealth, drops, worldWorldObjects, worldHittableObjects, target.object.id);
-                            newObject.type = "planet";
-                        }
-                        else if(possibleSpaceMatter){
-                            var size = possibleSpaceMatter.object.size;
-                            var color = possibleSpaceMatter.object.color;
-                            var health = possibleSpaceMatter.object.maxHealth;
-                            var drops = possibleSpaceMatter.object.drops;
-
-                            worldHittableObjects.splice(target.index, 1);
-                            worldWorldObjects.astroids.splice(possibleSpaceMatter.index, 1);
-                            newObject = generateSpaceMatter(size, color, health, drops, worldWorldObjects, worldHittableObjects, target.object.id);
-                            newObject.type = "spaceMatter";
-                        }
-                        else{
-                            console.log("object type of damaged object is not accounted for on the server");
-                            return;
-                        }
-
-                        if(newObject){
-                            var changedWorldObject = 
-                            {
-                                id: target.object.id,
-                                newObject: newObject
-                            }
-        
-                            io.to(data.worldId).emit('newWorldObjectSync', changedWorldObject);
-                        }
-                    }
-                }
-
-                if(target.object.drops)
-                    itemDropped(target.object.drops, data.senderId, data.worldId);
-                    
-            }
-        }
-        else
-            console.log(data.id, " is not accounted for on the sever");
-        
-        //console.log("inflicted: ", data.damage, " on: ", data.id, " curent health: ", target.object.health);
-        syncDamage(data.worldId);
+        damageObject(data.worldId, data.id, data.senderId, damageDealt)
     });
-
-    function itemDropped(drops, playerRecivingId, worldId){
-        io.sockets.connected[playerRecivingId].emit("items", {drops});
-
-        var player = findObjectWithId(worldsData[worldId].clients, playerRecivingId).object;
-        for (var drop in drops) {
-            if (drops.hasOwnProperty(drop)) {
-                if(player.drops[drop])
-                    player.drops[drop] += drops[drop];
-                else
-                    player.drops[drop] = drops[drop];
-            }
-        }
-    }
 
     socket.on('playerPos', function(data){
         data.id = socket.id;
@@ -696,7 +608,7 @@ function newConnetcion(socket){
             return;
 
         player.x = data.x;
-        player.x = data.y;
+        player.y = data.y;
 
         socket.broadcast.to(data.worldId).emit('playerPos', data);
     });
@@ -954,7 +866,7 @@ function disconnectPlayer(id, socket, worldId){
     var structureIds = [];
 
     if(!client){
-        console.log("player not accounted for disconnected with id: ", id, socket.id);
+        console.log("player not accounted for disconnected with id: ", id);
         return;
     }
 
@@ -981,10 +893,9 @@ function disconnectPlayer(id, socket, worldId){
     }
     
     if(id != socket.id)
-        io.sockets.connected[id].broadcast.emit('playerExited', data);
+        io.sockets.connected[id].broadcast.to(worldId).emit('playerExited', data);
     else
         socket.broadcast.to(worldId).emit('playerExited', data);
-
 
     console.log('\x1b[31m%s\x1b[0m', "player disconected: ", client.object.id,  " clients connected: ", worldsData[worldId].clients.length);
 
@@ -995,6 +906,137 @@ function disconnectPlayer(id, socket, worldId){
     }
 
     worldsData[worldId].clients.splice(client.index, 1);
+}
+
+function damageObject(worldId, id, senderId, damage){
+
+    if(!worldIds.contains(worldId)){
+        console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "world Id not accounted for on server. most likely old session.");
+        return;
+    }
+
+    var worldWorldObjects = worldsData[worldId].worldObjects;
+    var worldHittableObjects = worldsData[worldId].hittableObjects;
+
+    var target = findObjectWithId(worldHittableObjects, id);
+    
+    if(!target){
+        console.log('\x1b[31m%s\x1b[0m', "[ERROR]","target not found.");
+        return;
+    }
+
+    if(target.object){
+
+        if(target.object.type == 'sun'){
+            if(target.object.drops && senderId)
+                itemDropped(target.object.drops, senderId, worldId); 
+
+            return;
+        }
+
+
+        if(target.object.health - damage > 0){
+            target.object.health -= damage;
+        }
+        else {
+            target.object.health = 0;
+
+            if(target.object.structure){
+                worldWorldObjects.planets.forEach(function(planet){
+                    var possibleStructure = findObjectWithId(planet.structures, target.object.id)
+                    if(possibleStructure){
+                        planet.structures.splice(possibleStructure.index, 1);
+                        console.log("destroyed structure off planet");
+                    }
+                });
+            }
+            else {
+
+                //If the thing killed was a player
+                var possibleClient = findObjectWithId(worldsData[worldId].clients, target.object.id);
+
+                 //If the thing killed was a planet
+                var possiblePlanet = findObjectWithId(worldWorldObjects.planets, target.object.id);
+
+                 //If the thing killed was space matter
+                var possibleSpaceMatter = findObjectWithId(worldWorldObjects.astroids, target.object.id);
+
+                if(possibleClient){
+                    disconnectPlayer(target.object.id, socket, worldId);
+
+                    if(!target.object.drops["gem"])
+                        target.object.drops["gem"] = 1;
+                    
+                    playerObject = {id: target.object.id};
+                    worldsData[worldId].lobbyClients.push(playerObject);
+                    io.sockets.connected[target.object.id].emit("respawn");
+                }
+                else{
+
+                    var newObject;
+
+                    if(possiblePlanet){
+                        var color = possiblePlanet.object.color;
+                        var radius = possiblePlanet.object.radius
+                        var health = possiblePlanet.object.maxHealth;
+                        var drops = possiblePlanet.drops;
+
+                        worldHittableObjects.splice(target.index, 1);
+                        worldWorldObjects.planets.splice(possiblePlanet.index, 1);
+                        newObject = generatePlanet(radius, color, health, drops, worldWorldObjects, worldHittableObjects, target.object.id);
+                        newObject.type = "planet";
+                    }
+                    else if(possibleSpaceMatter){
+                        var radius = possibleSpaceMatter.object.radius;
+                        var color = possibleSpaceMatter.object.color;
+                        var health = possibleSpaceMatter.object.maxHealth;
+                        var drops = possibleSpaceMatter.object.drops;
+                        var type = possibleSpaceMatter.object.type;
+
+                        worldHittableObjects.splice(target.index, 1);
+                        worldWorldObjects.astroids.splice(possibleSpaceMatter.index, 1);
+                        newObject = generateSpaceMatter(radius, color, health, drops, worldWorldObjects, worldHittableObjects, type, target.object.id);
+                        console.log(newObject);
+                    }
+                    else{
+                        console.log("object type of damaged object is not accounted for on the server");
+                        return;
+                    }
+
+                    if(newObject){
+                        var changedWorldObject = 
+                        {
+                            id: target.object.id,
+                            newObject: newObject
+                        }
+    
+                        io.to(worldId).emit('newWorldObjectSync', changedWorldObject);
+                    }
+                }
+            }
+
+            if(target.object.drops && senderId)
+                itemDropped(target.object.drops, senderId, worldId); 
+        }
+    }
+    else
+        console.log(id, " is not accounted for on the sever");
+    
+    syncDamage(worldId);
+}
+
+function itemDropped(drops, playerRecivingId, worldId){
+    io.sockets.connected[playerRecivingId].emit("items", {drops});
+
+    var player = findObjectWithId(worldsData[worldId].clients, playerRecivingId).object;
+    for (var drop in drops) {
+        if (drops.hasOwnProperty(drop)) {
+            if(player.drops[drop])
+                player.drops[drop] += drops[drop];
+            else
+                player.drops[drop] = drops[drop];
+        }
+    }
 }
 
 function syncDamage(worldId){
@@ -1013,9 +1055,71 @@ function syncDamage(worldId){
     io.to(worldId).emit('damageSync', healthData);
 }
 
-setInterval(shieldRespawn, shieldRespawnRate);
-function shieldRespawn()
+
+setInterval(sunDamage, sunDamageRate);
+
+function sunDamage()
 {
+    var syncWorldIds = [];
+
+    allClients().forEach(client => {
+
+        var player = findObjectWithId(worldsData[client.worldId].hittableObjects, client.id).object;
+
+        worldsData[client.worldId].worldObjects.astroids.forEach(matter => {
+            if(matter.type == "sun")
+            {
+                var distance = Math.sqrt(Math.pow(matter.x - client.x, 2) + Math.pow(matter.y - client.y, 2)); 
+
+                if(distance < client.radius + matter.radius){
+
+                    var damage = player.maxHealth / 5;;
+
+                    damageObject(player.worldId, player.id, null, damage);
+
+                    syncWorldIds.push(player.worldId);
+                }
+
+            }
+        });
+
+        for(var i = 0; i < syncWorldIds.length; i++)
+            syncDamage(syncWorldIds[i]);
+
+    });
+
+}
+
+setInterval(playerHeal, playerHealRate);
+function playerHeal()
+{
+    var syncWorldIds = [];
+
+    allClients().forEach(client => {
+
+        var player = findObjectWithId(worldsData[client.worldId].hittableObjects, client.id).object;
+
+        var addAmmount = player.maxHealth / 15;
+
+        if(player.health != player.maxHealth){
+            if(player.health + addAmmount < player.maxHealth)
+                player.health += addAmmount;
+            else
+                player.health = player.maxHealth;
+
+            syncWorldIds.push(player.worldId);
+        }
+        
+    });
+
+    for(var i = 0; i < syncWorldIds.length; i++)
+        syncDamage(syncWorldIds[i]);
+}
+
+setInterval(shieldHeal, shieldHealRate);
+function shieldHeal()
+{
+    var syncWorldIds = [];
 
     allStructures().forEach(structure => {
         if(structure.type == "shield"){
@@ -1030,10 +1134,15 @@ function shieldRespawn()
                 else
                     shield.health = shield.maxHealth;
 
-                syncDamage(structure.worldId);
+
+                syncWorldIds.push(structure.worldId);
             }
         }
     });
+
+    for(var i = 0; i < syncWorldIds.length; i++)
+        syncDamage(syncWorldIds[i]);
+    
 }
 
 
