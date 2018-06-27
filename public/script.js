@@ -293,8 +293,6 @@ function newWorldObjectSync(data){
 
 function receiveDamageSync(data){
 
-    console.log("sync damage");
-
     for (let i = 0; i < data.hittableObjects.length; i++) {
         const sentHittableObject = data.hittableObjects[i];
         
