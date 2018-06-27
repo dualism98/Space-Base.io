@@ -181,8 +181,8 @@ var scale = 1;
 var sunTint = {amount: 0, color: "#fffff"};
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
-    socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
+    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -296,7 +296,7 @@ function receiveDamageSync(data){
         
         healthDict[sentHittableObject.id] = sentHittableObject.health;
 
-        if(clientId == sentHittableObject.id){
+        if(clientId != sentHittableObject.id){
             var localObj = findObjectWithId(hittableObjects, sentHittableObject.id);
 
             if(localObj){
@@ -1695,7 +1695,7 @@ function animate() {
 
         if(!currentPlanet){
             var width = canvas.width / 5;
-            displayBar(centerX * scale - width / 2, canvas.height - 30, width, 20, 1000 - playerReloadTimer / 1000, "#ff5a51");
+            displayBar(centerX * scale - width / 2, canvas.height - 30, width, 20, (1000 - playerReloadTimer) / 1000, "#ff5a51");
         }
 
     }
