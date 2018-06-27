@@ -996,7 +996,6 @@ function damageObject(worldId, id, senderId, damage){
                         worldHittableObjects.splice(target.index, 1);
                         worldWorldObjects.astroids.splice(possibleSpaceMatter.index, 1);
                         newObject = generateSpaceMatter(radius, color, health, drops, worldWorldObjects, worldHittableObjects, type, target.object.id);
-                        console.log(newObject);
                     }
                     else{
                         console.log("object type of damaged object is not accounted for on the server");
@@ -1041,7 +1040,7 @@ function itemDropped(drops, playerRecivingId, worldId){
 
 function syncDamage(worldId, changedIds){
 
-    var healthData = {};
+    var healthData = {hittableObjects: []};
     var deadObejcts = [];
 
     var worldHittableObjects = worldsData[worldId].hittableObjects;
@@ -1054,8 +1053,18 @@ function syncDamage(worldId, changedIds){
             changedObject = findObjectWithId(worldHittableObjects, id);
 
             if(changedObject){
-                healthData[id] = changedObject.object.health;
-                changedObjects.push(changedObject.object);
+                healthData[id] = Math.round(changedObject.object.health);
+
+                var healthObj = {
+                    health: changedObject.object.health, 
+                    maxHealth: changedObject.object.maxHealth, 
+                    radius: changedObject.object.radius, 
+                    x: changedObject.object.x, 
+                    y: changedObject.object.y, 
+                    id: changedObject.object.id
+                }
+
+                changedObjects.push(healthObj);
             }
         });
         
@@ -1065,10 +1074,20 @@ function syncDamage(worldId, changedIds){
     else{
 
         for(var i = 0; i < worldHittableObjects.length; i++){
-            healthData[worldHittableObjects[i].id] = worldHittableObjects[i].health;
-        }
+            healthData[worldHittableObjects[i].id] = Math.round(worldHittableObjects[i].health);
 
-        healthData.hittableObjects = worldHittableObjects;
+            var healthObj = {
+                health: worldHittableObjects[i].health, 
+                maxHealth: worldHittableObjects[i].maxHealth, 
+                radius: worldHittableObjects[i].radius, 
+                x: worldHittableObjects[i].x, 
+                y: worldHittableObjects[i].y, 
+                id: worldHittableObjects[i].id
+            }
+
+            healthData.hittableObjects.push(healthObj);
+
+        }
     }
 
     io.to(worldId).emit('damageSync', healthData);

@@ -16,6 +16,8 @@
 
     width: 288px;
     height: 72px;
+
+    margin-top: 20px;
     margin-left: auto;
     margin-right: auto;
 
@@ -29,6 +31,17 @@
 li {
     text-align: center;
     display: table-row;
+}
+
+#spacebase {
+    display: table-row;
+    vertical-align: middle;
+
+    width: 700px;
+
+    border: none;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 #startGame{
@@ -63,7 +76,7 @@ li {
 
 #preGameContent {
     position: absolute;
-    top: 20%;
+    top: 10%;
 
     display: table;
     table-layout: fixed;
@@ -71,7 +84,7 @@ li {
     margin-right: auto;
     left:0;
     right:0;
-    width: 25%;
+    width: 100%;
     height: 50%;
 }
 

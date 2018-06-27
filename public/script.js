@@ -179,8 +179,8 @@ var requestAnimationFrameId;
 var scale = 1;
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
-    socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
+    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -291,47 +291,28 @@ function newWorldObjectSync(data){
 
 function receiveDamageSync(data){
 
+    console.log("sync damage");
+
     for (let i = 0; i < data.hittableObjects.length; i++) {
-        const hittableObject = data.hittableObjects[i];
+        const sentHittableObject = data.hittableObjects[i];
         
-        healthDict[hittableObject.id] = hittableObject.health;
+        healthDict[sentHittableObject.id] = sentHittableObject.health;
 
-        var obj = findObjectWithId(hittableObjects, hittableObject.id);
+        var localObj = findObjectWithId(hittableObjects, sentHittableObject.id);
 
-        if(obj){
-            if(hittableObject.health > 0)
-                hittableObjects[obj.index].health = obj.object.health;
+        if(localObj){
+            if(sentHittableObject.health > 0)
+                hittableObjects[localObj.index] = sentHittableObject;
             else
-                hittableObjects.splice(obj.index, 1);
+                hittableObjects.splice(localObj.index, 1);
         }
         else{
-            if(hittableObject.health > 0)
-                hittableObjects.push(hittableObject);
+            if(sentHittableObject.health > 0)
+                hittableObjects.push(sentHittableObject);
         }
         
 
     }
-
-    //hittableObjects = data.hittableObjects;
-
-    // localPlayer = findObjectWithId(hittableObjects, clientId);
-
-    // if(localPlayer)
-    //     hittableObjects.splice(localPlayer.index, 1);
-
-   
-
-    // for(var i = hittableObjects.length - 1; i >= 0; i--){
-
-    //     if(hittableObjects[i].health <= 0)
-    //         hittableObjects.splice(i, 1);
-    //     else{
-    //         // var pos = cordsToScreenPos(hittableObjects[i].x, hittableObjects[i].y); 
-    //         // hittableObjects[i].x = pos.x;
-    //         // hittableObjects[i].y = pos.y;
-    //     }
-
-    // }
 }
 
 function showWorld(){
@@ -1463,8 +1444,13 @@ function animate() {
 
     allWorldObjects().concat(otherPlayers).forEach(function(matter){
 
-        pos = cordsToScreenPos(matter.coordX, matter.coordY);
-        size = matter.radius;
+        
+
+        var pos = cordsToScreenPos(matter.coordX, matter.coordY);
+        var size = matter.radius;
+
+        if(matter.type == "sun");
+            size += 500;
 
         //Out of screen Right              || Left             || Up               || Down
         if(!(pos.x - size > canvas.width + centerX || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > canvas.height + centerY)){
