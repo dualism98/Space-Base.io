@@ -34,7 +34,7 @@ var sunDamageRate = 1000;
 
 
 var planetColors = ["#CB7C43", "#433F53", "#8C8070", "#94A6BF", "#9DC183", "#CC4D00"];
-var numberOfWorlds = 10;
+var numberOfWorlds = 1;
 
 var maxPlanetObjects = {
     mine: 5,
@@ -293,7 +293,7 @@ function Structure(planetId, x, y, rotation, type, ownerId, level, worldId, id){
 
 var playerUpgrades = [
         {   
-            speed: 130,
+            speed: 90,
             fireRate: 10,
             maxHealth: 20,
             damage: 1,
@@ -303,7 +303,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 5},
-            speed: 120,
+            speed: 85,
             fireRate: 11,
             maxHealth: 25,
             damage: 2,
@@ -313,7 +313,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 20},
-            speed: 110,
+            speed: 80,
             fireRate: 12,
             maxHealth: 35,
             damage: 3,
@@ -323,7 +323,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 50},
-            speed: 100,
+            speed: 75,
             fireRate: 13,
             maxHealth: 50,
             damage: 5,
@@ -333,7 +333,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 100, iron: 5},
-            speed: 90,
+            speed: 70,
             fireRate: 15,
             maxHealth: 75,
             damage: 8,
@@ -343,7 +343,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 300, iron: 10},
-            speed: 80,
+            speed: 65,
             fireRate: 18,
             maxHealth: 120,
             damage: 13,
@@ -353,7 +353,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 750, iron: 50},
-            speed: 70,
+            speed: 60,
             fireRate: 21,
             maxHealth: 200,
             damage: 21,
@@ -363,7 +363,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 1200, iron: 100},
-            speed: 60,
+            speed: 55,
             fireRate: 25,
             maxHealth: 350,
             damage: 34,
@@ -373,7 +373,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 2000, iron: 300},
-            speed: 50,
+            speed: 40,
             fireRate: 30,
             maxHealth: 600,
             damage: 55,
@@ -383,7 +383,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 5000, iron: 800},
-            speed: 40,
+            speed: 35,
             fireRate: 46,
             maxHealth: 600,
             damage: 55,
@@ -403,7 +403,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 10000, iron: 5000},
-            speed: 20,
+            speed: 25,
             fireRate: 60,
             maxHealth: 600,
             damage: 55,

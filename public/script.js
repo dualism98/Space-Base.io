@@ -296,20 +296,20 @@ function receiveDamageSync(data){
         
         healthDict[sentHittableObject.id] = sentHittableObject.health;
 
-        var localObj = findObjectWithId(hittableObjects, sentHittableObject.id);
+        if(clientId == sentHittableObject.id){
+            var localObj = findObjectWithId(hittableObjects, sentHittableObject.id);
 
-        if(localObj){
-            if(sentHittableObject.health > 0)
-                hittableObjects[localObj.index] = sentHittableObject;
-            else
-                hittableObjects.splice(localObj.index, 1);
+            if(localObj){
+                if(sentHittableObject.health > 0)
+                    hittableObjects[localObj.index] = sentHittableObject;
+                else
+                    hittableObjects.splice(localObj.index, 1);
+            }
+            else{
+                if(sentHittableObject.health > 0)
+                    hittableObjects.push(sentHittableObject);
+            }
         }
-        else{
-            if(sentHittableObject.health > 0)
-                hittableObjects.push(sentHittableObject);
-        }
-        
-
     }
 }
 
@@ -1695,7 +1695,7 @@ function animate() {
 
         if(!currentPlanet){
             var width = canvas.width / 5;
-            displayBar(centerX * scale - width / 2, canvas.height - 30, width, 20, playerReloadTimer / 1000, "#ff5a51");
+            displayBar(centerX * scale - width / 2, canvas.height - 30, width, 20, 1000 - playerReloadTimer / 1000, "#ff5a51");
         }
 
     }
