@@ -4,9 +4,6 @@ var DoublyList = require('./doublyLinkedList');
 
 var app = express();
 
-// var server = require('http').Server(app);
-// server.listen(process.env.OPENSHIFT_NODEJS_PORT, process.env.OPENSHIFT_NODEJS_IP || '127.0.0.1');
-
 var server = app.listen(8080, "0.0.0.0");
 
 app.use(express.static('public'));
@@ -149,7 +146,7 @@ function generateWorld(){
         var size = getRndInteger(500, 700);
         var health = size * 2;
 
-        var drops = {starDust: 1};
+        var drops = {stardust: 1};
         generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
         
     }
@@ -299,7 +296,7 @@ var playerUpgrades = [
             speed: 130,
             fireRate: 10,
             maxHealth: 20,
-            damage: 1,
+            damage: 100,
             radius: 10,
             turningSpeed: .1,
             identifier: "spaceship"

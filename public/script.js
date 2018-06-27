@@ -272,21 +272,19 @@ function setupLocalWorld(data){
 }
 
 function newWorldObjectSync(data){
-
-    var changedObject = findObjectWithId(allWorldObjects(), data.id);
     
-    if(data.newObject.type){
-        var newSpaceMatter = new SpaceMatter(data.newObject.x, data.newObject.y, data.newObject.radius, data.newObject.color, data.newObject.maxHealth, data.newObject.health, data.newObject.type, data.id);
-        var changedSpaceMatter = findObjectWithId(worldObjects.astroids, data.id)
-        worldObjects.astroids[changedSpaceMatter.index] = newSpaceMatter;
-    }
-    else{
+    if(data.newObject.type == "planet"){
         var planet = data.newObject;
         var planetObject = new Planet(planet.x, planet.y, planet.radius, planet.color, planet.health, planet.maxHealth, data.id);
         planetObject.occupiedBy = planet.occupiedBy;
 
         var changedPlanet = findObjectWithId(worldObjects.planets, data.id)
         worldObjects.planets[changedPlanet.index] = planetObject;
+    }
+    else{
+        var newSpaceMatter = new SpaceMatter(data.newObject.x, data.newObject.y, data.newObject.radius, data.newObject.color, data.newObject.maxHealth, data.newObject.health, data.newObject.type, data.id);
+        var changedSpaceMatter = findObjectWithId(worldObjects.astroids, data.id)
+        worldObjects.astroids[changedSpaceMatter.index] = newSpaceMatter;
     }
 
 }
