@@ -178,6 +178,8 @@ var requestAnimationFrameId;
 
 var scale = 1;
 
+var sunTint = {amount: 0, color: "#fffff"};
+
 function setup(){
     //socket = io.connect('http://localhost:8080');
     socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
@@ -1237,6 +1239,7 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
     }
     this.update = function(){
         var pos = cordsToScreenPos(this.coordX, this.coordY);
+
         this.x = pos.x;
         this.y = pos.y;
         this.draw();
@@ -1444,13 +1447,12 @@ function animate() {
 
     allWorldObjects().concat(otherPlayers).forEach(function(matter){
 
-        
-
         var pos = cordsToScreenPos(matter.coordX, matter.coordY);
         var size = matter.radius;
 
-        if(matter.type == "sun");
+        if(matter.type == "sun"){
             size += 500;
+        }
 
         //Out of screen Right              || Left             || Up               || Down
         if(!(pos.x - size > canvas.width + centerX || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > canvas.height + centerY)){
@@ -1526,7 +1528,46 @@ function animate() {
         c.globalAlpha = 1;
     }
 
+    var isInSun = false;
+
     c.scale(1 / scale, 1 / scale);
+
+    worldObjects.astroids.forEach(spaceMatter => {
+        
+        if(spaceMatter.type == "sun"){
+
+            var pos = cordsToScreenPos(spaceMatter.coordX, spaceMatter.coordY);
+
+            if(spaceShip){
+                var sun = {x: pos.x, y: pos.y, radius: spaceMatter.radius} 
+                var player = {pos: {x: centerX, y: centerY}, radius: spaceShip.radius} 
+
+                if(isCollidingCircles(player, sun)){
+                    isInSun = true;
+                    sunTint.color = spaceMatter.color;
+                }
+            }
+
+        }
+        
+    });    
+
+
+    if(isInSun){
+        if(sunTint.amount < .75)
+            sunTint.amount += .01;
+    }
+    else{
+        if(sunTint.amount > 0)
+            sunTint.amount -= .02;
+    }
+
+    if(sunTint.amount > 0){
+        c.globalAlpha = sunTint.amount;
+        c.fillStyle = sunTint.color;
+        c.fillRect(0, 0, canvas.width * scale * 100, canvas.height * scale * 100);
+        c.globalAlpha = 1;
+    }
 
     //Display Stats
     if(spaceShip){

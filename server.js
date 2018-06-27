@@ -545,8 +545,6 @@ function newConnetcion(socket){
     var worldId = worldIds[getRndInteger(0, numberOfWorlds - 1)];
 
     playerObject = {id: socket.id, worldId: worldId};
-    
-    console.log(worldIds);
 
     socket.join(worldId);
     socket.emit("setupLocalWorld", newPlayerData(worldId));
@@ -562,7 +560,11 @@ function newConnetcion(socket){
         player = new Player(0, 0, 0, 0, socket.id, data.worldId); 
 
         worldsData[worldId].clients.push(player)
-        worldsData[worldId].lobbyClients.splice(findObjectWithId(worldsData[worldId].lobbyClients, socket.id).index, 1);
+
+        var lobbyClinent = findObjectWithId(worldsData[worldId].lobbyClients, socket.id)
+
+        if(lobbyClinent)
+            worldsData[worldId].lobbyClients.splice(lobbyClinent.index, 1);
 
         player.username = data.username;
         worldsData[worldId].hittableObjects.push(player);
@@ -862,6 +864,12 @@ function newConnetcion(socket){
 }
 
 function disconnectPlayer(id, socket, worldId){
+
+    if(!worldIds.contains(worldId)){
+        console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "world Id not accounted for on server. most likely old session.");
+        return;
+    }
+
     var client = findObjectWithId(worldsData[worldId].clients.concat(worldsData[worldId].lobbyClients), id);
     var structureIds = [];
 
