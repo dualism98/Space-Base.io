@@ -34,7 +34,7 @@ var sunDamageRate = 1000;
 
 
 var planetColors = ["#CB7C43", "#433F53", "#8C8070", "#94A6BF", "#9DC183", "#CC4D00"];
-var numberOfWorlds = 1;
+var numberOfWorlds = 10;
 
 var maxPlanetObjects = {
     mine: 5,
@@ -296,7 +296,7 @@ var playerUpgrades = [
             speed: 130,
             fireRate: 10,
             maxHealth: 20,
-            damage: 100,
+            damage: 1,
             radius: 10,
             turningSpeed: .1,
             identifier: "spaceship"
