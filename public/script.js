@@ -75,18 +75,10 @@ var gridBoxScale;
 var gridPos;
 var worldId;
 
-function allWorldObjects(){
+function getAllWorldObjects(){
     var objects = [];
-    for (var matterArray in worldObjects) {
-        if (worldObjects.hasOwnProperty(matterArray)) {
-            if(matterArray != "players"){
-                worldObjects[matterArray].forEach(matter => {
-                    if(matter.health > 0 )
-                    objects.push(matter);
-                });
-            }
-        }
-    }
+
+    objects = worldObjects.astroids.concat(worldObjects.planets);
 
     if(spaceShip)
         objects.push(spaceShip);
@@ -94,7 +86,7 @@ function allWorldObjects(){
     return objects;
 }
 
-function allStructures(){
+function getAllStructures(){
     var structures = [];
 
     for(var i = 0; i < worldObjects.planets.length; i++){
@@ -115,6 +107,9 @@ var centerX;
 var centerY;
 var planetColors = ["#CB7C43", "#433F53", "#8C8070", "#94A6BF", "#9DC183", "#CC4D00"];
 var spaceShip;
+
+var allWorldObjects = [];
+var allStructures = [];
 
 var PLANET_GRAVITY = .0025;
 var PLANET_GRAVITY_EXPONENT = 2.5;
@@ -171,19 +166,18 @@ var playerMessageFadeSpeed = 0;
 
 var producingMines = [];
 var friendlyObjectIds = [];
-
 var statsView = false;
-
 var requestAnimationFrameId;
-
 var scale = 1;
-
 var sunTint = {amount: 0, color: "#fffff"};
 
+var windowWidth;
+var windowHeight;
+
 function setup(){
-    //socket = io.connect('http://localhost:8080');
+    socket = io.connect('http://localhost:8080');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
-    socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
+    //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -270,6 +264,9 @@ function setupLocalWorld(data){
 
         worldObjects.planets.push(planetObject);
     }
+
+    allWorldObjects = getAllWorldObjects();
+    allStructures = getAllStructures();
 }
 
 function newWorldObjectSync(data){
@@ -288,6 +285,7 @@ function newWorldObjectSync(data){
         worldObjects.astroids[changedSpaceMatter.index] = newSpaceMatter;
     }
 
+    allWorldObjects = getAllWorldObjects();
 }
 
 function receiveDamageSync(data){
@@ -401,6 +399,8 @@ function spawnNetworkedStructure(data)
             }
         }
     }
+
+    allWorldObjects = getAllStructures();
 }
 
 function receiveUpgradeInfo(data){
@@ -421,7 +421,7 @@ function unsuccessfulUpgrade(data){
 
 function upgradeSync(data){
 
-    var allUpgradeables = allWorldObjects().concat(allStructures()).concat(otherPlayers);
+    var allUpgradeables = allWorldObjects.concat(allStructures.concat(otherPlayers));
 
     upgradedObject = findObjectWithId(allUpgradeables, data.id).object;
 
@@ -562,6 +562,10 @@ window.addEventListener('mouseup',
 
 window.addEventListener('resize', 
     function(event){
+
+    windowWidth =  $(window).width();
+    windowHeight =  $(window).height();
+
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
@@ -1166,62 +1170,62 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
 
         var yOffset = -10;
 
-        if(this.type == "crystal"){
-    
-            c.beginPath();
-            spikyBall(c, this.x, this.y, this.radius, 20, 0, -Math.PI/2, .75);
-            c.fillStyle = this.color;
-            c.fill();
+        switch(this.type)
+        {
+            case "crystal":
+                c.beginPath();
+                spikyBall(c, this.x, this.y, this.radius, 20, 0, -Math.PI/2, .75);
+                c.fillStyle = this.color;
+                c.fill();
 
-            c.beginPath();
-            spikyBall(c, this.x, this.y, this.radius - 5, 20, 0, -Math.PI/2, .75);
-            c.fillStyle = shadeColorHex(this.color, 10);
-            c.fill();
-        }
-        else if(this.type == "astroid"){
-            c.fillStyle = this.color;
-            c.beginPath();
-            c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-            c.fill();
-    
-            c.beginPath();
-            c.arc(this.x, this.y, this.radius - 4, 0, Math.PI * 2, false);
-            c.fillStyle = shadeColorHex(this.color, 10);
-            c.fill();
-        }
-        else if(this.type == "sun"){
-            c.shadowBlur = 500;
-            c.shadowColor = this.color;
+                c.beginPath();
+                spikyBall(c, this.x, this.y, this.radius - 5, 20, 0, -Math.PI/2, .75);
+                c.fillStyle = shadeColorHex(this.color, 10);
+                c.fill();
+            break;
+            case "astroid":
+                c.fillStyle = this.color;
+                c.beginPath();
+                c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+                c.fill();
 
-            c.fillStyle = this.color;
-            c.beginPath();
-            c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-            c.fill();
-    
-            c.beginPath();
-            c.arc(this.x, this.y, this.radius - 4, 0, Math.PI * 2, false);
-            c.fillStyle = shadeColorHex(this.color, 10);
-            c.fill();
-        }
-        else if(this.type == "moon"){
+                c.beginPath();
+                c.fillStyle = shadeColorHex(this.color, 10);
+                c.arc(this.x, this.y, this.radius - 4, 0, Math.PI * 2, false);
+                c.fill();
+            break;
+            case "sun":
+                c.shadowBlur = 500;
+                c.shadowColor = this.color;
 
-            c.fillStyle = this.color;
-            c.beginPath();
-            c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-            c.fill();
+                c.fillStyle = this.color;
+                c.beginPath();
+                c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+                c.fill();
+        
+                c.beginPath();
+                c.arc(this.x, this.y, this.radius - 4, 0, Math.PI * 2, false);
+                c.fillStyle = shadeColorHex(this.color, 10);
+                c.fill();
 
-            c.beginPath();
-            polygon(c, this.x, this.y, this.radius - 5, 11, 0, -Math.PI/2);
-            c.fillStyle = shadeColorHex(this.color, 10);
-            c.fill();
-            
+                c.shadowBlur = 0;
+            break;
+            case "moon":
+                c.fillStyle = this.color;
+                c.beginPath();
+                c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+                c.fill();
+
+                c.beginPath();
+                polygon(c, this.x, this.y, this.radius - 5, 11, 0, -Math.PI/2);
+                c.fillStyle = shadeColorHex(this.color, 10);
+                c.fill();
+            break;
         }
 
         if(this.health != this.maxHealth)
             displayBar(this.x - healthBarWidth / 2, this.y - this.radius + yOffset, healthBarWidth, healthBarHeight, this.health / this.maxHealth, "#36a52c");
 
-    
-        c.shadowBlur = 0;
     }
     this.update = function(){
         var pos = cordsToScreenPos(this.coordX, this.coordY);
@@ -1280,8 +1284,14 @@ var isScaling = true;
 
 function animate() {
 
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
     centerX = (canvas.width / 2 / scale);
     centerY = (canvas.height / 2 / scale);
+
+    windowWidth =  $(window).width();
+    windowHeight =  $(window).height();
 
     requestAnimationFrameId = requestAnimationFrame(animate);
     c.clearRect(0, 0, innerWidth, innerHeight);
@@ -1312,12 +1322,8 @@ function animate() {
             }
         }
 
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
         centerX = (canvas.width / 2 / scale);
         centerY = (canvas.height / 2 / scale);
-
 
         var mousePullxTarget = 0;
         var mousePullyTarget = 0;
@@ -1405,13 +1411,10 @@ function animate() {
         
         gridPos.x -= spaceshipVelocity.x;
         gridPos.y -= spaceshipVelocity.y;
-    
-    
-        worldObjects.planets.forEach(function(planet){
-            planet.structures.forEach(function(structure){
-                structure.health = healthDict[structure.id];
-            });
-        });
+
+        for(var i = 0; i < allStructures.length; i++){
+            allStructures[i].health = healthDict[allStructures[i].id];
+        }
     
     
         if(!currentPlanet)
@@ -1427,8 +1430,11 @@ function animate() {
 
     drawGrid(gridPos.x + centerX, gridPos.y +  centerY, gridSize, gridSize, gridBoxScale);
 
+    var num = 0;
 
-    allWorldObjects().concat(otherPlayers).forEach(function(matter){
+    var allMatter = allWorldObjects.concat(otherPlayers);
+
+    allMatter.forEach(function(matter){
 
         var pos = cordsToScreenPos(matter.coordX, matter.coordY);
         var size = matter.radius;
@@ -1437,14 +1443,25 @@ function animate() {
             size += 500;
         }
 
+        // var isClosestAvaiblePlanet = (closestAvailablePlanet != null && (matter.id  == closestAvailablePlanet.id));
+
+        // if(isClosestAvaiblePlanet){
+        //     matter.health = healthDict[matter.id];
+        //     matter.update();
+        //     num++;
+        // }
+
         //Out of screen Right                           || Left             || Up               || Down
-        if(!(pos.x - size > ($(window).width() + centerX) / scale || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > ($(window).height() + centerY) / scale)){
+        if(!(pos.x - size > (windowWidth + centerX) / scale || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > (windowHeight + centerY) / scale)){
             matter.health = healthDict[matter.id];
             matter.update();
+            num++;
         }
 
 
     });
+
+    console.log(num);
 
     hittableObjects.forEach(function(obj){
 
@@ -1617,7 +1634,7 @@ function animate() {
 
             c.textAlign = "center"; 
             c.fillStyle = "white";
-            c.font = $(window).height() / 15 + "px Helvetica";
+            c.font = windowHeight / 15 + "px Helvetica";
             c.fillText("T", keyX, padding + imageSizes * .75);
             c.fillText("M", keyX, padding * 2 + imageSizes * 1.75);
             c.fillText("S", keyX, padding * 3 + imageSizes * 2.75);
@@ -1641,7 +1658,7 @@ function animate() {
                 for (var cost in costs) {
                     if (costs.hasOwnProperty(cost)) {
                         c.drawImage(getImage(cost), xValue + costX, costY, costSize, costSize);
-                        c.font = $(window).height() / 50 + "px Helvetica";
+                        c.font = windowHeight / 50 + "px Helvetica";
                         c.fillStyle = "white";
                         c.fillText(costs[cost], xValue + costX + costSize * 1.2, costY + costSize / 1.3);
         
@@ -1683,14 +1700,13 @@ function displayMessage(text, timeToFade, fadeSpeed){
     playerMessageTimer = timeToFade;
 }
 
-
 var expandedUpgrades = [];
 var canClickArrow = true;
 
 function showUpgrades(){
     numberOfUpgrades = upgradeableObjects().length;
-    size = $(window).height() / 10;
-    padding = $(window).height() / 10;
+    size = windowHeight / 10;
+    padding = $windowHeight / 10;
 
     var groupedUpgrades = {};
     var numberOfGroups = 0;
@@ -1740,8 +1756,8 @@ function showUpgrades(){
             var groupIndex = 0;
 
             
-            var costSize = $(window).height() / 40;
-            var costPadding = $(window).height() / 100;
+            var costSize = windowHeight / 40;
+            var costPadding = windowHeight / 100;
             var costX = 0;
             var costY = size + 10;
 
@@ -1983,78 +1999,9 @@ function showUpgrades(){
                             clickedUpgrade = true;
                         }
                     });
-
-                    
-                
                 }
-
-                
                 
             }
-
-
-            // if(numberInGroup == 1)
-            // {
-            //     if(!upgrade.fullyUpgraded){
-
-            //         var upgradeCosts = upgrade.costs
-            //         var costX = 0;
-            //         var costY = size + 10;
-            //         var costSize = 25;
-            //         var costPadding = 10;
-                    
-            //         for (var cost in upgradeCosts) {
-            //             if (upgradeCosts.hasOwnProperty(cost)) {
-            //                 c.drawImage(getImage(cost), drawx + costX, drawy + costY, costSize, costSize);
-            //                 c.font = " 20px Helvetica";
-            //                 c.fillStyle = "white";
-            //                 c.fillText(upgradeCosts[cost], drawx + costX + costSize * 1.2, drawy + costY + costSize / 1.3);
-            
-            //                 costY += costSize + costPadding;
-            //             }
-            //         }
-            
-            //         if (mouse.y > buttonY && mouse.y < buttonY + size / scale && mouse.x > buttonX && mouse.x < buttonX + size / scale) {
-            //             if(mouse.clicked){
-            //                 var data = {id: upgradeableObjects()[i], senderId: clientId, worldId: worldId}
-            //                 socket.emit('upgradeRequest', data);
-            //                 clickedUpgrade = true;
-            //             }
-                        
-            //             var object = findObjectWithId(upgrade.id).object;
-        
-            //             var circleX = object.x * scale;
-            //             var circleY = object.y * scale;
-        
-            //             c.globalAlpha = .5;
-            //             c.fillStyle = planetColors[i];
-            //             c.fillRect(drawx, drawy, size, size);
-            //             c.globalAlpha = 1;
-        
-            //             if(object != spaceShip){
-            //                 c.beginPath();
-            //                 c.lineWidth = 3;
-            //                 c.strokeStyle = "#9ef442";
-            //                 c.arc(circleX, circleY, 10,0,2*Math.PI);
-            //                 c.stroke();
-            //             }
-            //         }
-            //     }
-            //     else //fully upgraded
-            //     {
-            //         c.font = " 15px Helvetica";
-            //         c.fillStyle = "white";
-            //         c.rotate(45);
-            //         c.fillText("Fully Upgraded", drawx, drawy - 20);
-            //     }
-            // }
-            // else{
-            //     //c.translate(drawx, drawy);
-            //     //c.rotate(Math.PI / 4);
-            //     c.drawImage(getImage('downArrow'), drawx, drawy, size, size);
-            //     //c.rotate(-Math.PI / 4);
-            //     //c.translate(-drawx, -drawy);
-            // }
         
             x += size + padding;
             
@@ -2268,7 +2215,7 @@ function findUpgrade(id){
         var upgrade = {};
         var upgrades;
 
-        var upgradee = findObjectWithId(allWorldObjects().concat(allStructures()), id).object;
+        var upgradee = findObjectWithId(allWorldObjects.concat(allStructures), id).object;
 
         if(upgradee.type){
             upgrades = structureUpgrades[upgradee.type];
