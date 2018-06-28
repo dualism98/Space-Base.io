@@ -181,8 +181,8 @@ var scale = 1;
 var sunTint = {amount: 0, color: "#fffff"};
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
-    socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
+    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -264,7 +264,7 @@ function setupLocalWorld(data){
         //Add all existing structures
         for (let i = 0; i < planet.structures.length; i++) {
             const structure = planet.structures[i];
-            planetObject.addStructure(planetObject, structure.x, structure.y, structure.rotation, structure.type, true, structure.ownerId, structure.id);
+            planetObject.addStructure(planetObject, structure.x, structure.y, structure.rotation, structure.type, structure.level, true, structure.ownerId, structure.id);
         }
 
         worldObjects.planets.push(planetObject);
@@ -391,7 +391,7 @@ function spawnNetworkedStructure(data)
     planet = findObjectWithId(worldObjects.planets, data.planetId)
 
     if(planet)
-        planet.object.addStructure(planet.object, data.x, data.y, data.rotation, data.type, data.isFacade, data.ownerId, data.id);
+        planet.object.addStructure(planet.object, data.x, data.y, data.rotation, data.type, data.level, data.isFacade, data.ownerId, data.id);
 
     if(data.ownerId == clientId){
         for (var cost in data.costs) {
@@ -715,21 +715,21 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         } 
     }
 
-    this.addStructure = function (planet, x, y, rotation, type, isFacade, ownerId, id){
+    this.addStructure = function (planet, x, y, rotation, type, level, isFacade, ownerId, id){
         var shieldRadius = this.radius + 100;
 
         if(type === "mine"){
-            var mine = new Mine(planet, x, y, rotation, ownerId, id);
+            var mine = new Mine(planet, x, y, rotation, level, ownerId, id);
             this.structures.push(mine);
 
             if(!isFacade)
                 producingMines.push(mine);
         }
         else if(type === "turret"){
-            this.structures.push(new Turret(planet, x, y, rotation, isFacade, ownerId, id));
+            this.structures.push(new Turret(planet, x, y, rotation, level, isFacade, ownerId, id));
         }
         else if(type === "shield"){
-            var shield = new Shield(planet, shieldRadius, 100, 100, id);
+            var shield = new Shield(planet, shieldRadius, level, id);
             this.shield = shield;
             this.structures.push(shield);
 
@@ -748,17 +748,15 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
     }
 }
 
-function Shield(planet, radius, maxHealth, health, id){
+function Shield(planet, radius, level, id){
     this.planet = planet;
     this.x;
     this.y;
     this.radius = radius;
     this.color = "blue";
-    this.maxHealth = maxHealth;
-    this.health = health;
     this.id = id;
     this.type = "shield";
-    this.level = 0;
+    this.level = level;
 
     this.draw = function(){
         c.beginPath();
@@ -830,7 +828,7 @@ function LandingPad(planet, radius, id){
         this.draw();
     }
 }
-function Mine(planet, x, y, rotation, ownerId, id){
+function Mine(planet, x, y, rotation, level, ownerId, id){
     this.planet = planet;
     this.x;
     this.y;
@@ -849,18 +847,15 @@ function Mine(planet, x, y, rotation, ownerId, id){
 
     var test = false;
 
-    this.level = 0;
+    this.level = level;
 
     this.draw = function(){
-
-        var img = new Image();
-        img.src = 'mine' + this.level + '.png';
 
         c.save();
         c.translate(this.x, this.y);
         c.rotate((rotation - 90) / -57.2958);
         c.fillStyle = this.color ;
-        c.drawImage(img, -this.size + this.distanceFromPlanet, -this.size, this.size, this.size);
+        c.drawImage(getImage('mine' + this.level), -this.size + this.distanceFromPlanet, -this.size, this.size, this.size);
 
         
         //c.fillRect(-this.size/2 + this.distanceFromPLanet,-this.size/2,this.size,this.size);
@@ -883,7 +878,7 @@ function Mine(planet, x, y, rotation, ownerId, id){
         test = !test;
     }
 }
-function Turret(planet, x, y, rotation, isFacade, ownerId, id){
+function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
     this.planet = planet;
     this.x;
     this.y;
@@ -904,7 +899,7 @@ function Turret(planet, x, y, rotation, isFacade, ownerId, id){
     this.range = 500;
     this.target;
 
-    this.level = 0;
+    this.level = level;
 
     this.shootInterval = 100;
     this.shootCounter = 0;
@@ -914,15 +909,12 @@ function Turret(planet, x, y, rotation, isFacade, ownerId, id){
 
     this.draw = function(){
 
-        var imgBase = new Image();
-        imgBase.src = 'turret' + this.level + '.png';
-
         //Draw Base
         c.save();
         c.translate(this.x, this.y);
         c.rotate((this.rotation - 90) / -57.2958);
         //c.fillStyle = planetColors[2];
-        c.drawImage(imgBase, -this.baseSize + this.distanceFromPlanet, -this.baseSize, this.baseSize, this.baseSize);
+        c.drawImage(getImage('turret' + this.level), -this.baseSize + this.distanceFromPlanet, -this.baseSize, this.baseSize, this.baseSize);
         //c.fillRect(-this.baseSize/2 + this.distanceFromPlanet,-this.baseSize/2,this.baseSize,this.baseSize);
         c.restore();
 
@@ -1125,12 +1117,9 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, ra
     this.draw = function(){
         var healthBarWidth = 50;
 
-        var img = new Image();
-        img.src = 'spaceship' + this.level + '.png';
-
         c.translate(this.x, this.y);
         c.rotate(this.rotation);
-        c.drawImage(img, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+        c.drawImage(getImage('spaceship' + this.level), -this.radius, -this.radius, this.radius * 2, this.radius * 2);
         c.rotate(-this.rotation);
         c.translate(-this.x, -this.y);
 
@@ -1262,12 +1251,9 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
         
         var rad = this.rotation + shortAngleDist(this.rotation, mouseRad) * this.turningSpeed;
 
-        var img = new Image();
-        img.src = 'spaceship' + this.level + '.png';
-
         c.translate(centerX, centerY);
         c.rotate(rad);
-        c.drawImage(img, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+        c.drawImage(getImage('spaceship' + this.level), -this.radius, -this.radius, this.radius * 2, this.radius * 2);
         c.rotate(-rad);
         c.translate(-centerX, -centerY);
 
@@ -1450,8 +1436,8 @@ function animate() {
             size += 500;
         }
 
-        //Out of screen Right              || Left             || Up               || Down
-        if(!(pos.x - size > canvas.width + centerX || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > canvas.height + centerY)){
+        //Out of screen Right                           || Left             || Up               || Down
+        if(!(pos.x - size > ($(window).width() + centerX) / scale || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > ($(window).height() + centerY) / scale)){
             matter.health = healthDict[matter.id];
             matter.update();
         }
@@ -1617,37 +1603,24 @@ function animate() {
     
             var imageSizes = canvas.height / 7.5;
             var padding = canvas.height / 20;
-    
-            var mineImg = new Image();
-            mineImg.src = 'mine0.png';
-    
-            var turretImg = new Image();
-            turretImg.src = 'turret0.png';
-    
-            var shieldImg = new Image();
-            shieldImg.src = 'shield0.png';
-
-            var landingPadImg = new Image();
-            landingPadImg.src = 'landingPad0.png';
 
             var xValue = canvas.width - imageSizes - padding;
     
-            c.drawImage(turretImg, xValue, padding, imageSizes, imageSizes); 
-            c.drawImage(mineImg, xValue, padding * 2 + imageSizes, imageSizes, imageSizes);
-            c.drawImage(shieldImg, xValue, padding * 3 + imageSizes * 2, imageSizes, imageSizes);     
-            c.drawImage(landingPadImg, xValue, padding * 4 + imageSizes * 3, imageSizes, imageSizes);  
+            c.drawImage(getImage('turret0'), xValue, padding, imageSizes, imageSizes); 
+            c.drawImage(getImage('mine0'), xValue, padding * 2 + imageSizes, imageSizes, imageSizes);
+            c.drawImage(getImage('shield0'), xValue, padding * 3 + imageSizes * 2, imageSizes, imageSizes);     
+            c.drawImage(getImage('landingPad0'), xValue, padding * 4 + imageSizes * 3, imageSizes, imageSizes);  
     
             //Display HotKeys
             var keyX = xValue + imageSizes / 2;
 
             c.textAlign = "center"; 
-            c.font = Math.floor(canvas.height / 15) + "px Helvetica";
             c.fillStyle = "white";
-
-            c.fillText("T", keyX, padding + imageSizes * .75, 50);
-            c.fillText("M", keyX, padding * 2 + imageSizes * 1.75, 50);
-            c.fillText("S", keyX, padding * 3 + imageSizes * 2.75, 50);
-            c.fillText("L", keyX, padding * 4 + imageSizes * 3.75, 50);
+            c.font = $(window).height() / 15 + "px Helvetica";
+            c.fillText("T", keyX, padding + imageSizes * .75);
+            c.fillText("M", keyX, padding * 2 + imageSizes * 1.75);
+            c.fillText("S", keyX, padding * 3 + imageSizes * 2.75);
+            c.fillText("L", keyX, padding * 4 + imageSizes * 3.75);
 
             c.textAlign = "left"; 
 
@@ -1667,7 +1640,7 @@ function animate() {
                 for (var cost in costs) {
                     if (costs.hasOwnProperty(cost)) {
                         c.drawImage(getImage(cost), xValue + costX, costY, costSize, costSize);
-                        c.font = " 20px Helvetica";
+                        c.font = $(window).height() / 50 + "px Helvetica";
                         c.fillStyle = "white";
                         c.fillText(costs[cost], xValue + costX + costSize * 1.2, costY + costSize / 1.3);
         
@@ -1709,95 +1682,387 @@ function displayMessage(text, timeToFade, fadeSpeed){
     playerMessageTimer = timeToFade;
 }
 
+
+var expandedUpgrades = [];
+var canClickArrow = true;
+
 function showUpgrades(){
     numberOfUpgrades = upgradeableObjects().length;
-    size = 100;
-    padding = 100;
+    size = $(window).height() / 10;
+    padding = $(window).height() / 10;
 
-    var width = numberOfUpgrades * size + (numberOfUpgrades - 1) * padding
-    var x = 0;
+    var groupedUpgrades = {};
+    var numberOfGroups = 0;
 
     for(var i = 0; i < numberOfUpgrades; i++){
-        
-        var upgrade = findUpgrade(upgradeableObjects()[i]);
-
-        var buttonX = x / scale + (centerX - width / scale / 2)
-        var buttonY = centerY - size / scale / 2;
-
-        var drawx = x + (centerX * scale - .5 * width)
-        var drawy = centerY * scale - size / 2;
-
-        c.globalAlpha = .5;
-        c.fillStyle = planetColors[i];
-        c.fillRect(drawx, drawy, size, size);
-        c.globalAlpha = 1;
-
-        if(!upgrade.fullyUpgraded){
-            c.globalAlpha = .5;
-            var img = new Image();
-            img.src = upgrade.identifier + upgrade.upgradeToLevel + '.png';
-            c.drawImage(img, drawx, drawy, size, size);
-            c.globalAlpha = 1;
-
-            var upgradeCosts = upgrade.costs
-            var costX = 0;
-            var costY = size + 10;
-            var costSize = 25;
-            var costPadding = 10;
-            
-            for (var cost in upgradeCosts) {
-                if (upgradeCosts.hasOwnProperty(cost)) {
-                    c.drawImage(getImage(cost), drawx + costX, drawy + costY, costSize, costSize);
-                    c.font = " 20px Helvetica";
-                    c.fillStyle = "white";
-                    c.fillText(upgradeCosts[cost], drawx + costX + costSize * 1.2, drawy + costY + costSize / 1.3);
     
-                    costY += costSize + costPadding;
+        var upgradeeId = upgradeableObjects()[i];
+        var upgrade = Object.assign({}, findUpgrade(upgradeeId));
+
+        upgrade.id = upgradeeId;
+
+        var alreadyInside = false;
+
+        for (var group in groupedUpgrades) {
+            if (groupedUpgrades.hasOwnProperty(group)) {
+
+                if(group == upgrade.identifier){
+                    groupedUpgrades[group].push(upgrade);
+                    alreadyInside = true;
                 }
             }
+        }
+
+        if(!alreadyInside){
+            if(upgrade.identifier){
+                groupedUpgrades[upgrade.identifier] = [upgrade];
+                numberOfGroups++;
+            }
+        }
+
+    }
+
+    var width = numberOfGroups * size + (numberOfGroups - 1) * padding;
+    var x = 0;
+
+    for (var group in groupedUpgrades) {
+        if (groupedUpgrades.hasOwnProperty(group)) {
+
+            var buttonX = x / scale + (centerX - width / scale / 2)
+            var buttonY = centerY - size / scale / 2;
     
-            if (mouse.y > buttonY && mouse.y < buttonY + size / scale && mouse.x > buttonX && mouse.x < buttonX + size / scale) {
-                if(mouse.clicked){
-                    var data = {id: upgradeableObjects()[i], senderId: clientId, worldId: worldId}
-                    socket.emit('upgradeRequest', data);
-                    clickedUpgrade = true;
+            var drawx = x + (centerX * scale - .5 * width)
+            var drawy = scale + size;
+
+            var upgrade = null;
+            var upgradeCosts = {};
+            var groupIndex = 0;
+
+            
+            var costSize = $(window).height() / 40;
+            var costPadding = $(window).height() / 100;
+            var costX = 0;
+            var costY = size + 10;
+
+            var upgradeButtons = [];
+
+            var mouseX = mouse.x * scale;
+            var mouseY = mouse.y * scale;
+
+            var numberInGroup = groupedUpgrades[group].length;
+
+            if(numberInGroup == 1){
+                upgrade = groupedUpgrades[group][0];
+
+                if(!upgrade.fullyUpgraded)
+                    upgradeCosts = upgrade.costs;
+            }
+            else
+            {
+                upgrade = groupedUpgrades[group][groupIndex];
+
+                while(upgrade.fullyUpgraded && groupIndex < numberInGroup)
+                {
+                    upgrade = groupedUpgrades[group][groupIndex];
                 }
-                
-                var object = findObjectWithId(allWorldObjects().concat(allStructures()), upgradeableObjects()[i]).object;
+            }
 
-                var circleX = object.x * scale;
-                var circleY = object.y * scale;
-
+            if(numberInGroup == 1){
                 c.globalAlpha = .5;
-                c.fillStyle = planetColors[i];
+                c.fillStyle = planetColors[0];
                 c.fillRect(drawx, drawy, size, size);
                 c.globalAlpha = 1;
 
-                if(object != spaceShip){
-                    c.beginPath();
-                    c.lineWidth = 3;
-                    c.strokeStyle = "#9ef442";
-                    c.arc(circleX, circleY, 10,0,2*Math.PI);
-                    c.stroke();
+                c.drawImage(getImage(upgrade.identifier + upgrade.upgradeToLevel), drawx, drawy, size, size);
+
+                if(!upgrade.fullyUpgraded){
+
+                    for (var cost in upgradeCosts) {
+                        if (upgradeCosts.hasOwnProperty(cost)) {
+                            c.drawImage(getImage(cost), drawx + costX, drawy + costY, costSize, costSize);
+                            c.font = size / 4 + "px Helvetica";
+                            c.fillStyle = "white";
+                            c.fillText(upgradeCosts[cost], drawx + costX + costSize * 1.2, drawy + costY + costSize / 1.3);
+            
+                            costY += costSize + costPadding;
+                        }
+                    }
+
+                    upgradeButtons.push({x: drawx, y: drawy, upgrades: [upgrade.id]});
+                }
+                else{
+                    c.font = size / 7 + "px Helvetica";
+                    c.fillStyle = "white"; 
+                    c.fillText("Fully Upgraded", drawx, drawy - costPadding);
+                }
+            } 
+            else{
+                var arrowSize = size / 4;
+                var arrowX = drawx + size / 2;
+                var arrowY = drawy - arrowSize - costPadding;
+
+                var arrowButtonSize = size / 2;
+
+                var arrowbuttonX = arrowX - arrowButtonSize / 2;
+                var arrowbuttonY = arrowY - arrowButtonSize / 2;
+
+                c.fillStyle = planetColors[1];
+                c.fillRect(arrowbuttonX, arrowbuttonY, arrowButtonSize, arrowButtonSize);
+
+                if(expandedUpgrades.contains(upgrade.identifier)){
+
+                    var groupY = drawy;
+                    var groupCostY = size + costPadding + drawy;
+
+                    for (let i = 0; i < numberInGroup; i++) {
+
+                        var upgradeInGroup = groupedUpgrades[group][i];
+                        var numberOfCosts = 0;
+                        //groupCostY = size + 10;
+
+                        for (var cost in upgradeInGroup.costs) {
+                            if (upgradeInGroup.costs.hasOwnProperty(cost)) {
+                                c.drawImage(getImage(cost), drawx + costX, groupCostY, costSize, costSize);
+                                c.font = size / 4 + "px Helvetica";
+                                c.fillStyle = "white";
+                                c.fillText(upgradeInGroup.costs[cost], drawx + costX + costSize * 1.2, groupCostY + costSize / 1.3);
+                
+                                groupCostY += costSize + costPadding;
+                                numberOfCosts++;
+                            }
+                        }
+
+                        c.globalAlpha = .5;
+
+                        upgradeButtons.push({x: drawx, y: groupY, upgrades: [upgradeInGroup.id]});
+                        c.drawImage(getImage(upgradeInGroup.identifier + upgradeInGroup.upgradeToLevel), drawx, groupY, size, size);
+
+                        c.fillStyle = planetColors[0];
+                        c.fillRect(drawx, groupY, size, size);
+                        c.globalAlpha = 1;
+
+                        numberOfUpgrades++;
+                        groupCostY += size + costPadding;
+                        groupY += numberOfCosts * (costPadding + costSize) + size + costPadding;
+                    }
+                    
+                }
+                else
+                {
+                    var insertedCosts = [];
+                    var buttonUpgrades = [];
+
+                    for(var i = 0; i < numberInGroup; i++){
+    
+                        var upgradeInGroup = groupedUpgrades[group][i];
+
+                        buttonUpgrades.push(upgradeInGroup.id);
+
+                        if(!upgradeInGroup.fullyUpgraded){
+                            
+                            for (var cost in upgradeInGroup.costs) {
+                                if (upgradeInGroup.costs.hasOwnProperty(cost)) {
+                                    if(!insertedCosts.contains(cost)){
+                                        insertedCosts.push(cost);
+                                        upgradeCosts[cost] = upgradeInGroup.costs[cost];
+                                    }
+                                    else{
+                                        upgradeCosts[cost] += upgradeInGroup.costs[cost];
+                                    }
+                                
+                                }
+                            }
+                        }
+                    }
+
+                    upgradeButtons.push({x: drawx, y: drawy, upgrades: buttonUpgrades});
+
+                    for (var cost in upgradeCosts) {
+                        if (upgradeCosts.hasOwnProperty(cost)) {
+                            c.drawImage(getImage(cost), drawx + costX, drawy + costY, costSize, costSize);
+                            c.font = size / 4 + "px Helvetica";
+                            c.fillStyle = "white";
+                            c.fillText(upgradeCosts[cost], drawx + costX + costSize * 1.2, drawy + costY + costSize / 1.3);
+            
+                            costY += costSize + costPadding;
+                        }
+                    }
+
+                    c.globalAlpha = .5;
+                    c.fillStyle = planetColors[0];
+                    c.fillRect(drawx, drawy, size, size);
+
+                    c.drawImage(getImage(upgrade.identifier + upgrade.upgradeToLevel), drawx, drawy, size, size);
+
+
+                    c.globalAlpha = 1;
+                    
+                    c.font = size / 7 + "px Helvetica";
+                    c.textAlign = "center";
+                    c.fillStyle = "white";
+                    c.fillText("Upgrade all (" + numberInGroup + ")", drawx + size / 2, drawy + size  / 2);
+                    c.textAlign = "left";
+
+                }
+                
+                var arrowRotation = Math.PI * 1.25;
+
+                if(expandedUpgrades.contains(upgrade.identifier))
+                {
+                    arrowRotation = Math.PI / 4;
+                }
+
+                if (mouseY > arrowbuttonY && mouseY < arrowbuttonY + arrowButtonSize && mouseX > arrowbuttonX && mouseX < arrowbuttonX + arrowButtonSize) {
+
+                    var arrowIncreasedSize = arrowSize * 1.2;
+
+                    c.translate(arrowX, arrowY);
+                    c.rotate(arrowRotation);
+                    c.drawImage(getImage('downArrow'), -arrowIncreasedSize / 2, -arrowIncreasedSize / 2, arrowIncreasedSize, arrowIncreasedSize);
+                    c.rotate(-arrowRotation);
+                    c.translate(-arrowX, -arrowY);
+
+                    if(mouse.clicked && canClickArrow){
+                        canClickArrow = false;
+
+                        if(expandedUpgrades.contains(upgrade.identifier))
+                        {
+                            for (let i = 0; i < expandedUpgrades.length; i++) {
+                                const identifier = expandedUpgrades[i];
+                                
+                                if(expandedUpgrades[i] == upgrade.identifier){
+                                    expandedUpgrades.splice(i, 1);
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            expandedUpgrades.push(upgrade.identifier);
+                        }
+                    }
+                }
+                else
+                {
+                    c.translate(arrowX, arrowY);
+                    c.rotate(arrowRotation);
+                    c.drawImage(getImage('downArrow'), -arrowSize / 2, -arrowSize / 2, arrowSize, arrowSize);
+                    c.rotate(-arrowRotation);
+                    c.translate(-arrowX, -arrowY);
                 }
             }
-        }
-        else //fully upgraded
-        {
-            c.globalAlpha = .5;
-            var img = new Image();
-            img.src = upgrade.identifier + upgrade.upgradeToLevel + '.png';
-            c.drawImage(img, drawx, drawy, size, size);
-            c.globalAlpha = 1;
 
-            c.font = " 15px Helvetica";
-            c.fillStyle = "white";
-            c.fillText("Fully Upgraded", drawx, drawy - 20);
-        }
+            for (let i = 0; i < upgradeButtons.length; i++) {
+                const button = upgradeButtons[i];
 
-        x += size + padding;
+                if (mouseY > button.y && mouseY < button.y + size && mouseX > button.x && mouseX < button.x + size) {
+
+                    c.globalAlpha = .5;
+                    c.fillStyle = "fffffff";
+                    c.fillRect(button.x, button.y, size, size);
+                    c.globalAlpha = 1;
+
+                    button.upgrades.forEach(upgradeId => {
+                        var object = findObjectWithId(allStructures().concat(spaceShip), upgradeId).object;
+    
+                        var circleX = object.x * scale;
+                        var circleY = object.y * scale;
         
+                        if(object != spaceShip){
+                            c.beginPath();
+                            c.lineWidth = 3;
+                            c.strokeStyle = "#9ef442";
+                            c.arc(circleX, circleY, 10,0,2*Math.PI);
+                            c.stroke();
+                        }
+
+                        if(mouse.clicked){
+                            var data = {id: upgradeId, senderId: clientId, worldId: worldId}
+                            socket.emit('upgradeRequest', data);
+                            clickedUpgrade = true;
+                        }
+                    });
+
+                    
+                
+                }
+
+                
+                
+            }
+
+
+            // if(numberInGroup == 1)
+            // {
+            //     if(!upgrade.fullyUpgraded){
+
+            //         var upgradeCosts = upgrade.costs
+            //         var costX = 0;
+            //         var costY = size + 10;
+            //         var costSize = 25;
+            //         var costPadding = 10;
+                    
+            //         for (var cost in upgradeCosts) {
+            //             if (upgradeCosts.hasOwnProperty(cost)) {
+            //                 c.drawImage(getImage(cost), drawx + costX, drawy + costY, costSize, costSize);
+            //                 c.font = " 20px Helvetica";
+            //                 c.fillStyle = "white";
+            //                 c.fillText(upgradeCosts[cost], drawx + costX + costSize * 1.2, drawy + costY + costSize / 1.3);
+            
+            //                 costY += costSize + costPadding;
+            //             }
+            //         }
+            
+            //         if (mouse.y > buttonY && mouse.y < buttonY + size / scale && mouse.x > buttonX && mouse.x < buttonX + size / scale) {
+            //             if(mouse.clicked){
+            //                 var data = {id: upgradeableObjects()[i], senderId: clientId, worldId: worldId}
+            //                 socket.emit('upgradeRequest', data);
+            //                 clickedUpgrade = true;
+            //             }
+                        
+            //             var object = findObjectWithId(upgrade.id).object;
+        
+            //             var circleX = object.x * scale;
+            //             var circleY = object.y * scale;
+        
+            //             c.globalAlpha = .5;
+            //             c.fillStyle = planetColors[i];
+            //             c.fillRect(drawx, drawy, size, size);
+            //             c.globalAlpha = 1;
+        
+            //             if(object != spaceShip){
+            //                 c.beginPath();
+            //                 c.lineWidth = 3;
+            //                 c.strokeStyle = "#9ef442";
+            //                 c.arc(circleX, circleY, 10,0,2*Math.PI);
+            //                 c.stroke();
+            //             }
+            //         }
+            //     }
+            //     else //fully upgraded
+            //     {
+            //         c.font = " 15px Helvetica";
+            //         c.fillStyle = "white";
+            //         c.rotate(45);
+            //         c.fillText("Fully Upgraded", drawx, drawy - 20);
+            //     }
+            // }
+            // else{
+            //     //c.translate(drawx, drawy);
+            //     //c.rotate(Math.PI / 4);
+            //     c.drawImage(getImage('downArrow'), drawx, drawy, size, size);
+            //     //c.rotate(-Math.PI / 4);
+            //     //c.translate(-drawx, -drawy);
+            // }
+        
+            x += size + padding;
+            
+        }
+
+        if (!mouse.clicked)
+            canClickArrow = true;
     }
+    
 }
 
 function displayResources(){
@@ -1997,12 +2262,12 @@ var uniqueId = function() {
     return 'id-' + Math.random().toString(36).substr(2, 16);
 };
 
-function findUpgrade(upgradee){
+function findUpgrade(id){
 
         var upgrade = {};
         var upgrades;
 
-        var upgradee = findObjectWithId(allWorldObjects().concat(allStructures()), upgradee).object;
+        var upgradee = findObjectWithId(allWorldObjects().concat(allStructures()), id).object;
 
         if(upgradee.type){
             upgrades = structureUpgrades[upgradee.type];

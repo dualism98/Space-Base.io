@@ -34,7 +34,9 @@ var sunDamageRate = 1000;
 
 
 var planetColors = ["#CB7C43", "#433F53", "#8C8070", "#94A6BF", "#9DC183", "#CC4D00"];
-var numberOfWorlds = 1;
+
+var clientsPerWorld = 100;
+var numberOfWorlds = 0;
 
 var maxPlanetObjects = {
     mine: 5,
@@ -105,25 +107,37 @@ function generateSpaceMatter(size, color, health, drops, worldObjectsRef, hittab
     return astroid;
 }
 
-function startWorlds(){ 
+function addWorld(){
+    var objects = generateWorld();
+    var worldId = uniqueId();
 
-    for(var i = 0; i < numberOfWorlds; i++){
-
-        var objects = generateWorld();
-
-        var worldId = uniqueId();
-
-        worldsData[worldId] = {
-            clients: [],
-            lobbyClients: [],
-            worldObjects: objects.worldObjects,
-            hittableObjects: objects.hittableObjects,
-            projectiles: []
-        }
-
-        worldIds.push(worldId);
+    worldsData[worldId] = {
+        clients: [],
+        lobbyClients: [],
+        worldObjects: objects.worldObjects,
+        hittableObjects: objects.hittableObjects,
+        projectiles: []
     }
 
+    worldIds.push(worldId);
+
+    numberOfWorlds++;
+    console.log('generated new world. total: ', numberOfWorlds);
+
+    return worldId;
+}
+
+function removeWorld(worldId){
+
+    for(var i = 0; i < worldIds.length; i++){
+        if(worldIds[i] == worldId)
+            worldIds.splice(i, 1);
+    }
+
+    delete worldsData[worldId];
+
+    numberOfWorlds--;
+    console.log('deleted world. total: ', numberOfWorlds, "worldIds: ", worldIds.length);
 }
 
 function generateWorld(){
@@ -156,7 +170,7 @@ function generateWorld(){
         var color = planetColors[colorindex];
         var planetSize = getRndInteger(100, 300);
         var planetHealth = planetSize * 2;
-        var drops = {astroidBits: Math.round(planetSize * 3), water: Math.round(planetSize * 2), earth: Math.round(planetSize * 2.2)};
+        var drops = {astroidBits: Math.round(planetSize * 3), water: Math.round(planetSize), earth: Math.round(planetSize / 2)};
 
         generatePlanet(planetSize, color, planetHealth, drops, generatedWorldObjects, generatedHittableObjects);
     }
@@ -167,7 +181,7 @@ function generateWorld(){
         var astroidColor = getRandomGray();
         var astroidHealth = astroidSize * .2;
         var type = "astroid";
-        var drops = {astroidBits: Math.round(astroidSize / 5), water: Math.round(astroidSize / 10)};
+        var drops = {astroidBits: Math.round(astroidSize / 5), water: Math.round(astroidSize / 20)};
 
         generateSpaceMatter(astroidSize, astroidColor, astroidHealth, drops, generatedWorldObjects, generatedHittableObjects, type);
         
@@ -181,9 +195,14 @@ function generateWorld(){
         var color = crystalColors[colorindex];
         var type = "crystal";
         var size = getRndInteger(10, 20);
-        var health = size * 8;
+        var health = size * 15;
+        var drops = {crystal: Math.round(size / 2)};
 
-        var drops = {crystal: 5};
+        var gems = getRndInteger(0, 1);
+
+        if(gems > 0)
+            drops.gem = gems;
+
         generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
         
     }
@@ -197,7 +216,7 @@ function generateWorld(){
         var size = getRndInteger(50, 75);
         var health = size;
         var type = "moon";
-        var drops = {astroidBits: Math.round(size * 1.2), water: Math.round(size / 2), iron: Math.round(size * 1.2)};
+        var drops = {astroidBits: Math.round(size * 1.2), water: Math.round(size / 4), iron: Math.round(size * .8)};
 
         generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
         
@@ -227,7 +246,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {};
+    this.drops = {gem: 200, astroidBits: 100000, water: 100000, iron: 100000, earth: 100000, crystal: 1000000};
 
     this.turningSpeed = playerUpgrades[level].turningSpeed;
     this.radius = playerUpgrades[level].radius;
@@ -295,7 +314,7 @@ var playerUpgrades = [
         {   
             speed: 90,
             fireRate: 10,
-            maxHealth: 20,
+            maxHealth: 10,
             damage: 1,
             radius: 10,
             turningSpeed: .1,
@@ -305,7 +324,7 @@ var playerUpgrades = [
             costs: {astroidBits: 5},
             speed: 85,
             fireRate: 11,
-            maxHealth: 25,
+            maxHealth: 20,
             damage: 2,
             radius: 15,
             turningSpeed: .1,
@@ -315,7 +334,7 @@ var playerUpgrades = [
             costs: {astroidBits: 20},
             speed: 80,
             fireRate: 12,
-            maxHealth: 35,
+            maxHealth: 30,
             damage: 3,
             radius: 20,
             turningSpeed: .09,
@@ -335,7 +354,7 @@ var playerUpgrades = [
             costs: {astroidBits: 100, iron: 5},
             speed: 70,
             fireRate: 15,
-            maxHealth: 75,
+            maxHealth: 80,
             damage: 8,
             radius: 30,
             turningSpeed: .07,
@@ -345,7 +364,7 @@ var playerUpgrades = [
             costs: {astroidBits: 300, iron: 10},
             speed: 65,
             fireRate: 18,
-            maxHealth: 120,
+            maxHealth: 130,
             damage: 13,
             radius: 35,
             turningSpeed: .06,
@@ -355,7 +374,7 @@ var playerUpgrades = [
             costs: {astroidBits: 750, iron: 50},
             speed: 60,
             fireRate: 21,
-            maxHealth: 200,
+            maxHealth: 210,
             damage: 21,
             radius: 40,
             turningSpeed: .05,
@@ -365,48 +384,48 @@ var playerUpgrades = [
             costs: {astroidBits: 1200, iron: 100},
             speed: 55,
             fireRate: 25,
-            maxHealth: 350,
+            maxHealth: 340,
             damage: 34,
             radius: 45,
             turningSpeed: .04,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 2000, iron: 300},
+            costs: {astroidBits: 2000, iron: 300, crystal: 5},
             speed: 40,
             fireRate: 30,
-            maxHealth: 600,
+            maxHealth: 500,
             damage: 55,
             radius: 50,
             turningSpeed: .03,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 5000, iron: 800},
+            costs: {astroidBits: 5000, iron: 800, crystal: 10},
             speed: 35,
             fireRate: 46,
-            maxHealth: 600,
-            damage: 55,
+            maxHealth: 890,
+            damage: 89,
             radius: 55,
             turningSpeed: .02,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 7000, iron: 2500},
+            costs: {astroidBits: 7000, iron: 2500, crystal: 50},
             speed: 30,
             fireRate: 52,
-            maxHealth: 600,
-            damage: 55,
+            maxHealth: 1440,
+            damage: 144,
             radius: 60,
             turningSpeed: .01,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 10000, iron: 5000},
+            costs: {astroidBits: 10000, iron: 5000, crystal: 100},
             speed: 25,
             fireRate: 60,
-            maxHealth: 600,
-            damage: 55,
+            maxHealth: 2330,
+            damage: 233,
             radius: 65,
             turningSpeed: .009,
             identifier: "spaceship"
@@ -423,38 +442,38 @@ var structureUpgrades = {
     ],
     turret: [
     {
-        costs: {iron: 50},
+        costs: {iron: 20},
         baseSize: 50,
         projectileSpeed: 5,
         shootInterval: 100,
         identifier: "turret"
     },
     {
-        costs: {iron: 250},
+        costs: {iron: 40},
         projectileSpeed: 6,
         shootInterval: 95,
         identifier: "turret"
     },
     {
-        costs: {iron: 2000},
+        costs: {iron: 100},
         projectileSpeed: 10,
         shootInterval: 82,
         identifier: "turret"
     },
     {
-        costs: {iron: 10000},
+        costs: {iron: 500},
         projectileSpeed: 10,
         shootInterval: 70,
         identifier: "turret"
     },
     {
-        costs: {iron: 50000},
+        costs: {iron: 1000},
         projectileSpeed: 10,
         shootInterval: 50,
         identifier: "turret"
     },
     {
-        costs: {iron: 250000},
+        costs: {iron: 5000, gem: 1},
         projectileSpeed: 10,
         shootInterval: 20,
         identifier: "turret"
@@ -467,42 +486,42 @@ var structureUpgrades = {
             identifier: "mine"
         },
         {
-            costs: {astroidBits: 60},
+            costs: {astroidBits: 50},
             ammount: 2,
             identifier: "mine"
         } ,
         {
-            costs:  {astroidBits: 200},
+            costs:  {astroidBits: 100},
             ammount: 3,
             identifier: "mine"
         },
         {
-            costs: {astroidBits: 750},
+            costs: {astroidBits: 200},
             ammount: 5,
             identifier: "mine"
         },
         {
-            costs: {astroidBits: 3000},
+            costs: {astroidBits: 500},
             ammount: 8,
             identifier: "mine"
         } ,
         {
-            costs: {astroidBits: 12000},
+            costs: {astroidBits: 1000, earth: 100},
             ammount: 13,
             identifier: "mine"
         }  ,
         {
-            costs: {astroidBits: 48000},
+            costs: {astroidBits: 2000, earth: 500},
             ammount: 21,
             identifier: "mine"
         },
         {
-            costs: {astroidBits: 250000},
+            costs: {astroidBits: 5000, earth: 1000},
             ammount: 34,
             identifier: "mine"
         },
         {
-            costs: {astroidBits: 750000},
+            costs: {astroidBits: 10000, earth: 2500},
             ammount: 55,
             identifier: "mine"
         }  
@@ -510,27 +529,37 @@ var structureUpgrades = {
     shield: [
     {
         costs: {water: 20},
-        maxHealth: 300,
+        maxHealth: 100,
         identifier: "shield"
     },
     {
-        costs: {water: 300},
-        maxHealth: 1000,
+        costs: {water: 100},
+        maxHealth: 200,
         identifier: "shield"
     },
     {
-        costs: {water: 5000},
+        costs: {water: 500},
         maxHealth: 5000,
         identifier: "shield"
     },
     {
-        costs: {water: 20000},
-        maxHealth: 10000,
+        costs: {water: 1000},
+        maxHealth: 1000,
         identifier: "shield"
     },
     {
-        costs: {water: 100000},
-        maxHealth: 50000,
+        costs: {water: 2500, crystal: 5},
+        maxHealth: 2500,
+        identifier: "shield"
+    },
+    {
+        costs: {water: 5000, crystal: 20},
+        maxHealth: 5000,
+        identifier: "shield"
+    },
+    {
+        costs: {water: 10000, crystal: 50},
+        maxHealth: 10000,
         identifier: "shield"
     },
     ]
@@ -539,7 +568,19 @@ var structureUpgrades = {
 io.sockets.on('connection', newConnetcion);
 
 function newConnetcion(socket){
-    var worldId = worldIds[getRndInteger(0, numberOfWorlds - 1)];
+
+    var worldId = null;
+
+    for(var i = 0; i < worldIds.length; i++){
+        if(worldsData[worldIds[i]].clients.length + worldsData[worldIds[i]].lobbyClients.length < clientsPerWorld){
+            worldId = worldIds[i];
+            break;
+        }
+    }
+
+    if(worldId == null){
+        worldId = addWorld();
+    }
 
     playerObject = {id: socket.id, worldId: worldId};
 
@@ -550,31 +591,30 @@ function newConnetcion(socket){
 
     worldsData[worldId].lobbyClients.push(playerObject);
 
+    console.log('\x1b[36m%s\x1b[0m', "player connected  : ", socket.id , " clients connected: ", worldsData[worldId].clients.length +  worldsData[worldId].lobbyClients.length);
+
     socket.on("playerStartGame", function(data){
 
         data.username = data.username .slice(0, 15);
 
         player = new Player(0, 0, 0, 0, socket.id, data.worldId); 
 
-        worldsData[worldId].clients.push(player)
+        worldsData[data.worldId].clients.push(player)
 
-        var lobbyClinent = findObjectWithId(worldsData[worldId].lobbyClients, socket.id)
+        var lobbyClient = findObjectWithId(worldsData[data.worldId].lobbyClients, socket.id)
 
-        if(lobbyClinent)
-            worldsData[worldId].lobbyClients.splice(lobbyClinent.index, 1);
+        if(lobbyClient)
+            worldsData[data.worldId].lobbyClients.splice(lobbyClient.index, 1);
 
         player.username = data.username;
-        worldsData[worldId].hittableObjects.push(player);
+        worldsData[data.worldId].hittableObjects.push(player);
 
-        socket.emit("setupLocalWorld", newPlayerData(worldId));
+        socket.emit("setupLocalWorld", newPlayerData(data.worldId));
 
-        socket.broadcast.to(worldId).emit('newPlayer', player);
+        socket.broadcast.to(data.worldId).emit('newPlayer', player);
         socket.emit("newPlayerStart", player);
 
-    
-        console.log('\x1b[36m%s\x1b[0m', "player connected  : ", socket.id , " clients connected: ", worldsData[worldId].clients.length);
-
-        syncDamage(worldId);
+        syncDamage(data.worldId);
     });
 
 
@@ -634,11 +674,15 @@ function newConnetcion(socket){
 
     socket.on('requestSpawnStructure', function(data){
 
+        if(!worldIds.contains(data.worldId)){
+            console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "world Id not accounted for on server. most likely old session.");
+            return;
+        }
+
         player = findObjectWithId(worldsData[data.worldId].clients, data.ownerId).object;
 
         var enoughResources = false;
         data.id = uniqueId();
-
 
         planet = findObjectWithId(worldsData[data.worldId].worldObjects.planets, data.planetId).object;
         
@@ -691,6 +735,7 @@ function newConnetcion(socket){
 
         if(enoughResources){
             var structure;
+            data.level = 0;
 
             if(planet.hasMaxStructure(data.type, maxPlanetObjects[data.type]))
             {
@@ -699,15 +744,14 @@ function newConnetcion(socket){
             }
     
             if(planet){
-                structure = new Structure(planet.id, data.x, data.y, data.rotation, data.type, data.ownerId, 0, data.worldId, data.id);
+                structure = new Structure(planet.id, data.x, data.y, data.rotation, data.type, data.ownerId, data.level, data.worldId, data.id);
                 planet.structures.push(structure);
             }
             else{
                 console.log("Planet not found. Failed to build structure on server");
                 return;
             }
-    
-            //io.sockets.connected[data.ownerId].emit("spawnStructure", data);
+
             socket.emit("spawnStructure", data);
             data.isFacade = true;
             socket.broadcast.to(data.worldId).emit("spawnStructure", data);
@@ -857,6 +901,14 @@ function newConnetcion(socket){
         });
 
         disconnectPlayer(socket.id, socket, worldId);
+
+        if(worldsData[worldId])
+            console.log('\x1b[31m%s\x1b[0m', "player disconected: ", socket.id,  " clients connected: ", worldsData[worldId].clients.length, "In loby: ", worldsData[worldId].lobbyClients.length);
+
+        if(worldsData[worldId].clients.length + worldsData[worldId].lobbyClients.length == 0){
+            removeWorld(worldId);
+        }
+
     });
 }
 
@@ -867,50 +919,50 @@ function disconnectPlayer(id, socket, worldId){
         return;
     }
 
-    var client = findObjectWithId(worldsData[worldId].clients.concat(worldsData[worldId].lobbyClients), id);
+    var lobbyClient = findObjectWithId(worldsData[worldId].lobbyClients, id);
+    var client = findObjectWithId(worldsData[worldId].clients, id);
     var structureIds = [];
 
-    if(!client){
-        console.log("player not accounted for disconnected with id: ", id);
-        return;
-    }
-
-    if(client.object.structures){
-        client.object.structures.forEach(structure => {
-            structureIds.push(structure.id);
-
-            var planet = findObjectWithId(worldsData[worldId].worldObjects.planets, structure.planetId).object;
-            var planetStructure = findObjectWithId(planet.structures, structure.id);
-
-            if(planetStructure)
-                planet.structures.splice(planetStructure.index, 1);
+    if(lobbyClient)
+        worldsData[worldId].lobbyClients.splice(lobbyClient.index, 1);
+    else
+    {
+        if(client.object.structures){
+            client.object.structures.forEach(structure => {
+                structureIds.push(structure.id);
+    
+                var planet = findObjectWithId(worldsData[worldId].worldObjects.planets, structure.planetId).object;
+                var planetStructure = findObjectWithId(planet.structures, structure.id);
+    
+                if(planetStructure)
+                    planet.structures.splice(planetStructure.index, 1);
+            });
+        }
+    
+        worldsData[worldId].worldObjects.planets.forEach(planet => {
+            if(planet.occupiedBy == client.object.id)
+                planet.occupiedBy = null;
         });
-    }
-
-    worldsData[worldId].worldObjects.planets.forEach(planet => {
-        if(planet.occupiedBy == client.object.id)
-            planet.occupiedBy = null;
-    });
-
-    var data = {
-        clinetId: client.object.id,
-        structureIds: structureIds
+    
+        var data = {
+            clinetId: client.object.id,
+            structureIds: structureIds
+        }
+        
+        if(id != socket.id)
+            io.sockets.connected[id].broadcast.to(worldId).emit('playerExited', data);
+        else
+            socket.broadcast.to(worldId).emit('playerExited', data);
+    
+        var hittableClient = findObjectWithId(worldsData[worldId].hittableObjects, id);
+    
+        if(hittableClient){
+            worldsData[worldId].hittableObjects.splice(hittableClient.index, 1);
+        }
+    
+        worldsData[worldId].clients.splice(client.index, 1);
     }
     
-    if(id != socket.id)
-        io.sockets.connected[id].broadcast.to(worldId).emit('playerExited', data);
-    else
-        socket.broadcast.to(worldId).emit('playerExited', data);
-
-    console.log('\x1b[31m%s\x1b[0m', "player disconected: ", client.object.id,  " clients connected: ", worldsData[worldId].clients.length);
-
-    var hittableClient = findObjectWithId(worldsData[worldId].hittableObjects, id);
-
-    if(hittableClient){
-        worldsData[worldId].hittableObjects.splice(hittableClient.index, 1);
-    }
-
-    worldsData[worldId].clients.splice(client.index, 1);
 }
 
 function damageObject(worldId, id, senderId, damage){
@@ -1391,4 +1443,4 @@ Array.prototype.contains = function(thing){
     return false;
 };
 
-startWorlds();
+addWorld();
