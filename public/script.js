@@ -402,7 +402,7 @@ function spawnNetworkedStructure(data)
         }
     }
 
-    allWorldObjects = getAllStructures();
+    allStructures = getAllStructures();
 }
 
 function receiveUpgradeInfo(data){
