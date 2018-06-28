@@ -175,9 +175,9 @@ var windowWidth;
 var windowHeight;
 
 function setup(){
-    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://localhost:8080');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
-    //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
+    socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -329,6 +329,8 @@ function startLocalPlayer(data){
 
     //Spawn client player
     spaceShip = new SpaceShip(centerX, centerY, data.maxHealth, data.health, data.level, data.radius, data.speed, data.turningSpeed, data.fireRate, clientId);
+
+    allWorldObjects = getAllWorldObjects();
 }
 function newPlayer(data){
     otherPlayers.push(new NetworkSpaceShip(data.x, data.y, data.maxHealth, data.health, data.rotation, data.level, data.radius, data.username, data.id));
@@ -404,15 +406,8 @@ function spawnNetworkedStructure(data)
 }
 
 function receiveUpgradeInfo(data){
-
     structureUpgrades = data.structureUpgrades;
     playerUpgrades = data.playerUpgrades;
-
-    // for (var upgrade in data) {
-    //     if (data.hasOwnProperty(upgrade)) {
-    //         upgrades[upgrade] = data[upgrade];
-    //     }
-    // }
 }
 
 function unsuccessfulUpgrade(data){
@@ -1443,16 +1438,10 @@ function animate() {
             size += 500;
         }
 
-        // var isClosestAvaiblePlanet = (closestAvailablePlanet != null && (matter.id  == closestAvailablePlanet.id));
-
-        // if(isClosestAvaiblePlanet){
-        //     matter.health = healthDict[matter.id];
-        //     matter.update();
-        //     num++;
-        // }
+        var isClosestAvaiblePlanet = (closestAvailablePlanet != null && (matter.id  == closestAvailablePlanet.id));
 
         //Out of screen Right                           || Left             || Up               || Down
-        if(!(pos.x - size > (windowWidth + centerX) / scale || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > (windowHeight + centerY) / scale)){
+        if(!(pos.x - size > (windowWidth + centerX) / scale || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > (windowHeight + centerY) / scale) || isClosestAvaiblePlanet){
             matter.health = healthDict[matter.id];
             matter.update();
             num++;
@@ -1706,7 +1695,7 @@ var canClickArrow = true;
 function showUpgrades(){
     numberOfUpgrades = upgradeableObjects().length;
     size = windowHeight / 10;
-    padding = $windowHeight / 10;
+    padding = windowHeight / 10;
 
     var groupedUpgrades = {};
     var numberOfGroups = 0;
@@ -1980,7 +1969,7 @@ function showUpgrades(){
                     c.globalAlpha = 1;
 
                     button.upgrades.forEach(upgradeId => {
-                        var object = findObjectWithId(allStructures().concat(spaceShip), upgradeId).object;
+                        var object = findObjectWithId(allStructures.concat(spaceShip), upgradeId).object;
     
                         var circleX = object.x * scale;
                         var circleY = object.y * scale;

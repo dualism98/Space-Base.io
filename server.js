@@ -4,7 +4,6 @@ var DoublyList = require('./doublyLinkedList');
 
 var app = express();
 
-//var server = app.listen(process.env.PORT, "0.0.0.0");
 var server = app.listen(8080, "0.0.0.0");
 
 app.use(express.static('public'));
@@ -313,7 +312,7 @@ function Structure(planetId, x, y, rotation, type, ownerId, level, worldId, id){
 
 var playerUpgrades = [
         {   
-            speed: 90,
+            speed: 50,
             fireRate: 10,
             maxHealth: 10,
             damage: 1,
@@ -323,7 +322,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 5},
-            speed: 85,
+            speed: 47,
             fireRate: 11,
             maxHealth: 20,
             damage: 2,
@@ -333,7 +332,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 20},
-            speed: 80,
+            speed: 44,
             fireRate: 12,
             maxHealth: 30,
             damage: 3,
@@ -343,7 +342,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 50},
-            speed: 75,
+            speed: 41,
             fireRate: 13,
             maxHealth: 50,
             damage: 5,
@@ -353,7 +352,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 100, iron: 5},
-            speed: 70,
+            speed: 38,
             fireRate: 15,
             maxHealth: 80,
             damage: 8,
@@ -363,7 +362,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 300, iron: 10},
-            speed: 65,
+            speed: 35,
             fireRate: 18,
             maxHealth: 130,
             damage: 13,
@@ -373,7 +372,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 750, iron: 50},
-            speed: 60,
+            speed: 32,
             fireRate: 21,
             maxHealth: 210,
             damage: 21,
@@ -383,7 +382,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 1200, iron: 100},
-            speed: 55,
+            speed: 29,
             fireRate: 25,
             maxHealth: 340,
             damage: 34,
@@ -393,7 +392,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 2000, iron: 300, crystal: 5},
-            speed: 40,
+            speed: 26,
             fireRate: 30,
             maxHealth: 500,
             damage: 55,
@@ -403,7 +402,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 5000, iron: 800, crystal: 10},
-            speed: 35,
+            speed: 23,
             fireRate: 46,
             maxHealth: 890,
             damage: 89,
@@ -413,7 +412,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 7000, iron: 2500, crystal: 50},
-            speed: 30,
+            speed: 20,
             fireRate: 52,
             maxHealth: 1440,
             damage: 144,
@@ -423,7 +422,7 @@ var playerUpgrades = [
         },
         {   
             costs: {astroidBits: 10000, iron: 5000, crystal: 100},
-            speed: 25,
+            speed: 17,
             fireRate: 60,
             maxHealth: 2330,
             damage: 233,
