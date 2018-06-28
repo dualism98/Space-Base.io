@@ -183,7 +183,7 @@ var sunTint = {amount: 0, color: "#fffff"};
 function setup(){
     //socket = io.connect('http://localhost:8080');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
-    socket = io.connect('https://desolate-wave-85781.herokuapp.com/');
+    socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
