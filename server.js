@@ -247,7 +247,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {gem: 200, astroidBits: 100000, water: 100000, iron: 100000, earth: 100000, crystal: 1000000};
+    this.drops = {};
 
     this.turningSpeed = playerUpgrades[level].turningSpeed;
     this.radius = playerUpgrades[level].radius;
