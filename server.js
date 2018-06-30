@@ -5,8 +5,8 @@ var DoublyList = require('./doublyLinkedList');
 var app = express();
 
 
-var server = app.listen(process.env.PORT, "0.0.0.0");
-//var server = app.listen(8080, "0.0.0.0");
+//var server = app.listen(process.env.PORT, "0.0.0.0");
+var server = app.listen(3000, "0.0.0.0");
 
 app.use(express.static('public'));
 
@@ -18,24 +18,34 @@ var worldIds = [];
 console.log("server started");
 
 //Server Config Options
-var numOfAstroids = 4000;
-var numOfPlanets = 50;
-var numOfMoons = 200;
-var numOfSuns = 10;
-var numOfCrystals = 100;
-var gridSize = 15000;
-var gridBoxScale = 200;
+// var numOfasteroids = 4000;
+// var numOfPlanets = 50;
+// var numOfMoons = 200;
+// var numOfSuns = 10;
+// var numOfCrystals = 100;
+// var gridSize = 15000;
+// var gridBoxScale = 200;
+// var spawnTries = 5;
+
+var numOfasteroids = 100;
+var numOfPlanets = 1;
+var numOfMoons = 0;
+var numOfSuns = 0;
+var numOfCrystals = 00;
+var gridSize = 1500;
+var gridBoxScale = 10;
 var spawnTries = 5;
 
 var mineProductionRate = 2500;
-var despawnProjectilesRate = 10;
+var despawnProjectilesRate = 100;
 var shieldHealRate = 1000;
-var playerHealRate = 10000;
-var projectileDespawnTime = 100;
 var sunDamageRate = 1000;
 
+var unspawnedObjects = [];
 
 var planetColors = ["#CB7C43", "#433F53", "#8C8070", "#94A6BF", "#9DC183", "#CC4D00"];
+var crystalColors = ["#5b94ef", "#d957ed", "#f9f454", "#85f954"];
+var moonColors = ["#929aa8", "#758196", "#758196", "#2d3c56"];
 
 var clientsPerWorld = 100;
 var numberOfWorlds = 0;
@@ -68,7 +78,8 @@ function generatePlanet(size, color, health, drops, worldObjectsRef, hittableObj
         position = randGenPoint(size);
 
         if(reptitions > spawnTries){
-            continue;
+            console.log("not spawned, too many itterations");
+            return false;
         }
 
         reptitions++;
@@ -94,19 +105,19 @@ function generateSpaceMatter(size, color, health, drops, worldObjectsRef, hittab
 
         if(reptitions > spawnTries){
             console.log("not spawned, too many itterations");
-            continue;
+            return false;
         }
 
         reptitions++
 
     } while (!positonAviable(size, position.x, position.y, hittableObjectsRef));
 
-    var astroid = new SpaceMatter(position.x, position.y, size, color, health, drops, type, id);
+    var asteroid = new SpaceMatter(position.x, position.y, size, color, health, drops, type, id);
     
-    hittableObjectsRef.push(astroid);
-    worldObjectsRef.astroids.push(astroid);
+    hittableObjectsRef.push(asteroid);
+    worldObjectsRef.asteroids.push(asteroid);
 
-    return astroid;
+    return asteroid;
 }
 
 function addWorld(){
@@ -146,7 +157,7 @@ function generateWorld(){
 
     var generatedWorldObjects = {
         planets: [],
-        astroids: []
+        asteroids: []
     };
 
     var generatedHittableObjects = [];
@@ -171,27 +182,25 @@ function generateWorld(){
         var colorindex = Math.round(getRndInteger(0, planetColors.length - 1));
         var color = planetColors[colorindex];
         var planetSize = getRndInteger(100, 300);
-        var planetHealth = planetSize * 2;
-        var drops = {astroidBits: Math.round(planetSize * 3), water: Math.round(planetSize), earth: Math.round(planetSize / 2)};
+        var planetHealth = planetSize * 10;
+        var drops = {asteroidBits: Math.round(planetSize * 6), water: Math.round(planetSize * 2), earth: Math.round(planetSize * 3), iron: Math.round(planetSize * 2.5)};
 
         generatePlanet(planetSize, color, planetHealth, drops, generatedWorldObjects, generatedHittableObjects);
     }
 
-    for(var i = 0; i < numOfAstroids; i++){
+    for(var i = 0; i < numOfasteroids; i++){
 
-        var astroidSize = getRndInteger(10, 30);
-        var astroidColor = getRandomGray();
-        var astroidHealth = astroidSize * .2;
-        var type = "astroid";
-        var drops = {astroidBits: Math.round(astroidSize / 5), water: Math.round(astroidSize / 20)};
+        var asteroidSize = getRndInteger(10, 30);
+        var asteroidColor = getRandomGray();
+        var asteroidHealth = asteroidSize * .2;
+        var type = "asteroid";
+        var drops = {asteroidBits: Math.round(asteroidSize / 5), water: Math.round(asteroidSize / 20)};
 
-        generateSpaceMatter(astroidSize, astroidColor, astroidHealth, drops, generatedWorldObjects, generatedHittableObjects, type);
+        generateSpaceMatter(asteroidSize, asteroidColor, asteroidHealth, drops, generatedWorldObjects, generatedHittableObjects, type);
         
     }
 
     for(var i = 0; i < numOfCrystals; i++){
-
-        var crystalColors = ["#5b94ef", "#d957ed", "#f9f454", "#85f954"];
 
         var colorindex = getRndInteger(0, crystalColors.length - 1);
         var color = crystalColors[colorindex];
@@ -210,21 +219,18 @@ function generateWorld(){
     }
 
     for(var i = 0; i < numOfMoons; i++){
-
-        var moonColors = ["#929aa8", "#758196", "#758196", "#2d3c56"];
-
         var colorindex = getRndInteger(0, moonColors.length - 1);
         var color = moonColors[colorindex];
         var size = getRndInteger(50, 75);
         var health = size;
         var type = "moon";
-        var drops = {astroidBits: Math.round(size * 1.2), water: Math.round(size / 4), iron: Math.round(size * .8)};
+        var drops = {asteroidBits: Math.round(size * 1.2), water: Math.round(size / 4), iron: Math.round(size * .8)};
 
         generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
         
     }
 
-    console.log('world generation complete: /n', generatedWorldObjects.astroids.length, ' astroids spawned /n', generatedWorldObjects.planets.length, ' planets spawned');
+    console.log('world generation complete: /n', generatedWorldObjects.asteroids.length, ' asteroids spawned /n', generatedWorldObjects.planets.length, ' planets spawned');
 
     return {worldObjects: generatedWorldObjects, hittableObjects: generatedHittableObjects};
 }
@@ -248,8 +254,10 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {};
+    this.drops = {gem: 1000, iron: 10000, asteroidBits: 1000, earth: 1000};
 
+    this.bulletPenetration = 1;
+    this.bulletRange = playerUpgrades[level].bulletRange;
     this.turningSpeed = playerUpgrades[level].turningSpeed;
     this.radius = playerUpgrades[level].radius;
     this.damage = playerUpgrades[level].damage;
@@ -289,7 +297,7 @@ function Planet(x, y, radius, structures, color, maxHealth, drops, id){
     this.owner = null;
 }
 
-function Projectile(x, y, velocity, size, color, damage, worldId, id){
+function Projectile(x, y, velocity, size, color, damage, bulletRange, bulletPenetration, worldId, id){
     this.x = x;
     this.y = y;
     this.size = size;
@@ -297,6 +305,8 @@ function Projectile(x, y, velocity, size, color, damage, worldId, id){
     this.color = color;
     this.damage = damage;
     this.worldId = worldId;
+    this.bulletRange = bulletRange;
+    this.bulletPenetration = bulletPenetration;
     this.id = id;
 }
 
@@ -320,116 +330,128 @@ var playerUpgrades = [
             damage: 1,
             radius: 10,
             turningSpeed: .1,
+            bulletRange: 3,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 5},
+            costs: {asteroidBits: 5},
             speed: 47,
             fireRate: 11,
             maxHealth: 20,
             damage: 2,
             radius: 15,
             turningSpeed: .1,
+            bulletRange: 4,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 20},
+            costs: {asteroidBits: 20},
             speed: 44,
             fireRate: 12,
             maxHealth: 30,
             damage: 3,
             radius: 20,
             turningSpeed: .09,
+            bulletRange: 5,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 50},
+            costs: {asteroidBits: 50},
             speed: 41,
             fireRate: 13,
             maxHealth: 50,
             damage: 5,
             radius: 25,
             turningSpeed: .08,
+            bulletRange: 6,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 100, iron: 5},
+            costs: {asteroidBits: 100, iron: 5},
             speed: 38,
             fireRate: 15,
             maxHealth: 80,
             damage: 8,
             radius: 30,
             turningSpeed: .07,
+            bulletRange: 7,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 300, iron: 10},
+            costs: {asteroidBits: 300, iron: 10},
             speed: 35,
             fireRate: 18,
             maxHealth: 130,
             damage: 13,
             radius: 35,
             turningSpeed: .06,
+            bulletRange: 8,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 750, iron: 50},
+            costs: {asteroidBits: 750, iron: 50},
             speed: 32,
             fireRate: 21,
             maxHealth: 210,
             damage: 21,
             radius: 40,
             turningSpeed: .05,
+            bulletRange: 9,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 1200, iron: 100},
+            costs: {asteroidBits: 1200, iron: 100},
             speed: 29,
             fireRate: 25,
             maxHealth: 340,
             damage: 34,
             radius: 45,
             turningSpeed: .04,
+            bulletRange: 10,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 2000, iron: 300, crystal: 5},
+            costs: {asteroidBits: 2000, iron: 300, crystal: 5},
             speed: 26,
             fireRate: 30,
             maxHealth: 500,
             damage: 55,
             radius: 50,
             turningSpeed: .03,
+            bulletRange: 11,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 5000, iron: 800, crystal: 10},
+            costs: {asteroidBits: 5000, iron: 800, crystal: 10},
             speed: 23,
             fireRate: 46,
             maxHealth: 890,
             damage: 89,
             radius: 55,
             turningSpeed: .02,
+            bulletRange: 12,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 7000, iron: 2500, crystal: 50},
+            costs: {asteroidBits: 7000, iron: 2500, crystal: 50},
             speed: 20,
             fireRate: 52,
             maxHealth: 1440,
             damage: 144,
             radius: 60,
             turningSpeed: .01,
+            bulletRange: 11,
             identifier: "spaceship"
         },
         {   
-            costs: {astroidBits: 10000, iron: 5000, crystal: 100},
+            costs: {asteroidBits: 10000, iron: 5000, crystal: 100},
             speed: 17,
             fireRate: 60,
             maxHealth: 2330,
             damage: 233,
             radius: 65,
             turningSpeed: .009,
+            bulletRange: 12,
             identifier: "spaceship"
         }
         
@@ -445,86 +467,97 @@ var structureUpgrades = {
     turret: [
     {
         costs: {iron: 20},
-        baseSize: 50,
+        bulletRange: 15,
+        bulletPenetration: 0,
         projectileSpeed: 5,
         shootInterval: 100,
         identifier: "turret"
     },
     {
         costs: {iron: 40},
+        bulletRange: 15,
+        bulletPenetration: 0,
         projectileSpeed: 6,
         shootInterval: 95,
         identifier: "turret"
     },
     {
         costs: {iron: 100},
+        bulletRange: 15,
+        bulletPenetration: 0,
         projectileSpeed: 10,
         shootInterval: 82,
         identifier: "turret"
     },
     {
         costs: {iron: 500},
-        projectileSpeed: 10,
+        bulletRange: 15,
+        bulletPenetration: 0,
+        projectileSpeed: 15,
         shootInterval: 70,
         identifier: "turret"
     },
     {
         costs: {iron: 1000},
-        projectileSpeed: 10,
+        bulletRange: 15,
+        bulletPenetration: 0,
+        projectileSpeed: 20,
         shootInterval: 50,
         identifier: "turret"
     },
     {
         costs: {iron: 5000, gem: 1},
-        projectileSpeed: 10,
+        bulletRange: 15,
+        bulletPenetration: 0,
+        projectileSpeed: 30,
         shootInterval: 20,
         identifier: "turret"
     }
     ],
     mine: [
         {
-            costs: {astroidBits: 20},
-            ammount: 1,
+            costs: {asteroidBits: 20},
+            amount: 1,
             identifier: "mine"
         },
         {
-            costs: {astroidBits: 50},
-            ammount: 2,
+            costs: {asteroidBits: 50},
+            amount: 2,
             identifier: "mine"
         } ,
         {
-            costs:  {astroidBits: 100},
-            ammount: 3,
+            costs:  {asteroidBits: 100},
+            amount: 3,
             identifier: "mine"
         },
         {
-            costs: {astroidBits: 200},
-            ammount: 5,
+            costs: {asteroidBits: 200},
+            amount: 5,
             identifier: "mine"
         },
         {
-            costs: {astroidBits: 500},
-            ammount: 8,
+            costs: {asteroidBits: 500},
+            amount: 8,
             identifier: "mine"
         } ,
         {
-            costs: {astroidBits: 1000, earth: 100},
-            ammount: 13,
+            costs: {asteroidBits: 1000, earth: 100},
+            amount: 13,
             identifier: "mine"
         }  ,
         {
-            costs: {astroidBits: 2000, earth: 500},
-            ammount: 21,
+            costs: {asteroidBits: 2000, earth: 500},
+            amount: 21,
             identifier: "mine"
         },
         {
-            costs: {astroidBits: 5000, earth: 1000},
-            ammount: 34,
+            costs: {asteroidBits: 5000, earth: 1000},
+            amount: 34,
             identifier: "mine"
         },
         {
-            costs: {astroidBits: 10000, earth: 2500},
-            ammount: 55,
+            costs: {asteroidBits: 10000, earth: 2500},
+            amount: 55,
             identifier: "mine"
         }  
     ],
@@ -599,7 +632,7 @@ function newConnetcion(socket){
 
         data.username = data.username .slice(0, 15);
 
-        player = new Player(0, 0, 0, 0, socket.id, data.worldId); 
+        player = new Player(0, 0, 0, 9, socket.id, data.worldId); 
 
         worldsData[data.worldId].clients.push(player)
 
@@ -620,7 +653,12 @@ function newConnetcion(socket){
     });
 
 
-    socket.on('damage', function(data){
+    socket.on('projectileHit', function(data){
+
+        if(!worldIds.contains(data.worldId)){
+            console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "world Id not accounted for on server. most likely old session.");
+            return;
+        }
 
         var projectile = findObjectWithId(worldsData[data.worldId].projectiles, data.projectileId);
         if(!projectile){
@@ -628,9 +666,27 @@ function newConnetcion(socket){
             return;
         }
 
-        var damageDealt = projectile.object.damage;
+        if(projectile.hitObjects && projectile.hitObjects.contains(data.id)){
+            return;
+        }
 
-        damageObject(data.worldId, data.id, data.senderId, damageDealt)
+        var damageDealt = projectile.object.damage;
+        damageObject(data.worldId, data.id, data.senderId, damageDealt);
+
+        if(projectile.object.hitObjects)
+            projectile.object.hitObjects.push(data.id);
+        else
+            projectile.object.hitObjects = [data.id];
+
+
+        if(projectile.object.bulletPenetration > 0){
+            projectile.object.bulletPenetration--;
+        }
+        else{
+            worldsData[data.worldId].projectiles.splice(projectile.index, 1);
+            io.to(data.worldId).emit('destroyProjectile', {id: data.projectileId});
+        }
+
     });
 
     socket.on('playerPos', function(data){
@@ -654,6 +710,38 @@ function newConnetcion(socket){
         socket.broadcast.to(data.worldId).emit('playerPos', data);
     });
 
+    socket.on('playerHeal', function(data){
+
+        var player = findObjectWithId(worldsData[data.worldId].hittableObjects, socket.id).object;
+    
+        var addamount = player.maxHealth / 15;
+        var costType = "stardust";
+        var healCost = 4;
+
+        if(player.health != player.maxHealth){
+
+            var stardust = player.drops[costType];
+
+            if(stardust && stardust >= healCost)
+            {
+                player.drops[costType] -= healCost;
+
+                if(player.health + addamount < player.maxHealth)
+                    player.health += addamount;
+                else
+                    player.health = player.maxHealth;
+
+                syncDamage(data.worldId, [player.id]);
+                io.sockets.connected[socket.id].emit("syncItem", {item: costType, amount: player.drops[costType]});
+            }
+            else
+                io.sockets.connected[socket.id].emit("unsuccessfulUpgrade", "Not enough " + costType);
+        }
+        else
+            io.sockets.connected[socket.id].emit("unsuccessfulUpgrade", "Already full health");
+
+    });
+    
     socket.on('spawnProj', function(data){
 
         if(!worldIds.contains(data.worldId)){
@@ -669,7 +757,7 @@ function newConnetcion(socket){
         }
 
         socket.broadcast.to(data.worldId).emit('spawnProj', data);
-        worldsData[data.worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, shooter.object.damage, data.worldId, data.id));
+        worldsData[data.worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, shooter.object.damage, shooter.object.bulletRange, shooter.object.bulletPenetration, data.worldId, data.id));
 
         console.log('\x1b[33m%s\x1b[0m', "spawned projectile with id: ", data.id, " total: ", worldsData[data.worldId].projectiles.length);
     });
@@ -771,7 +859,7 @@ function newConnetcion(socket){
                 }
     
                 if(data.type == "mine"){
-                    structure.ammount = upgrades.ammount;
+                    structure.amount = upgrades.amount;
                 }
             }
     
@@ -785,13 +873,6 @@ function newConnetcion(socket){
             io.sockets.connected[data.ownerId].emit("unsuccessfulUpgrade", "Not enough resources");
         
 
-    });
-
-    socket.on('projDestroy', function(data){
-        socket.broadcast.to(data.worldId).emit('destroyProjectile', data);
-        var hitProj = findObjectWithId(worldsData[data.worldId].projectiles, data.id);
-        if(hitProj)
-            worldsData[data.worldId].projectiles.splice(hitProj.index, 1);
     });
 
     socket.on('upgradeInfo', function(data){
@@ -1018,7 +1099,7 @@ function damageObject(worldId, id, senderId, damage){
                 var possiblePlanet = findObjectWithId(worldWorldObjects.planets, target.object.id);
 
                  //If the thing killed was space matter
-                var possibleSpaceMatter = findObjectWithId(worldWorldObjects.astroids, target.object.id);
+                var possibleSpaceMatter = findObjectWithId(worldWorldObjects.asteroids, target.object.id);
 
                 if(possibleClient){
                     disconnectPlayer(target.object.id, socket, worldId);
@@ -1033,16 +1114,26 @@ function damageObject(worldId, id, senderId, damage){
                 else{
 
                     var newObject;
+                    var dead = false;
 
                     if(possiblePlanet){
-                        var color = possiblePlanet.object.color;
+
                         var radius = possiblePlanet.object.radius
+                        var color = possiblePlanet.object.color;
                         var health = possiblePlanet.object.maxHealth;
-                        var drops = possiblePlanet.drops;
+                        var drops = possiblePlanet.object.drops;
 
                         worldHittableObjects.splice(target.index, 1);
                         worldWorldObjects.planets.splice(possiblePlanet.index, 1);
+
                         newObject = generatePlanet(radius, color, health, drops, worldWorldObjects, worldHittableObjects, target.object.id);
+
+                        if(!newObject){
+                            newObject = {};
+                            unspawnedObjects.push({radius: radius, color: color, health: health, drops: drops, worldId: worldId, id: target.object.id});
+                            dead = true;
+                        }
+
                         newObject.type = "planet";
                     }
                     else if(possibleSpaceMatter){
@@ -1053,8 +1144,16 @@ function damageObject(worldId, id, senderId, damage){
                         var type = possibleSpaceMatter.object.type;
 
                         worldHittableObjects.splice(target.index, 1);
-                        worldWorldObjects.astroids.splice(possibleSpaceMatter.index, 1);
+                        worldWorldObjects.asteroids.splice(possibleSpaceMatter.index, 1);
+
                         newObject = generateSpaceMatter(radius, color, health, drops, worldWorldObjects, worldHittableObjects, type, target.object.id);
+
+                        if(!newObject){
+                            unspawnedObjects.push({radius: radius, color: color, health: health, drops: drops, type: type, worldId: worldId, id: target.object.id});
+                            newObject = {type: type};
+                            dead = true;
+                        }
+                            
                     }
                     else{
                         console.log("object type of damaged object is not accounted for on the server");
@@ -1065,10 +1164,49 @@ function damageObject(worldId, id, senderId, damage){
                         var changedWorldObject = 
                         {
                             id: target.object.id,
-                            newObject: newObject
+                            newObject: newObject,
+                            dead: dead
                         }
-    
-                        io.to(worldId).emit('newWorldObjectSync', changedWorldObject);
+                    }
+
+                    io.to(worldId).emit('newWorldObjectSync', changedWorldObject);
+
+                    if(unspawnedObjects.length > 0)
+                    {
+                        var newUnspawnedObject;
+
+                        for(var i = unspawnedObjects.length - 1; i >= 0; i--){
+                            var obj = unspawnedObjects[i];
+
+                            worldHittableObjects = worldsData[obj.worldId].hittableObjects;
+                            worldWorldObjects = worldsData[obj.worldId].worldObjects;
+                            
+                            if(obj.type)
+                                newUnspawnedObject = generateSpaceMatter(obj.radius, obj.color, obj.health, obj.drops, worldWorldObjects, worldHittableObjects, obj.type, obj.id);
+                            else{
+                                newUnspawnedObject = generatePlanet(obj.radius, obj.color, obj.health, obj.drops, worldWorldObjects, worldHittableObjects, obj.id);
+                            }
+                                
+                                
+                            if(newUnspawnedObject){
+
+                                if(!obj.type)
+                                    newUnspawnedObject.type = "planet";
+
+                                unspawnedObjects.splice(i, 1);
+
+                                var changedWorldObject = 
+                                {
+                                    id: obj.id,
+                                    newObject: newUnspawnedObject,
+                                    dead: false
+                                }
+                            
+                                io.to(worldId).emit('newWorldObjectSync', changedWorldObject);
+                                syncDamage(worldId, [obj.id]);
+                            }
+                        }
+                        
                     }
                 }
             }
@@ -1163,7 +1301,7 @@ function sunDamage()
 
         var player = findObjectWithId(worldsData[client.worldId].hittableObjects, client.id).object;
 
-        worldsData[client.worldId].worldObjects.astroids.forEach(matter => {
+        worldsData[client.worldId].worldObjects.asteroids.forEach(matter => {
             if(matter.type == "sun")
             {
                 var distance = Math.sqrt(Math.pow(matter.x - client.x, 2) + Math.pow(matter.y - client.y, 2)); 
@@ -1192,37 +1330,6 @@ function sunDamage()
 
 }
 
-setInterval(playerHeal, playerHealRate);
-function playerHeal()
-{
-    var syncWorldIds = {};
-
-    allClients().forEach(client => {
-
-        var player = findObjectWithId(worldsData[client.worldId].hittableObjects, client.id).object;
-
-        var addAmmount = player.maxHealth / 15;
-
-        if(player.health != player.maxHealth){
-            if(player.health + addAmmount < player.maxHealth)
-                player.health += addAmmount;
-            else
-                player.health = player.maxHealth;
-
-            if(syncWorldIds[player.worldId])
-                syncWorldIds[player.worldId].push(player.id)
-            else
-                syncWorldIds[player.worldId] = [player.id];
-        }
-        
-    });
-
-    for (var syncWorldId in syncWorldIds) {
-        if (syncWorldIds.hasOwnProperty(syncWorldId)) 
-            syncDamage(syncWorldId, syncWorldIds[syncWorldId]);
-    }
-}
-
 setInterval(shieldHeal, shieldHealRate);
 function shieldHeal()
 {
@@ -1233,11 +1340,11 @@ function shieldHeal()
             var shield = findObjectWithId(worldsData[structure.worldId].hittableObjects, structure.id).object;
 
 
-            var addAmmount = shield.maxHealth / 25;
+            var addamount = shield.maxHealth / 25;
 
             if(shield.health != shield.maxHealth){
-                if(shield.health + addAmmount < shield.maxHealth)
-                    shield.health += addAmmount;
+                if(shield.health + addamount < shield.maxHealth)
+                    shield.health += addamount;
                 else
                     shield.health = shield.maxHealth;
 
@@ -1261,12 +1368,13 @@ function shieldHeal()
 
 
 setInterval(despawnProjectiles, despawnProjectilesRate);
+
 function despawnProjectiles()
 {
     allProjectiles().forEach(projectile => {
 
         if(projectile.time != null){
-            if(projectile.time > projectileDespawnTime){
+            if(projectile.time > projectile.bulletRange){
                 var data = {id: projectile.id}
     
                 var hitProj = findObjectWithId(worldsData[projectile.worldId].projectiles, projectile.id);
@@ -1288,7 +1396,7 @@ function despawnProjectiles()
 setInterval(mineProduce, mineProductionRate);
 function mineProduce()
 {
-    var mineProduceItem = 'iron';
+    var mineProduceItems = [{item: 'iron', chance: .25}, {item: 'asteroidBits', chance: 1}];
 
     allClients().forEach(client => {
 
@@ -1296,12 +1404,21 @@ function mineProduce()
     
         client.structures.forEach(structure => {
             if(structure.type == "mine"){
-                mineData.push({id: structure.id, ammount: structure.ammount, item: mineProduceItem});
+
+                for(var i = 0; i < mineProduceItems.length; i++){
                 
-                if(client.drops[mineProduceItem])
-                    client.drops[mineProduceItem] += structure.ammount;
-                else
-                    client.drops[mineProduceItem] = structure.ammount;
+                    var mineProduceItem = mineProduceItems[i].item;
+                    var amount = Math.round(mineProduceItems[i].chance * structure.amount);
+
+                    if(amount > 0){
+                        mineData.push({id: structure.id, amount: structure.amount, item: mineProduceItem});
+
+                        if(client.drops[mineProduceItem])
+                            client.drops[mineProduceItem] += structure.amount;
+                        else
+                            client.drops[mineProduceItem] = structure.amount;
+                    }
+                }
             }
         });
 
