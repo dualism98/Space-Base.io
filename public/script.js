@@ -69,7 +69,6 @@ var clientId;
 var otherPlayers = [];
 var worldObjects = [];
 var hittableObjects = [];
-var hittableStructures = [];
 var gridSize;
 var gridBoxScale;
 var gridPos;
@@ -176,12 +175,14 @@ var ownedPlanets = [];
 var windowWidth;
 var windowHeight;
 
+var planetArrowColor = "#ffffff"
+
 var targetScale = 1;
 var scaleTime = 50;
 var scaleSpeed = 3;
 
 function setup(){
-    socket = io.connect('http://localhost:3000');
+    socket = io.connect('http://localhost:8080');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
     //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
@@ -286,6 +287,16 @@ function newWorldObjectSync(data){
 
         var changedPlanet = findObjectWithId(worldObjects.planets, data.id);
 
+
+        var ownedPlanet = findObjectWithId(ownedPlanets, data.id);
+
+        if(ownedPlanet){
+            currentPlanet = null;
+            ownedPlanet.object.structures = [];
+            allStructures = getAllStructures();
+            ownedPlanets.splice(ownedPlanet.index, 1);
+        }
+
         if(data.dead && changedPlanet){
 
             var changedHitableObject = findObjectWithId(hittableObjects, data.id);
@@ -331,9 +342,19 @@ function newWorldObjectSync(data){
 }
 
 function receiveDamageSync(data){
-
     for (let i = 0; i < data.hittableObjects.length; i++) {
         const sentHittableObject = data.hittableObjects[i];
+        
+        if(sentHittableObject.health < healthDict[sentHittableObject.id]){            
+            var ownPlanetAttacked = false;
+
+            ownedPlanets.forEach(ownedPlanet => {
+                if(ownedPlanet.shield && ownedPlanet.shield.id == sentHittableObject.id)
+                    damagedOwnPlanet(true, sentHittableObject.health, ownedPlanet.shield.id);
+                else if(ownedPlanet.id == sentHittableObject.id)
+                    damagedOwnPlanet(false, sentHittableObject.health, ownedPlanet.id);
+            });
+        }
         
         healthDict[sentHittableObject.id] = sentHittableObject.health;
 
@@ -352,6 +373,19 @@ function receiveDamageSync(data){
             }
         }
     }
+}
+
+function damagedOwnPlanet(attackOnShield, health, id){
+
+    var ownedPlanet = findObjectWithId(ownedPlanets, id.object);
+
+    if(attackOnShield)
+        console.log("HALP WE ARE UNDER ATTACK. Shield Health Left: " + health);
+    else
+        console.log("HALP WE ARE UNDER ATTACK. Health Left: " + health);
+
+    planetArrowColor = "#ff3838";
+    
 }
 
 function showWorld(){
@@ -509,19 +543,26 @@ function onAquiredItems(data){
     for (var drop in data.drops) {
         if (data.drops.hasOwnProperty(drop)) {
             if(playerItems[drop])
-                playerItems[drop] += data.drops[drop];
+                playerItems[drop] += Math.round(data.drops[drop] * data.precent);
             else
-                playerItems[drop] = data.drops[drop];
+                playerItems[drop] = Math.round(data.drops[drop] * data.precent);
         }
     } 
 }
 
 function playerExited(data){
 
-    otherPlayer = findObjectWithId(otherPlayers, data.clinetId);
+    otherPlayer = findObjectWithId(otherPlayers, data.clientId);
 
     if(otherPlayer){
         otherPlayers.splice(otherPlayer.index, 1);
+
+        var otherPlayerHittableObj = findObjectWithId(hittableObjects, data.clientId);
+
+        if(otherPlayerHittableObj)
+            hittableObjects.splice(otherPlayerHittableObj.index, 1);
+
+        hittableObjects.splice()
 
         var structureObejcts = [];
     
@@ -534,6 +575,8 @@ function playerExited(data){
                 }
             });
         });
+
+        allStructures = getAllStructures();
     }
 }
 
@@ -628,6 +671,15 @@ $(document).keypress(function(e){
 
     if(currentPlanet && spaceShip){
 
+        
+        if(e.keyCode == 104) // H
+        {
+            if(currentPlanet.health < currentPlanet.maxHealth)
+                socket.emit("heal", {id: currentPlanet.id, worldId: worldId});
+            else
+                socket.emit("heal", {id: clientId, worldId: worldId});
+        }
+
         if(planetEditMode){
             if(e.keyCode == 108) // L
                 requestStructureSpawn(currentPlanet, currentPlanet.x, currentPlanet.y, 0, "landingPad", false, clientId);
@@ -653,6 +705,9 @@ $(document).keypress(function(e){
     }
     else{
 
+        if(e.keyCode == 104) // H
+            socket.emit("heal", {id: clientId, worldId: worldId});
+
         if(e.keyCode == 32){ //SPACE
             if(playerReloadTimer <= 0){
                 shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, PROJECTIILE_SPEED, spaceShip.radius / 4, "#f45c42", clientId);
@@ -675,11 +730,7 @@ $(document).keypress(function(e){
 
     if(e.keyCode == 59) // ;
         statsView = !statsView; 
-
-    if(e.keyCode == 104) // H
-    {
-        socket.emit("playerHeal", {worldId: worldId});
-    }
+    
 
 }).keyup(function(e){
     showUpgradesPannel = false;
@@ -1496,9 +1547,10 @@ function animate() {
         }
 
         var isClosestAvaiblePlanet = (closestAvailablePlanet != null && (matter.id  == closestAvailablePlanet.id));
+        var isOwnedPlanet = findObjectWithId(ownedPlanets, matter.id)
 
         //Out of screen Right                           || Left             || Up               || Down
-        if(!(pos.x - size > (windowWidth + centerX) / scale || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > (windowHeight + centerY) / scale) || isClosestAvaiblePlanet){
+        if(!(pos.x - size > (windowWidth + centerX) / scale || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > (windowHeight + centerY) / scale) || isClosestAvaiblePlanet || isOwnedPlanet != null){
             matter.health = healthDict[matter.id];
             matter.update();
         }
@@ -1572,49 +1624,78 @@ function animate() {
 
         //Draw arrows pointing to owned planets
         for (let i = 0; i < ownedPlanets.length; i++) {
+            
             const planet = ownedPlanets[i];
-            
-            var screenX = windowWidth / 2;
-            var screenY = windowHeight / 2;
+            var size = planet.radius;
 
-            var x = planet.x - centerX;
-            var y = planet.y - centerX;
+            if(planet.shield)
+                size = planet.shield.radius;
 
-            var arrowPos = {x: 0, y: 0};
+            //Out of screen Right                                           || Left                || Up                  || Down
+            if((planet.x + centerX - size > (windowWidth + centerX) / scale || planet.x + size < 0 || planet.y + size < 0 || planet.y + centerY - size > (windowHeight + centerY) / scale)){
 
-            var xModifier = 1;
-            var yModifier = 1;
+                var padding = 20;
+                var screenWidth = windowWidth / scale - 2 * padding;
+                var screenHeight = windowHeight / scale - 2 * padding;
 
-            if(x < 0)
-                xModifier = -1;
+                var x = planet.x;
+                var y = planet.y;
 
-            if(y < 0)
-                yModifier = -1;
+                var arrowPos = {x: 0, y: 0};
 
-            if(x / y == screenX / screenY) //Corner
-            {
-                arrowPos.x = screenX * xModifier;
-                arrowPos.y = screenY * yModifier;
-            
+                var slopeY = planet.y - screenHeight / 2;
+                var slopeX = planet.x - screenWidth / 2;
+                var slope = Math.abs(slopeY / slopeX);
+                var screenRatio = Math.abs(screenHeight / screenWidth);
+
+                var xModifier = 1;
+                var yModifier = 1;
+
+                if(slopeX < 0)
+                    xModifier = 0;
+
+                if(slopeY < 0)
+                    yModifier = 0;
+
+                if(slope == screenRatio) //Corner
+                {
+                    arrowPos.x = screenWidth * xModifier;
+                    arrowPos.y = screenHeight * yModifier;   
+                }
+                else if(slope < screenRatio) //Top
+                {
+                    if(slopeX < 0)
+                    {
+                        arrowPos.x = padding;
+                        arrowPos.y = (screenWidth * slopeY / slopeX) / -2 + (screenHeight / 2) + (padding);
+                        
+                    }
+                    else{
+                        arrowPos.x = screenWidth + padding;
+                        arrowPos.y = (screenWidth * slopeY / slopeX) / 2 + (screenHeight / 2) + (padding);
+                    }
+
+                }
+                else if(slope > screenRatio) //Top / Bottom
+                {
+                    if(slopeY < 0)
+                    {
+                        arrowPos.x = screenHeight * slopeX / slopeY / -2 + screenHeight;
+                        arrowPos.y = padding;
+                    }
+                    else{
+                        arrowPos.x = screenHeight *  slopeX / slopeY / 2 + screenHeight;
+                        arrowPos.y = screenHeight + padding;
+                    }
+
+                    arrowPos.x += padding;
+                }
+
+                var arrowRotation = Math.atan2(centerY - planet.y, centerX - planet.x) - (45 * Math.PI / 180);
+                var arrowSize = 20;
+
+                drawArrow(arrowPos.x, arrowPos.y, arrowRotation, planetArrowColor);
             }
-            else if(x / y > screenX * xModifier / screenY * yModifier) //Sides
-            {
-                arrowPos.x  = screenX * xModifier;
-                arrowPos.y  = y * yModifier / x * screenX;
-            }
-            else if(x / y < screenX * xModifier / screenY * yModifier) //Top / Bottom
-            {
-                arrowPos.x  = x * xModifier / y * screenY;
-                arrowPos.y  = screenY * yModifier;   
-            }
-
-            arrowPos.x += centerX;
-            arrowPos.y += centerY;
-
-            c.fillStyle = "red";
-            c.beginPath();
-            c.arc(arrowPos.x, arrowPos.y, 10, 0, Math.PI * 2, false);
-            c.fill();
         }
 
     }
@@ -1643,7 +1724,6 @@ function animate() {
         
     });    
         
-
     if(isInSun){
         if(sunTint.amount < .75)
             sunTint.amount += .01;
@@ -1659,8 +1739,6 @@ function animate() {
         c.fillRect(0, 0, canvas.width * scale * 100, canvas.height * scale * 100);
         c.globalAlpha = 1;
     }
-
-    
 
     //Display Stats
     if(spaceShip){
@@ -2179,6 +2257,16 @@ function findClosestUnoccupiedPlanet() {
     return closestPlanet;
 }
 
+function drawArrow(x, y, rotation, color){
+    c.save();
+    c.translate(x, y);
+    c.rotate(rotation);
+    c.fillStyle = color;
+    c.fillRect(0, 0, 10, 20);
+    c.fillRect(0, 0, 20, 10);
+    c.restore();
+}
+
 function drawGrid(x, y, width, height, gridScale){
     c.lineWidth = 1;
     var color = planetColors[1];
@@ -2308,8 +2396,8 @@ function findUpgrade(id){
         var upgrade = {};
         var upgrades;
 
-        var upgradee = findObjectWithId(allWorldObjects.concat(allStructures), id).object;
-
+        var upgradee = findObjectWithId(allWorldObjects.concat(allStructures).concat(spaceShip), id).object;
+            
         if(upgradee.type){
             upgrades = structureUpgrades[upgradee.type];
         }
