@@ -5,7 +5,7 @@ var DoublyList = require('./doublyLinkedList');
 var app = express();
 
 
-//var server = app.listen(process.env.PORT, "0.0.0.0");
+var server = app.listen(process.env.PORT, "0.0.0.0");
 var server = app.listen(8080, "0.0.0.0");
 
 app.use(express.static('public'));
@@ -166,8 +166,7 @@ function generateWorld(){
     var generatedHittableObjects = [];
 
     var shopSize = 200;
-    var shop1 = new Shop(gridSize / 2, gridSize / 2, shopSize, "bulletPenetration");
-    //var shop1 = new Shop(gridSize / 4, gridSize / 4, shopSize, "bulletPenetration"); //TOP LEFT
+    var shop1 = new Shop(gridSize / 4, gridSize / 4, shopSize, "bulletPenetration"); //TOP LEFT
     var shop2 = new Shop(gridSize / 4 * 3, gridSize / 4, shopSize, "cloakTime"); //TOP RIGHT
     var shop3 = new Shop(gridSize / 4, gridSize / 4 * 3, shopSize, "boost"); //BOTTOM LEFT
     var shop4 = new Shop(gridSize / 4 * 3, gridSize / 4 * 3, shopSize, "bulletHoming"); //BOTTOM RIGHT
