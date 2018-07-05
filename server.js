@@ -18,23 +18,23 @@ var worldIds = [];
 console.log("server started");
 
 //Server Config Options
-// var numOfasteroids = 4000;
-// var numOfPlanets = 50;
-// var numOfMoons = 200;
-// var numOfSuns = 10;
-// var numOfCrystals = 100;
-// var gridSize = 15000;
-// var gridBoxScale = 200;
-// var spawnTries = 5;
-
-var numOfasteroids = 10;
-var numOfPlanets = 0;
-var numOfMoons = 0;
-var numOfSuns = 0;
-var numOfCrystals = 0;
-var gridSize = 2000;
-var gridBoxScale = 10;
+var numOfasteroids = 4000;
+var numOfPlanets = 50;
+var numOfMoons = 200;
+var numOfSuns = 10;
+var numOfCrystals = 100;
+var gridSize = 15000;
+var gridBoxScale = 200;
 var spawnTries = 5;
+
+// var numOfasteroids = 10;
+// var numOfPlanets = 0;
+// var numOfMoons = 0;
+// var numOfSuns = 0;
+// var numOfCrystals = 0;
+// var gridSize = 2000;
+// var gridBoxScale = 10;
+// var spawnTries = 5;
 
 var mineProductionRate = 2500;
 var despawnProjectilesRate = 100;
@@ -166,10 +166,10 @@ function generateWorld(){
     var generatedHittableObjects = [];
 
     var shopSize = 200;
-
-    var shop1 = new Shop(gridSize / 4, gridSize / 4, shopSize, "bulletPenetration"); //TOP LEFT
+    var shop1 = new Shop(gridSize / 2, gridSize / 2, shopSize, "bulletPenetration");
+    //var shop1 = new Shop(gridSize / 4, gridSize / 4, shopSize, "bulletPenetration"); //TOP LEFT
     var shop2 = new Shop(gridSize / 4 * 3, gridSize / 4, shopSize, "cloakTime"); //TOP RIGHT
-    var shop3 = new Shop(gridSize / 4, gridSize / 4 * 3, shopSize, "boostLegnth"); //BOTTOM LEFT
+    var shop3 = new Shop(gridSize / 4, gridSize / 4 * 3, shopSize, "boost"); //BOTTOM LEFT
     var shop4 = new Shop(gridSize / 4 * 3, gridSize / 4 * 3, shopSize, "bulletHoming"); //BOTTOM RIGHT
 
     generatedWorldObjects.shops.push(shop1, shop2, shop3, shop4);
@@ -183,9 +183,9 @@ function generateWorld(){
         var color = sunColors[colorindex];
         var type = "sun";
         var size = getRndInteger(500, 700);
-        var health = size * 2;
+        var health = size / 4;
 
-        var drops = {stardust: 1};
+        var drops = {stardust: 20};
         generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
         
     }
@@ -194,7 +194,7 @@ function generateWorld(){
         var colorindex = Math.round(getRndInteger(0, planetColors.length - 1));
         var color = planetColors[colorindex];
         var planetSize = getRndInteger(100, 300);
-        var planetHealth = planetSize * 10;
+        var planetHealth = planetSize * 18;
         
         var drops = {asteroidBits: Math.round(planetSize * 6), water: Math.round(planetSize * 2), earth: Math.round(planetSize * 3), iron: Math.round(planetSize * 2.5)};
 
@@ -220,9 +220,9 @@ function generateWorld(){
         var type = "crystal";
         var size = getRndInteger(10, 20);
         var health = size * 15;
-        var drops = {crystal: Math.round(size / 2)};
+        var drops = {crystal: Math.round(size / 1.2)};
 
-        var gems = getRndInteger(0, 1);
+        var gems = getRndInteger(0, 3);
 
         if(gems > 0)
             drops.gem = gems;
@@ -235,7 +235,7 @@ function generateWorld(){
         var colorindex = getRndInteger(0, moonColors.length - 1);
         var color = moonColors[colorindex];
         var size = getRndInteger(50, 75);
-        var health = size;
+        var health = size * 5;
         var type = "moon";
         var drops = {asteroidBits: Math.round(size * 1.2), water: Math.round(size / 4), iron: Math.round(size * .8)};
 
@@ -267,7 +267,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {gem: 1000, iron: 10000, asteroidBits: 1000, earth: 1000, water: 10000};
+    this.drops = {};//{gem: 1000, iron: 10000, asteroidBits: 1000, earth: 1000, water: 10000, crystal: 100000};
 
     this.shopUpgrades = {
 
@@ -279,7 +279,7 @@ function Player(x, y, rotation, level, id, worldId){
             level: 0,
             value: 0
         },
-        boostLegnth: {
+        boost: {
             level: 0,
             value: 0
         },
@@ -647,15 +647,19 @@ var shopUpgrades = {
             value: 0
         },
         {
-            costs: {iron: 20},
+            costs: {crystal: 5},
             value: 2
         },
         {
-            costs: {iron: 20},
+            costs: {crystal: 10},
             value: 4
         },
         {
-            costs: {iron: 20},
+            costs: {crystal: 15},
+            value: 6
+        },
+        {
+            costs: {crystal: 20},
             value: 6
         }
     ],
@@ -663,10 +667,42 @@ var shopUpgrades = {
         {
             value: 0
         },
+        {
+            costs: {crystal: 5},
+            value: 3000
+        },
+        {
+            costs: {crystal: 10},
+            value: 4000
+        },
+        {
+            costs: {crystal: 15},
+            value: 5000
+        },
+        {
+            costs: {crystal: 20},
+            value: 6000
+        },
     ],
-    boostLegnth: [
+    boost: [
         {
             value: 0
+        },
+        {
+            costs: {crystal: 5},
+            value: 40
+        },
+        {
+            costs: {crystal: 10},
+            value: 60
+        },
+        {
+            costs: {crystal: 15},
+            value: 90
+        },
+        {
+            costs: {crystal: 20},
+            value: 110
         },
     ],
     bulletHoming: [
@@ -712,7 +748,7 @@ function newConnetcion(socket){
 
         var lobbyClient = findObjectWithId(worldsData[data.worldId].lobbyClients, socket.id);
 
-        var level = 9;
+        var level = 0;
 
         if(lobbyClient){
             worldsData[data.worldId].lobbyClients.splice(lobbyClient.index, 1);
@@ -802,9 +838,9 @@ function newConnetcion(socket){
 
         var player = findObjectWithId(worldsData[data.worldId].hittableObjects, data.id).object;
     
-        var addamount = player.maxHealth / 15;
+        var addamount = Math.round(player.maxHealth / 15);
         var costType = "stardust";
-        var healCost = 4;
+        var healCost = addamount;
 
         if(player.health != player.maxHealth){
 
@@ -823,10 +859,10 @@ function newConnetcion(socket){
                 io.sockets.connected[socket.id].emit("syncItem", {item: costType, amount: player.drops[costType]});
             }
             else
-                io.sockets.connected[socket.id].emit("unsuccessfulUpgrade", "Not enough " + costType);
+                io.sockets.connected[socket.id].emit("returnMsg", "Not enough " + costType);
         }
         else
-            io.sockets.connected[socket.id].emit("unsuccessfulUpgrade", "Already full health");
+            io.sockets.connected[socket.id].emit("returnMsg", "Already full health");
 
     });
     
@@ -874,7 +910,7 @@ function newConnetcion(socket){
             });
 
             if(!hasLandingPad){
-                io.sockets.connected[data.ownerId].emit("unsuccessfulUpgrade", "Place landing pad first");
+                io.sockets.connected[data.ownerId].emit("returnMsg", "Place landing pad first");
                 return;
             }
         }
@@ -919,7 +955,7 @@ function newConnetcion(socket){
 
                 if(planet.hasMaxStructure(data.type, maxPlanetObjects[data.type]))
                 {
-                    io.sockets.connected[data.ownerId].emit("unsuccessfulUpgrade", "Planet aready has max " + data.type + 's');
+                    io.sockets.connected[data.ownerId].emit("returnMsg", "Planet aready has max " + data.type + 's');
                     return;
                 }
                 else{
@@ -965,7 +1001,7 @@ function newConnetcion(socket){
             
         }
         else
-            io.sockets.connected[data.ownerId].emit("unsuccessfulUpgrade", "Not enough resources");
+            io.sockets.connected[data.ownerId].emit("returnMsg", "Not enough resources");
         
 
     });
@@ -1013,6 +1049,12 @@ function newConnetcion(socket){
 
         if(hasResourceCounter == neededResources){
 
+            for (var cost in costsForNextLvl) {
+                if (costsForNextLvl.hasOwnProperty(cost)) {
+                    player.drops[cost] -= costsForNextLvl[cost];
+                }
+            }
+
             player.shopUpgrades[data.type].level++;
             level = player.shopUpgrades[data.type].level;
             player.shopUpgrades[data.type].value = shopUpgrades[data.type][level].value;
@@ -1028,7 +1070,7 @@ function newConnetcion(socket){
 
         }
         else{
-            io.sockets.connected[socket.id].emit("unsuccessfulUpgrade", "Not enough resources");
+            io.sockets.connected[socket.id].emit("returnMsg", "Not enough resources");
         }
 
     });
@@ -1065,7 +1107,7 @@ function newConnetcion(socket){
             syncDamage(data.worldId, [data.id]);
         }
         else{
-            io.sockets.connected[data.senderId].emit("unsuccessfulUpgrade", "Not enough resources");
+            io.sockets.connected[data.senderId].emit("returnMsg", "Not enough resources");
         }
         
     });
@@ -1118,6 +1160,43 @@ function newConnetcion(socket){
         });
 
         socket.broadcast.to(data.worldId).emit('planetOccupancy', data);
+
+    });
+
+    socket.on('cloak', function(data){
+
+        var player = findObjectWithId(worldsData[data.worldId].clients, socket.id);
+
+        if(!player){
+            console.log('\x1b[31m%s\x1b[0m', "cloaked player not found");
+            return;
+        }
+
+        var cloakLevel = player.object.shopUpgrades["cloakTime"].level;
+
+        if(cloakLevel > 0)
+        {
+
+            var rtrnData = {
+                playerId: socket.id,
+                cloaked: true
+            }
+    
+            console.log(player.object.shopUpgrades["cloakTime"].value);
+
+            socket.broadcast.to(data.worldId).emit('cloak', rtrnData);
+
+            setTimeout(function() {
+                rtrnData.cloaked = false;
+                io.to(data.worldId).emit('cloak', rtrnData);
+
+            }, player.object.shopUpgrades["cloakTime"].value);
+            
+        }
+        else{
+            io.sockets.connected[data.senderId].emit("returnMsg", "Purchase cloak ability at shop first.");
+        }
+
 
     });
 
@@ -1455,7 +1534,8 @@ function syncDamage(worldId, changedIds){
                     radius: changedObject.object.radius, 
                     x: changedObject.object.x, 
                     y: changedObject.object.y, 
-                    id: changedObject.object.id
+                    id: changedObject.object.id,
+                    active: true
                 }
 
                 changedObjects.push(healthObj);
@@ -1476,7 +1556,8 @@ function syncDamage(worldId, changedIds){
                 radius: worldHittableObjects[i].radius, 
                 x: worldHittableObjects[i].x, 
                 y: worldHittableObjects[i].y, 
-                id: worldHittableObjects[i].id
+                id: worldHittableObjects[i].id,
+                active: true
             }
 
             healthData.hittableObjects.push(healthObj);

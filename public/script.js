@@ -110,7 +110,7 @@ var spaceShip;
 var allWorldObjects = [];
 var allStructures = [];
 
-var PLANET_GRAVITY = .0025;
+var PLANET_GRAVITY = 0;//.0025;
 var PLANET_GRAVITY_EXPONENT = 2.5;
 
 var MAX_GRAVITATIONAL_DISTACNE = 600;
@@ -185,6 +185,15 @@ var scaleSpeed = 3;
 var shopUpgradeButtonClicked = false;
 var shopOpen = {shopRef: null, type: null, open: false};
 
+var cloaked = false;
+var cloakTime = 0;
+var cloakCoolDown = 1000;
+var cloakCoolDownTime = cloakCoolDown;
+
+var boost = false;
+var boostAmount = 0;
+var boostReady = false;
+
 function setup(){
     socket = io.connect('http://localhost:8080');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
@@ -202,7 +211,7 @@ function setup(){
     socket.on("items", onAquiredItems);
     socket.on("upgradeInfo", receiveUpgradeInfo)
     socket.on("upgradeSync", upgradeSync);
-    socket.on("unsuccessfulUpgrade", unsuccessfulUpgrade);
+    socket.on("returnMsg", returnMsg);
     socket.on("serverDisconect", forceDisconnect);
     socket.on("planetOccupancy", updatePlanetOccupier);
     socket.on("mineProduce", mineProduce);
@@ -210,6 +219,8 @@ function setup(){
     socket.on("newWorldObjectSync", newWorldObjectSync);
     socket.on("syncItem", syncItem);
     socket.on('shopUpgrade', shopUpgrade);
+    socket.on('cloak', cloak);
+
     centerX = (canvas.width / 2 / scale);
     centerY = (canvas.height / 2 / scale);
 
@@ -290,11 +301,9 @@ function setupLocalWorld(data){
     allWorldObjects = getAllWorldObjects();
     allStructures = getAllStructures();
 }
-
 function syncItem(data){
     playerItems[data.item] = data.amount;
 }
-
 function newWorldObjectSync(data){
     
     if(data.newObject.type == "planet"){
@@ -354,7 +363,6 @@ function newWorldObjectSync(data){
 
     allWorldObjects = getAllWorldObjects();
 }
-
 function receiveDamageSync(data){
     for (let i = 0; i < data.hittableObjects.length; i++) {
         const sentHittableObject = data.hittableObjects[i];
@@ -388,7 +396,6 @@ function receiveDamageSync(data){
         }
     }
 }
-
 function damagedOwnPlanet(attackOnShield, health, id){
 
     var ownedPlanet = findObjectWithId(ownedPlanets, id.object);
@@ -401,7 +408,6 @@ function damagedOwnPlanet(attackOnShield, health, id){
     planetArrowColor = "#ff3838";
     
 }
-
 function showWorld(){
 
 //cancelAnimationFrame(requestAnimationFrameId);
@@ -411,7 +417,6 @@ function showWorld(){
     }
     animate();
 }
-
 function startLocalPlayer(data){
     gridPos = new Vector(gridSize / -2 - data.x, gridSize / -2 - data.y);//new Vector(gridSize / -2, gridSize / -2);
     upgradeables.push(clientId);
@@ -425,7 +430,6 @@ function startLocalPlayer(data){
 function newPlayer(data){
     otherPlayers.push(new NetworkSpaceShip(data.x, data.y, data.maxHealth, data.health, data.rotation, data.level, data.radius, data.username, data.id));
 }
-
 function respawn(){
 
     scale = 1;
@@ -437,7 +441,6 @@ function respawn(){
     $("canvas").css("filter", "blur(5px)");
 
 }
-
 function updatePlayerPosition(data){
     otherPlayer = findObjectWithId(otherPlayers, data.id);
 
@@ -469,14 +472,12 @@ function destroyNetworkedProjectile(data){
     else if(deadProjOwn)
         projectiles.splice(deadProjOwn.index, 1);
 }
-
 function updatePlanetOccupier(data){
      worldObjects.planets.forEach(planet => {
         if(planet.id == data.planetId)
             planet.occupiedBy = data.playerId;
     });
 }
-
 function spawnNetworkedStructure(data)
 {
     planet = findObjectWithId(worldObjects.planets, data.planetId)
@@ -494,17 +495,14 @@ function spawnNetworkedStructure(data)
 
     allStructures = getAllStructures();
 }
-
 function receiveUpgradeInfo(data){
     structureUpgrades = data.structureUpgrades;
     playerUpgrades = data.playerUpgrades;
     shopUpgrades = data.shopUpgrades;
 }
-
-function unsuccessfulUpgrade(data){
+function returnMsg(data){
     displayMessage(data, 10, 5);
 }
-
 function upgradeSync(data){
 
     var allUpgradeables = allWorldObjects.concat(allStructures.concat(otherPlayers));
@@ -535,7 +533,6 @@ function upgradeSync(data){
         }
     }
 }
-
 function shopUpgrade(data){
     spaceShip.shopUpgrades[data.type].value = data.value;
     spaceShip.shopUpgrades[data.type].level = data.level;
@@ -547,7 +544,6 @@ function shopUpgrade(data){
     }
     
 }
-
 function mineProduce(data){
     data.forEach(mine => {
         localMine = findObjectWithId(producingMines, mine.id);
@@ -565,18 +561,42 @@ function mineProduce(data){
     });
     
 }
-
 function onAquiredItems(data){
     for (var drop in data.drops) {
         if (data.drops.hasOwnProperty(drop)) {
-            if(playerItems[drop])
-                playerItems[drop] += Math.round(data.drops[drop] * data.precent);
-            else
-                playerItems[drop] = Math.round(data.drops[drop] * data.precent);
+            if(Math.round(data.drops[drop] * data.precent) > 0){
+                if(playerItems[drop])
+                    playerItems[drop] += Math.round(data.drops[drop] * data.precent);
+                else
+                    playerItems[drop] = Math.round(data.drops[drop] * data.precent);
+            }
         }
     } 
 }
+function cloak(data){
+    var player = findObjectWithId(otherPlayers.concat(spaceShip), data.playerId);
+    var hittablePlayer = findObjectWithId(hittableObjects, data.playerId);
 
+    if(player){
+
+        player = player.object;
+
+        if(data.cloaked)
+        {
+            if(clientId != player.id && hittablePlayer)
+                hittablePlayer.object.active = false;
+            player.alpha = 0;
+        }
+        else{
+            if(clientId != player.id && hittablePlayer)
+                hittablePlayer.object.active = true;
+            player.alpha = 1;
+            
+            if(clientId == player.id)
+                cloaked = false;
+        }
+    }
+}
 function playerExited(data){
 
     otherPlayer = findObjectWithId(otherPlayers, data.clientId);
@@ -606,10 +626,10 @@ function playerExited(data){
         allStructures = getAllStructures();
     }
 }
-
 function forceDisconnect(data){
     location.reload();
 } 
+
 //Send Data Functions
 function sendPlayerPosition(pos, rotation){
     var data = {
@@ -636,7 +656,6 @@ function sendProjectile(x, y, vel, size, color, id, shooterId){
 
     socket.emit('spawnProj', data);
 }
-
 function sendProjectileHit(projectileId, subjectId){
     var data = {
         id: subjectId,
@@ -728,7 +747,27 @@ $(document).keypress(function(e){
             planetEditMode = false;
         }
     }
-    else{
+    else if(spaceShip){
+
+        if(e.keyCode == 99 && !cloaked && cloakCoolDownTime >= cloakCoolDown) //C
+        {
+            if(spaceShip.shopUpgrades["cloakTime"].level > 0){
+                spaceShip.alpha = .1;
+
+                cloakTime = 0;
+                cloaked = true;
+                cloakCoolDownTime = 0;
+                
+                var data = 
+                {
+                    worldId: worldId
+                }
+
+                socket.emit("cloak", data);
+            }
+            else
+                displayMessage("Purchase cloak ability at shop first", 10, 2);
+        }
 
         if(e.keyCode == 115){ //S
 
@@ -782,8 +821,30 @@ $(document).keypress(function(e){
     
 
 }).keyup(function(e){
+
     showUpgradesPannel = false;
     clickedUpgrade = false;
+});
+
+$(document).on('keydown', function(e){
+
+    if(spaceShip){
+        if(spaceShip.shopUpgrades["boost"].level > 0){
+            if(boostReady)
+                boost = e.shiftKey
+        }
+        else{
+            if(e.shiftKey)
+                displayMessage("Purchase boost ability at shop first", 10, 2);
+        }
+    }
+
+});
+
+$(document).on('keyup', function(e){
+    if(boost && spaceShip){
+        boost = e.shiftKey;
+    }
 });
 
 function requestStructureSpawn(planet, x, y, rotation, type, isFacade, ownerId){
@@ -802,7 +863,6 @@ function requestStructureSpawn(planet, x, y, rotation, type, isFacade, ownerId){
 
     socket.emit("requestSpawnStructure", spawnData)
 }
-
 
 //------------------------------------------------------- Constructor Objects  ------------------------------------------------------
 function Planet(coordX, coordY, radius, color, health, maxHealth, id){
@@ -1200,7 +1260,7 @@ function Projectile(x, y, velocity, radius, color, id){
     this.checkForCollisions = function(){   //Check for collisions in Hittable Objects
         for(var i = 0; i < hittableObjects.length; i++){
 
-            if(this.isFriendly(hittableObjects[i].id) || this.hitObjects.contains(hittableObjects[i].id))
+            if(this.isFriendly(hittableObjects[i].id) || this.hitObjects.contains(hittableObjects[i].id) || !hittableObjects[i].active)
                 continue;
 
             var pos = cordsToScreenPos(hittableObjects[i].x, hittableObjects[i].y);
@@ -1269,6 +1329,8 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, ra
     this.id = id;
     this.level = level;
 
+    this.alpha = 1;
+
     this.coordX = coordX;
     this.coordY = coordY;
     
@@ -1276,6 +1338,7 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, ra
     this.draw = function(){
         var healthBarWidth = 50;
 
+        c.globalAlpha = this.alpha;
         c.translate(this.x, this.y);
         c.rotate(this.rotation);
         c.drawImage(getImage('spaceship' + this.level), -this.radius, -this.radius, this.radius * 2, this.radius * 2);
@@ -1284,23 +1347,26 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, ra
 
         if(this.health != this.maxHealth)
             displayBar(this.x - healthBarWidth / 2, this.y - (this.radius + 10), healthBarWidth, 5, this.health / this.maxHealth, "#36a52c");
+
     }
     this.update = function(){
         var pos = cordsToScreenPos(this.coordX, this.coordY);
         this.x = pos.x;
         this.y = pos.y;
 
-        this.draw();
+        if(this.alpha > 0){
+            this.draw();
 
-        //Display username above person
-        c.font = "20px Arial";
-        c.fillStyle = "white";
-        c.globalAlpha = .5;
-        c.textAlign = "center"; 
-        c.fillText(this.username, this.x, this.y - radius - 20);
-
-        c.textAlign = "left"; 
-        c.globalAlpha = 1;
+            //Display username above person
+            c.font = "20px Arial";
+            c.fillStyle = "white";
+            c.globalAlpha = .5;
+            c.textAlign = "center"; 
+            c.fillText(this.username, this.x, this.y - radius - 20);
+    
+            c.textAlign = "left"; 
+            c.globalAlpha = 1;
+        }
     }
 }
 function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id){
@@ -1400,6 +1466,8 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     this.turningSpeed = turningSpeed;
     this.id = id;
 
+    this.alpha = 1;
+
     this.shopUpgrades = {
         bulletPenetration: {
             level: 0,
@@ -1409,7 +1477,7 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
             level: 0,
             value: 0
         },
-        boostLegnth: {
+        boost: {
             level: 0,
             value: 0
         },
@@ -1427,12 +1495,13 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
         
         var rad = this.rotation + shortAngleDist(this.rotation, mouseRad) * this.turningSpeed;
 
+        c.globalAlpha = this.alpha;
         c.translate(centerX, centerY);
         c.rotate(rad);
         c.drawImage(getImage('spaceship' + this.level), -this.radius, -this.radius, this.radius * 2, this.radius * 2);
         c.rotate(-rad);
         c.translate(-centerX, -centerY);
-
+        c.globalAlpha = 1;
         this.rotation = rad;
     }
     this.update = function(){
@@ -1440,7 +1509,6 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     }
 
 }
-
 function Shop(coordX, coordY, radius, upgradeType){
     this.x;
     this.y;
@@ -1473,8 +1541,8 @@ function Shop(coordX, coordY, radius, upgradeType){
         if(spaceShip){
             if(isCollidingCircles({pos: {x: centerX, y: centerY}, radius: spaceShip.radius}, this))
             {
-                var size = 100;
-                var padding = 20;
+                var size = windowHeight / scale / 8;
+                var padding = windowHeight / scale / 40;
 
                 c.globalAlpha = .5;
                 c.drawImage(getImage("S"), padding, windowHeight / scale - size - padding, size, size); 
@@ -1506,6 +1574,7 @@ var isScaling = true;
 
 
 function animate() {
+
     canvas.width = innerWidth;
     canvas.height = innerHeight;
 
@@ -1545,6 +1614,9 @@ function animate() {
         var mousePullyTarget = 0;
 
         if(currentPlanet){
+
+            spaceShip.speed = 10;
+
             currentPlanet.structures.forEach(structure => {
                 if(!structureUpgradeables.contains(structure.id))
                     structureUpgradeables.push(structure.id);
@@ -1566,7 +1638,13 @@ function animate() {
             targetScale = 50 / spaceShip.radius;
             structureUpgradeables = [];
 
-            if(mouse.clicked){
+            if(mouse.clicked || boost){
+
+                if(boost)
+                    spaceShip.speed = spaceShip.shopUpgrades["boost"].value + playerUpgrades[spaceShip.level].speed;
+                else
+                    spaceShip.speed = playerUpgrades[spaceShip.level].speed;
+
 
                 var dirrectionX = Math.cos(spaceShip.rotation - Math.PI / 2) * spaceShip.speed / 100;
                 var dirrectionY = Math.sin(spaceShip.rotation - Math.PI / 2) * spaceShip.speed / 100;
@@ -1584,8 +1662,9 @@ function animate() {
         mousePully += stepFactorY;
 
         forceVector = new Vector(mousePullx, mousePully);
-        if(forceVector.getMagnitude() > 10){
-            forceVector.setMagnitude(10);
+
+        if(forceVector.getMagnitude() > spaceShip.speed){
+            forceVector.setMagnitude(spaceShip.speed);
         }
         
         mousePullx = forceVector.x;
@@ -1605,13 +1684,13 @@ function animate() {
             if(planetDist <= MAX_GRAVITATIONAL_DISTACNE){
                 var planetScaleFactor = (1 - planetDist / MAX_GRAVITATIONAL_DISTACNE) * PLANET_GRAVITY * planet.radius / 100; //Math.pow((1 - planetDist / MAX_GRAVITATIONAL_DISTACNE) * PLANET_GRAVITY, PLANET_GRAVITY_EXPONENT);
 
-                spaceshipVelocity.x += x * planetScaleFactor;
-                spaceshipVelocity.y += y * planetScaleFactor;
-            }
-            
+                if(planetScaleFactor > 0){
+                    spaceshipVelocity.x += x * planetScaleFactor;
+                    spaceshipVelocity.y += y * planetScaleFactor;
+                }
+            }   
             
         });
-        
 
         spaceShip.x = (gridPos.x + gridSize / 2) * -1;
         spaceShip.y = gridPos.y + gridSize / 2;
@@ -1674,13 +1753,10 @@ function animate() {
             matter.update();
         }
 
-
     });
 
     hittableObjects.forEach(function(obj){
-
-        if(obj.radius && statsView){
-
+        if(obj.radius && statsView && obj.active){
             var pos = cordsToScreenPos(obj.x, obj.y);
 
             c.beginPath();
@@ -1715,7 +1791,6 @@ function animate() {
     }
     
     if(closestAvailablePlanet && !currentPlanet){
-
         var size = Math.round(50 / scale);
 
         c.font = size + "px Arial";
@@ -1909,17 +1984,16 @@ function animate() {
         }
     
         if(currentPlanet && !planetEditMode){
-            var size = 100;
+            var size = windowHeight / 8;
             var padding = 20;
             c.globalAlpha = .5;
-            c.drawImage(getImage("E"), padding, windowHeight / scale - size - padding, size, size); 
+            c.drawImage(getImage("E"), padding, windowHeight - size - padding, size, size); 
             c.globalAlpha = 1;
         }
 
         if(planetEditMode){
     
             //Draw the structures aviable for placement on a planet w/ their costs
-    
             var imageSizes = canvas.height / 7.5;
             var padding = canvas.height / 20;
 
@@ -1978,6 +2052,66 @@ function animate() {
             c.fillText("x: " + Math.round(spaceShip.x) + " y: " + Math.round(spaceShip.y), 5, canvas.height - 5);
         }
     
+        var cloakedBarDisplayed = false;
+
+        if(cloaked)
+        {
+            cloakedBarDisplayed = true;
+            
+            var width = canvas.width / 3;
+            displayBar(centerX * scale - width / 2, 10, width, 20, (spaceShip.shopUpgrades.cloakTime.value - cloakTime) / spaceShip.shopUpgrades.cloakTime.value, "#77e3ff");
+
+            if(cloakTime < spaceShip.shopUpgrades.cloakTime.value)
+                cloakTime += 16;
+        }
+        else if(cloakCoolDownTime < cloakCoolDown){
+            cloakedBarDisplayed = true;
+
+            cloakCoolDownTime++;
+
+            var width = canvas.width / 3;
+            displayBar(centerX * scale - width / 2, 10, width, 20, cloakCoolDownTime / cloakCoolDown, "#2fc4a8");
+        }
+
+        var boostLegnth = spaceShip.shopUpgrades.boost.value;
+        var boostRechargeLegnth = spaceShip.shopUpgrades.boost.value * 6;
+
+        var boostBarY = 10;
+
+        if(cloakedBarDisplayed)
+            boostBarY = 40;
+
+        if(boostReady && boostAmount <= boostLegnth)
+        {
+            if(boostLegnth != boostAmount){
+                var width = canvas.width / 3;
+                displayBar(centerX * scale - width / 2, boostBarY, width, 20, boostAmount / boostLegnth, "#f9dd6b");
+            }
+
+            if(boost){
+                if(boostAmount > 0)
+                    boostAmount--;
+                else{
+                    boostReady = false;
+                    boost = false;
+                    boostAmount = 0;
+                }
+            }
+            
+        }
+        else if (boostRechargeLegnth > 0 && !boostReady){
+            if(boostAmount < boostRechargeLegnth)
+                boostAmount++;
+            else{
+                boostAmount = boostLegnth;
+                boostReady = true;
+            }
+
+            var width = canvas.width / 3;
+            displayBar(centerX * scale - width / 2, boostBarY, width, 20, boostAmount / boostRechargeLegnth, "#937f2a");
+        }
+
+
         if(playerReloadTimer > 0){
             if(playerReloadTimer - spaceShip.fireRate > 0)
                 playerReloadTimer -= spaceShip.fireRate;
@@ -2001,17 +2135,13 @@ function displayMessage(text, timeToFade, fadeSpeed){
     playerMessageTimer = timeToFade;
 }
 
-var expandedUpgrades = [];
-var canClickArrow = true;
-
-
 function drawShopPanel(type){
 
-    var width = windowWidth / 1.5 / scale;
-    var height = windowHeight / 1.5 / scale;
+    var width = windowWidth / 1.5;
+    var height = windowHeight / 1.5;
     
     var currentLevel = spaceShip.shopUpgrades[type].level;
-    var imageSize = width / 4;
+    var imageSize = height / 3;
 
     var label;
 
@@ -2023,10 +2153,36 @@ function drawShopPanel(type){
     c.strokeRect((windowWidth - width) / 2, (windowHeight - height) / 2, width, height);
     
     var padding = imageSize / 10;
-    var imageY = (windowHeight / scale - height) / 2 + (height * .3) - imageSize / 2;
+    var imageY = (windowHeight - height) / 2 + (height * .35) - imageSize / 2;
 
     c.globalAlpha = .9;
 
+    //Name
+
+    var name = "";
+
+    switch (type) {
+        case "bulletPenetration":
+            name = "Bullet Penetration"
+        break;
+        case "boost":
+            name = "Speed Boost"
+        break;
+        case "cloakTime":
+            name = "Invisibility"
+        break;
+        case "bulletHoming":
+            name = "Homing Bullets"
+        break;
+    }
+
+    c.font = height / 20 + "px Helvetica";
+    c.textAlign = "center";
+    c.fillStyle = "white";
+    c.fillText(name, windowWidth / 2, (windowHeight - height) / 2 + height * .1);
+    c.textAlign = "left";
+
+    c.fillStyle = "#516689";
 
     //Image(s)
     if(currentLevel + 1 >= shopUpgrades[type].length)
@@ -2034,9 +2190,9 @@ function drawShopPanel(type){
         c.fillRect(windowWidth / 2 - imageSize / 2 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
         c.drawImage(getImage(type + currentLevel), windowWidth / 2 - imageSize / 2, imageY, imageSize, imageSize);
 
-        var textWidth = width / 5;
+        var textWidth = height / 5;
 
-        c.font = width / 40 + "px Helvetica";
+        c.font = height / 40 + "px Helvetica";
         c.textAlign = "center";
         c.fillStyle = "white";
         c.fillText("Fully Upgraded", windowWidth / 2, (windowHeight - height) / 2 + height * .8);
@@ -2045,16 +2201,18 @@ function drawShopPanel(type){
     else{
         if(currentLevel > 0){
 
-            var arrowSize = 30;
+            var arrowSize = height / 20;
 
             label = "Upgrade";
             c.fillRect((windowWidth - width) / 2 + imageSize / 2 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
             c.drawImage(getImage(type + currentLevel), (windowWidth - width) / 2 + imageSize / 2, imageY, imageSize, imageSize);
+            
+            c.fillRect((windowWidth - width) / 2 + width - imageSize * 1.5 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
+            c.drawImage(getImage(type + (currentLevel + 1)), (windowWidth - width) / 2 + width - imageSize * 1.5, imageY, imageSize, imageSize);
+
             c.globalAlpha = 1;
             drawArrow(windowWidth / 2 + arrowSize, imageY + imageSize / 2, 135 * Math.PI / 180, "white", arrowSize);
             c.globalAlpha = .9;
-            c.fillRect((windowWidth - width) / 2 + width - imageSize * 1.5 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
-            c.drawImage(getImage(type + (currentLevel + 1)), (windowWidth - width) / 2 + width - imageSize * 1.5, imageY, imageSize, imageSize);
         }
         else{
             label = "Buy";
@@ -2063,10 +2221,10 @@ function drawShopPanel(type){
             c.drawImage(getImage(type + currentLevel), windowWidth / 2 - imageSize / 2, imageY, imageSize, imageSize);
         }
     
-        var buttonWidth = width / 4;
-        var buttonHeight = width / 20;
+        var buttonWidth = height / 2.5;
+        var buttonHeight = height / 10;
         var buttonX = windowWidth / 2 - buttonWidth / 2;
-        var buttonY = (windowHeight / scale - height) / 2 + (height * .8) - buttonHeight;
+        var buttonY = (windowHeight - height) / 2 + (height * .8) - buttonHeight;
     
         var mouseX = mouse.x * scale;
         var mouseY = mouse.y * scale;
@@ -2100,15 +2258,44 @@ function drawShopPanel(type){
             c.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
         }
             
-        c.font = width / 40 + "px Helvetica";
+        c.font = height / 30 + "px Helvetica";
         c.textAlign = "center";
         c.fillStyle = "white";
         c.fillText(label, buttonX + buttonWidth / 2, buttonY + buttonHeight / 1.5);
         c.textAlign = "left";
+
+        //Costs
+        
+
+        var upgradeCosts = shopUpgrades[type][currentLevel + 1].costs;
+        var costSize = height / 15;
+        var costPadding = height / 25;
+
+        var costX = (windowWidth - width) / 2 + costPadding * 2;
+        var costY = (windowHeight - height) / 2 + (height * .65);
+        c.fillStyle = "#5784ba";
+        c.fillRect(costX - costPadding, costY - costPadding, width / 4, height / 2.8);
+
+        if(upgradeCosts){
+            for (var cost in upgradeCosts) {
+                if (upgradeCosts.hasOwnProperty(cost)) {
+                    c.drawImage(getImage(cost), costX, costY, costSize, costSize);
+                    c.font = costSize / 1.5 + "px Helvetica";
+                    c.fillStyle = "white";
+                    c.fillText(upgradeCosts[cost], costX + costSize + costPadding, costY + costSize / 1.3);
+    
+                    costY += costSize + costPadding;
+                }
+            }
+        }
     }
+    
     
     c.globalAlpha = 1;
 }
+
+var expandedUpgrades = [];
+var canClickArrow = true;
 
 function showUpgrades(){
     numberOfUpgrades = upgradeableObjects().length;
