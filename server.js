@@ -4,12 +4,9 @@ var DoublyList = require('./doublyLinkedList');
 
 var app = express();
 
-
 var server = app.listen(process.env.PORT, "0.0.0.0");
-var server = app.listen(8080, "0.0.0.0");
-
+//var server = app.listen(8080, "0.0.0.0");
 app.use(express.static('public'));
-
 var io = require('socket.io').listen(server);   //socket(server);
 
 var worldsData = {};
