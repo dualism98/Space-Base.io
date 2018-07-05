@@ -77,7 +77,7 @@ var worldId;
 function getAllWorldObjects(){
     var objects = [];
 
-    objects = worldObjects.asteroids.concat(worldObjects.planets);
+    objects = worldObjects.asteroids.concat(worldObjects.planets).concat(worldObjects.shops);
 
     if(spaceShip)
         objects.push(spaceShip);
@@ -152,6 +152,7 @@ var structureUpgradeables = [];
 
 var structureUpgrades;
 var playerUpgrades;
+var shopUpgrades;
 
 var upgradeableObjects = function(){ return upgradeables.concat(structureUpgradeables); }
 
@@ -181,6 +182,9 @@ var targetScale = 1;
 var scaleTime = 50;
 var scaleSpeed = 3;
 
+var shopUpgradeButtonClicked = false;
+var shopOpen = {shopRef: null, type: null, open: false};
+
 function setup(){
     socket = io.connect('http://localhost:8080');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
@@ -205,7 +209,7 @@ function setup(){
     socket.on("respawn", respawn);
     socket.on("newWorldObjectSync", newWorldObjectSync);
     socket.on("syncItem", syncItem);
-
+    socket.on('shopUpgrade', shopUpgrade);
     centerX = (canvas.width / 2 / scale);
     centerY = (canvas.height / 2 / scale);
 
@@ -239,7 +243,17 @@ function setupLocalWorld(data){
     }
 
     //Spawn World Objects
-    worldObjects = {asteroids: [], planets: []};// = data.worldObjects;
+    worldObjects = {asteroids: [], planets: [], shops: []};// = data.worldObjects;
+
+    //Shops
+    for(var i = 0; i < data.worldObjects.shops.length; i++){
+
+        var shop = data.worldObjects.shops[i];
+
+        var shopObject = new Shop(shop.x, shop.y, shop.radius, shop.upgradeType);
+        worldObjects.shops.push(shopObject);
+    }
+
 
     //asteroids
     for(var i = 0; i < data.worldObjects.asteroids.length; i++){
@@ -484,6 +498,7 @@ function spawnNetworkedStructure(data)
 function receiveUpgradeInfo(data){
     structureUpgrades = data.structureUpgrades;
     playerUpgrades = data.playerUpgrades;
+    shopUpgrades = data.shopUpgrades;
 }
 
 function unsuccessfulUpgrade(data){
@@ -519,6 +534,18 @@ function upgradeSync(data){
             }
         }
     }
+}
+
+function shopUpgrade(data){
+    spaceShip.shopUpgrades[data.type].value = data.value;
+    spaceShip.shopUpgrades[data.type].level = data.level;
+
+    for (var cost in data.costs) {
+        if (data.costs.hasOwnProperty(cost)) {
+            playerItems[cost] -= data.costs[cost];
+        }
+    }
+    
 }
 
 function mineProduce(data){
@@ -670,8 +697,6 @@ $("#startGame").click(function(){
 $(document).keypress(function(e){
 
     if(currentPlanet && spaceShip){
-
-        
         if(e.keyCode == 104) // H
         {
             if(currentPlanet.health < currentPlanet.maxHealth)
@@ -705,6 +730,30 @@ $(document).keypress(function(e){
     }
     else{
 
+        if(e.keyCode == 115){ //S
+
+            if(!shopOpen.open){
+                var shopInRange = false;
+
+                worldObjects.shops.forEach(shop => {
+    
+                    if(shop.isInRange){
+                        shopOpen.type = shop.upgradeType;
+                        shopOpen.shopRef = shop;
+                        shopOpen.open = true;
+                        shopInRange = true;
+                    }
+    
+                });
+    
+                if(!shopInRange)
+                {
+                    displayMessage("No shops in range", 10, 2);
+                }
+            }
+            else
+                shopOpen.open = false;
+        }
         if(e.keyCode == 104) // H
             socket.emit("heal", {id: clientId, worldId: worldId});
 
@@ -847,7 +896,6 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         }
     }
 }
-
 function Shield(planet, radius, level, id){
     this.planet = planet;
     this.x;
@@ -1255,7 +1303,6 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, ra
         c.globalAlpha = 1;
     }
 }
-
 function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id){
     this.x;
     this.y;
@@ -1342,9 +1389,7 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
         this.draw();
     }
 }
-
 function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, fireRate, id){
-
     this.pos = new Vector(x, y);
     this.rotation = 0;
     this.radius = radius;
@@ -1354,6 +1399,25 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     this.fireRate = fireRate;
     this.turningSpeed = turningSpeed;
     this.id = id;
+
+    this.shopUpgrades = {
+        bulletPenetration: {
+            level: 0,
+            value: 0
+        },
+        cloakTime: {
+            level: 0,
+            value: 0
+        },
+        boostLegnth: {
+            level: 0,
+            value: 0
+        },
+        bulletHoming: {
+            level: 0,
+            value: 0
+        }
+    }
 
     this.level = level;
 
@@ -1375,6 +1439,58 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
         this.draw();
     }
 
+}
+
+function Shop(coordX, coordY, radius, upgradeType){
+    this.x;
+    this.y;
+    this.radius = radius;
+    this.upgradeType = upgradeType;
+    this.coordX = coordX;
+    this.coordY = coordY;
+
+    this.isInRange = false;
+
+    this.range = 100;
+
+    this.ringColor;
+
+    this.draw = function(){
+
+        c.strokeStyle = this.ringColor;
+        c.lineWidth = 3;
+        c.beginPath();
+        c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+        c.stroke();
+        c.drawImage(getImage("shop"), this.x - this.radius / 2, this.y - this.radius / 2, this.radius, this.radius); 
+    }
+
+    this.update = function(){
+        var pos = cordsToScreenPos(this.coordX, this.coordY);
+        this.x = pos.x;
+        this.y = pos.y;
+
+        if(spaceShip){
+            if(isCollidingCircles({pos: {x: centerX, y: centerY}, radius: spaceShip.radius}, this))
+            {
+                var size = 100;
+                var padding = 20;
+
+                c.globalAlpha = .5;
+                c.drawImage(getImage("S"), padding, windowHeight / scale - size - padding, size, size); 
+                c.globalAlpha = 1;
+
+                this.isInRange = true;
+                this.ringColor = "#7693bf"
+            }
+            else{
+                this.isInRange = false;
+                this.ringColor = "#59616d";
+            }
+        }
+
+        this.draw();
+    }
 }
 
 function shortAngleDist(a0,a1) {
@@ -1421,7 +1537,10 @@ function animate() {
     centerX = (canvas.width / 2 / scale);
     centerY = (canvas.height / 2 / scale);
 
+    
+
     if(spaceShip){
+
         var mousePullxTarget = 0;
         var mousePullyTarget = 0;
 
@@ -1443,7 +1562,7 @@ function animate() {
                 mousePullyTarget = currentPlanet.y - centerY;
             }
         }
-        else {
+        else if(!shopOpen.open) {
             targetScale = 50 / spaceShip.radius;
             structureUpgradeables = [];
 
@@ -1694,7 +1813,7 @@ function animate() {
                 var arrowRotation = Math.atan2(centerY - planet.y, centerX - planet.x) - (45 * Math.PI / 180);
                 var arrowSize = 20;
 
-                drawArrow(arrowPos.x, arrowPos.y, arrowRotation, planetArrowColor);
+                drawArrow(arrowPos.x, arrowPos.y, arrowRotation, planetArrowColor, 10);
             }
         }
 
@@ -1740,6 +1859,17 @@ function animate() {
         c.globalAlpha = 1;
     }
 
+    if(shopOpen.open && spaceShip)
+    {
+        if(isCollidingCircles({pos: {x: centerX, y: centerY}, radius: spaceShip.radius}, shopOpen.shopRef))
+            drawShopPanel(shopOpen.type);
+        else
+            shopOpen.open = false;
+    }
+    else{
+        shopUpgradeButtonClicked = false;
+    }
+
     //Display Stats
     if(spaceShip){
 
@@ -1782,7 +1912,7 @@ function animate() {
             var size = 100;
             var padding = 20;
             c.globalAlpha = .5;
-            c.drawImage(getImage("E"), padding, canvas.height - size - padding, size, size); 
+            c.drawImage(getImage("E"), padding, windowHeight / scale - size - padding, size, size); 
             c.globalAlpha = 1;
         }
 
@@ -1873,6 +2003,112 @@ function displayMessage(text, timeToFade, fadeSpeed){
 
 var expandedUpgrades = [];
 var canClickArrow = true;
+
+
+function drawShopPanel(type){
+
+    var width = windowWidth / 1.5 / scale;
+    var height = windowHeight / 1.5 / scale;
+    
+    var currentLevel = spaceShip.shopUpgrades[type].level;
+    var imageSize = width / 4;
+
+    var label;
+
+    //Background pane
+    c.globalAlpha = .5;
+    c.fillStyle = "#516689";
+    c.fillRect((windowWidth - width) / 2, (windowHeight - height) / 2, width, height);
+    
+    c.strokeRect((windowWidth - width) / 2, (windowHeight - height) / 2, width, height);
+    
+    var padding = imageSize / 10;
+    var imageY = (windowHeight / scale - height) / 2 + (height * .3) - imageSize / 2;
+
+    c.globalAlpha = .9;
+
+
+    //Image(s)
+    if(currentLevel + 1 >= shopUpgrades[type].length)
+    {
+        c.fillRect(windowWidth / 2 - imageSize / 2 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
+        c.drawImage(getImage(type + currentLevel), windowWidth / 2 - imageSize / 2, imageY, imageSize, imageSize);
+
+        var textWidth = width / 5;
+
+        c.font = width / 40 + "px Helvetica";
+        c.textAlign = "center";
+        c.fillStyle = "white";
+        c.fillText("Fully Upgraded", windowWidth / 2, (windowHeight - height) / 2 + height * .8);
+        c.textAlign = "left";
+    }
+    else{
+        if(currentLevel > 0){
+
+            var arrowSize = 30;
+
+            label = "Upgrade";
+            c.fillRect((windowWidth - width) / 2 + imageSize / 2 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
+            c.drawImage(getImage(type + currentLevel), (windowWidth - width) / 2 + imageSize / 2, imageY, imageSize, imageSize);
+            c.globalAlpha = 1;
+            drawArrow(windowWidth / 2 + arrowSize, imageY + imageSize / 2, 135 * Math.PI / 180, "white", arrowSize);
+            c.globalAlpha = .9;
+            c.fillRect((windowWidth - width) / 2 + width - imageSize * 1.5 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
+            c.drawImage(getImage(type + (currentLevel + 1)), (windowWidth - width) / 2 + width - imageSize * 1.5, imageY, imageSize, imageSize);
+        }
+        else{
+            label = "Buy";
+            c.globalAlpha = .9;
+            c.fillRect(windowWidth / 2 - imageSize / 2 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
+            c.drawImage(getImage(type + currentLevel), windowWidth / 2 - imageSize / 2, imageY, imageSize, imageSize);
+        }
+    
+        var buttonWidth = width / 4;
+        var buttonHeight = width / 20;
+        var buttonX = windowWidth / 2 - buttonWidth / 2;
+        var buttonY = (windowHeight / scale - height) / 2 + (height * .8) - buttonHeight;
+    
+        var mouseX = mouse.x * scale;
+        var mouseY = mouse.y * scale;
+    
+        c.globalAlpha = .75;
+    
+        if(mouse.clicked == false)
+            shopUpgradeButtonClicked = false
+        //Button
+        if (mouseY > buttonY && mouseY < buttonY + buttonHeight && mouseX > buttonX && mouseX < buttonX + buttonWidth && shopUpgradeButtonClicked == false) {
+            c.fillStyle = "#1981ff";
+            c.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+    
+            if(mouse.clicked)
+            {
+                shopUpgradeButtonClicked = true;
+    
+                var data = {
+                    worldId: worldId,
+                    type: type
+                }
+    
+                socket.emit("shopUpgrade", data);
+                c.fillStyle = "#24374f";
+                c.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+            }
+        }
+        else
+        {
+            c.fillStyle = "#5784ba";
+            c.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+        }
+            
+        c.font = width / 40 + "px Helvetica";
+        c.textAlign = "center";
+        c.fillStyle = "white";
+        c.fillText(label, buttonX + buttonWidth / 2, buttonY + buttonHeight / 1.5);
+        c.textAlign = "left";
+    }
+    
+    c.globalAlpha = 1;
+}
 
 function showUpgrades(){
     numberOfUpgrades = upgradeableObjects().length;
@@ -2257,13 +2493,13 @@ function findClosestUnoccupiedPlanet() {
     return closestPlanet;
 }
 
-function drawArrow(x, y, rotation, color){
+function drawArrow(x, y, rotation, color, size){
     c.save();
     c.translate(x, y);
     c.rotate(rotation);
     c.fillStyle = color;
-    c.fillRect(0, 0, 10, 20);
-    c.fillRect(0, 0, 20, 10);
+    c.fillRect(0, 0, size, size * 2);
+    c.fillRect(0, 0, size * 2, size);
     c.restore();
 }
 

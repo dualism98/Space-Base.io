@@ -27,12 +27,12 @@ console.log("server started");
 // var gridBoxScale = 200;
 // var spawnTries = 5;
 
-var numOfasteroids = 100;
-var numOfPlanets = 1;
+var numOfasteroids = 10;
+var numOfPlanets = 0;
 var numOfMoons = 0;
 var numOfSuns = 0;
-var numOfCrystals = 00;
-var gridSize = 5000;
+var numOfCrystals = 0;
+var gridSize = 2000;
 var gridBoxScale = 10;
 var spawnTries = 5;
 
@@ -159,11 +159,21 @@ function generateWorld(){
 
     var generatedWorldObjects = {
         planets: [],
-        asteroids: []
+        asteroids: [],
+        shops: []
     };
 
     var generatedHittableObjects = [];
 
+    var shopSize = 200;
+
+    var shop1 = new Shop(gridSize / 4, gridSize / 4, shopSize, "bulletPenetration"); //TOP LEFT
+    var shop2 = new Shop(gridSize / 4 * 3, gridSize / 4, shopSize, "cloakTime"); //TOP RIGHT
+    var shop3 = new Shop(gridSize / 4, gridSize / 4 * 3, shopSize, "boostLegnth"); //BOTTOM LEFT
+    var shop4 = new Shop(gridSize / 4 * 3, gridSize / 4 * 3, shopSize, "bulletHoming"); //BOTTOM RIGHT
+
+    generatedWorldObjects.shops.push(shop1, shop2, shop3, shop4);
+    generatedHittableObjects.push(shop1, shop2, shop3, shop4);
 
     for(var i = 0; i < numOfSuns; i++){
 
@@ -259,7 +269,27 @@ function Player(x, y, rotation, level, id, worldId){
     this.level = level;
     this.drops = {gem: 1000, iron: 10000, asteroidBits: 1000, earth: 1000, water: 10000};
 
-    this.bulletPenetration = 1;
+    this.shopUpgrades = {
+
+        bulletPenetration: {
+            level: 0,
+            value: 0
+        },
+        cloakTime: {
+            level: 0,
+            value: 0
+        },
+        boostLegnth: {
+            level: 0,
+            value: 0
+        },
+        bulletHoming: {
+            level: 0,
+            value: 0
+        }
+
+    }
+
     this.bulletRange = playerUpgrades[level].bulletRange;
     this.turningSpeed = playerUpgrades[level].turningSpeed;
     this.radius = playerUpgrades[level].radius;
@@ -297,6 +327,13 @@ function Planet(x, y, radius, structures, color, maxHealth, drops, id){
 
     this.occupiedBy = null;
     this.owner = null;
+}
+
+function Shop(x, y, radius, upgradeType){
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
+    this.upgradeType = upgradeType;
 }
 
 function Projectile(x, y, velocity, size, color, damage, bulletRange, bulletPenetration, worldId, id){
@@ -470,49 +507,49 @@ var structureUpgrades = {
     {
         costs: {iron: 20},
         bulletRange: 15,
-        bulletPenetration: 0,
         projectileSpeed: 5,
         shootInterval: 100,
+        damage: 5,
         identifier: "turret"
     },
     {
         costs: {iron: 40},
-        bulletRange: 15,
-        bulletPenetration: 0,
+        bulletRange: 20,
         projectileSpeed: 6,
         shootInterval: 95,
+        damage: 7,
         identifier: "turret"
     },
     {
         costs: {iron: 100},
-        bulletRange: 15,
-        bulletPenetration: 0,
+        bulletRange: 30,
         projectileSpeed: 10,
         shootInterval: 82,
+        damage: 12,
         identifier: "turret"
     },
     {
         costs: {iron: 500},
-        bulletRange: 15,
-        bulletPenetration: 0,
+        bulletRange: 35,
         projectileSpeed: 15,
         shootInterval: 70,
+        damage: 20,
         identifier: "turret"
     },
     {
         costs: {iron: 1000},
-        bulletRange: 15,
-        bulletPenetration: 0,
+        bulletRange: 40,
         projectileSpeed: 20,
         shootInterval: 50,
+        damage: 50,
         identifier: "turret"
     },
     {
         costs: {iron: 5000, gem: 1},
-        bulletRange: 15,
-        bulletPenetration: 0,
+        bulletRange: 45,
         projectileSpeed: 30,
         shootInterval: 20,
+        damage: 100,
         identifier: "turret"
     }
     ],
@@ -601,6 +638,44 @@ var structureUpgrades = {
         identifier: "shield"
     },
     ]
+}
+
+var shopUpgrades = {
+
+    bulletPenetration: [
+        {
+            value: 0
+        },
+        {
+            costs: {iron: 20},
+            value: 2
+        },
+        {
+            costs: {iron: 20},
+            value: 4
+        },
+        {
+            costs: {iron: 20},
+            value: 6
+        }
+    ],
+    cloakTime: [
+        {
+            value: 0
+        },
+    ],
+    boostLegnth: [
+        {
+            value: 0
+        },
+    ],
+    bulletHoming: [
+        {
+            value: 0
+        },
+    ]
+
+    
 }
 
 io.sockets.on('connection', newConnetcion);
@@ -770,7 +845,7 @@ function newConnetcion(socket){
         }
 
         socket.broadcast.to(data.worldId).emit('spawnProj', data);
-        worldsData[data.worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, shooter.object.damage, shooter.object.bulletRange, shooter.object.bulletPenetration, data.worldId, data.id));
+        worldsData[data.worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, shooter.object.damage, shooter.object.bulletRange, shooter.object.shopUpgrades.bulletPenetration.value, data.worldId, data.id));
 
         console.log('\x1b[33m%s\x1b[0m', "spawned projectile with id: ", data.id, " total: ", worldsData[data.worldId].projectiles.length);
     });
@@ -899,10 +974,62 @@ function newConnetcion(socket){
 
         var returnInfo = {
             structureUpgrades: structureUpgrades,
-            playerUpgrades: playerUpgrades
+            playerUpgrades: playerUpgrades,
+            shopUpgrades: shopUpgrades
         }
 
         socket.emit("upgradeInfo", returnInfo);
+
+    });
+
+    socket.on('shopUpgrade', function(data){
+
+        var player = findObjectWithId(worldsData[data.worldId].clients, socket.id);
+
+        if(player)
+            player = player.object;
+        else
+            return;
+
+        var level = player.shopUpgrades[data.type].level;
+
+        if(level + 1 >= shopUpgrades[data.type].length){
+            console.log("Shop upgrades past fully upgraded. skipping");
+            return;
+        }
+
+        var costsForNextLvl = shopUpgrades[data.type][level + 1].costs;
+        var hasResourceCounter = 0;
+        var neededResources = 0; 
+
+        for (var cost in costsForNextLvl) {
+            if (costsForNextLvl.hasOwnProperty(cost)) {
+                if(player.drops[cost] && costsForNextLvl[cost] <= player.drops[cost]){
+                    hasResourceCounter++;
+                }
+                neededResources++;
+            }
+        }
+
+        if(hasResourceCounter == neededResources){
+
+            player.shopUpgrades[data.type].level++;
+            level = player.shopUpgrades[data.type].level;
+            player.shopUpgrades[data.type].value = shopUpgrades[data.type][level].value;
+
+            var data = {
+                level: level,
+                type: data.type,
+                value: shopUpgrades[data.type][level].value,
+                costs: shopUpgrades[data.type][level].costs
+            }
+
+            socket.emit('shopUpgrade', data);
+
+        }
+        else{
+            io.sockets.connected[socket.id].emit("unsuccessfulUpgrade", "Not enough resources");
+        }
 
     });
 
