@@ -140,10 +140,23 @@ var healthDict = {};
 
 var playerItems = {};
 
+var images = {};
+
 function getImage(item){
+
+    for (var image in images) {
+        if (images.hasOwnProperty(image)) {
+            if(image == item)
+             return images[image];
+        }
+    }
+
+    //No saved image
+
     var img = new Image();
         img.src = item + '.png';
         
+        images[item] = img;
         return img;
 }
 
@@ -178,7 +191,8 @@ var windowHeight;
 
 var planetArrowColor = "#ffffff"
 
-var targetScale = 1;
+var startScale = 1;
+var targetScale = startScale;
 var scaleTime = 50;
 var scaleSpeed = 3;
 
@@ -193,6 +207,8 @@ var cloakCoolDownTime = cloakCoolDown;
 var boost = false;
 var boostAmount = 0;
 var boostReady = false;
+
+var landed = false;
 
 function setup(){
     //socket = io.connect('http://localhost:8080');
@@ -309,12 +325,15 @@ function newWorldObjectSync(data){
     if(data.newObject.type == "planet"){
 
         var changedPlanet = findObjectWithId(worldObjects.planets, data.id);
-
-
         var ownedPlanet = findObjectWithId(ownedPlanets, data.id);
 
         if(ownedPlanet){
-            currentPlanet = null;
+
+            if(ownedPlanet == currentPlanet){
+                currentPlanet = null;
+                landed = false;
+            }
+
             ownedPlanet.object.structures = [];
             allStructures = getAllStructures();
             ownedPlanets.splice(ownedPlanet.index, 1);
@@ -461,7 +480,7 @@ function updatePlayerPosition(data){
 }
 function spawnNetworkedProjectile(data){
     var pos = cordsToScreenPos(data.x, data.y);
-    otherProjectiles.push(new FacadeProjectile(pos.x, pos.y, data.vel, data.size, data.color, data.id));
+    otherProjectiles.push(new Projectile(pos.x, pos.y, data.vel, data.size, data.color, data.bulletPenetration, true, data.id));
 }
 function destroyNetworkedProjectile(data){
     var deadProjOther = findObjectWithId(otherProjectiles, data.id);
@@ -743,6 +762,7 @@ $(document).keypress(function(e){
 
             currentPlanet.occupiedBy = null;
                 
+            landed = false;
             currentPlanet = null;
             planetEditMode = false;
         }
@@ -1219,15 +1239,16 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
         }
     }
 }
-function Projectile(x, y, velocity, radius, color, id){
+function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
     this.pos = new Vector(x, y);
     this.radius = radius;
     this.vel = velocity;
     this.id = id;
     this.color = color;
-
     this.hitObjects = [];
 
+    this.hitsLeft = hitsLeft;
+    this.facade = facade;
     this.hitAnimDuration = 5;
     this.hitAnimTime = this.hitAnimDuration;
 
@@ -1250,11 +1271,17 @@ function Projectile(x, y, velocity, radius, color, id){
             this.hitAnimTime++;
         }
 
-        if(!this.checkForCollisions())
-            this.draw();
-        else
-            this.hitAnimTime = 0;
-
+        if(!this.facade){
+            if(this.checkForCollisions()){
+                this.hitAnimTime = 0;
+                this.hitsLeft--;
+    
+                if(this.hitsLeft <= 0)
+                    projectiles.splice(findObjectWithId(projectiles, this.id).index);
+            }
+        }
+        
+        this.draw();
     }
 
     this.checkForCollisions = function(){   //Check for collisions in Hittable Objects
@@ -1267,7 +1294,7 @@ function Projectile(x, y, velocity, radius, color, id){
             var hitObject = {x: pos.x, y: pos.y, radius: hittableObjects[i].radius} 
 
             if(isCollidingCircles(this, hitObject)){
-                sendProjectileHit(this.id, hittableObjects[i].id);
+                    sendProjectileHit(this.id, hittableObjects[i].id);
 
                 this.hitObjects.push(hittableObjects[i].id);
                 return true;
@@ -1289,6 +1316,7 @@ function Projectile(x, y, velocity, radius, color, id){
         return false;
     }
 }
+
 function FacadeProjectile(x, y, velocity, size, color, id){
     this.pos = new Vector(x, y);
     this.size = size;
@@ -1311,6 +1339,7 @@ function FacadeProjectile(x, y, velocity, size, color, id){
         this.draw();
     }
 }
+
 function isCollidingCircles(projectile, subject) {
     a = projectile.pos.x - subject.x;
     b = projectile.pos.y - subject.y;
@@ -1531,6 +1560,15 @@ function Shop(coordX, coordY, radius, upgradeType){
         c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
         c.stroke();
         c.drawImage(getImage("shop"), this.x - this.radius / 2, this.y - this.radius / 2, this.radius, this.radius); 
+
+        if(this.isInRange){
+            var size = windowHeight / scale / 8;
+            var padding = windowHeight / scale / 40;
+            
+            c.globalAlpha = .5;
+            c.drawImage(getImage("S"), padding, windowHeight / scale - size - padding, size, size); 
+            c.globalAlpha = 1;
+        }
     }
 
     this.update = function(){
@@ -1541,13 +1579,6 @@ function Shop(coordX, coordY, radius, upgradeType){
         if(spaceShip){
             if(isCollidingCircles({pos: {x: centerX, y: centerY}, radius: spaceShip.radius}, this))
             {
-                var size = windowHeight / scale / 8;
-                var padding = windowHeight / scale / 40;
-
-                c.globalAlpha = .5;
-                c.drawImage(getImage("S"), padding, windowHeight / scale - size - padding, size, size); 
-                c.globalAlpha = 1;
-
                 this.isInRange = true;
                 this.ringColor = "#7693bf"
             }
@@ -1558,6 +1589,8 @@ function Shop(coordX, coordY, radius, upgradeType){
         }
 
         this.draw();
+
+        
     }
 }
 
@@ -1604,9 +1637,7 @@ function animate() {
     }
     
     centerX = (canvas.width / 2 / scale);
-    centerY = (canvas.height / 2 / scale);
-
-    
+    centerY = (canvas.height / 2 / scale);    
 
     if(spaceShip){
 
@@ -1624,17 +1655,25 @@ function animate() {
 
             mousePullx = 0;
             mousePully = 0;
-            
-            if(spaceshipVelocity.getMagnitude() < .2)
+
+            a = centerX - currentPlanet.x;
+            b = centerY - currentPlanet.y;
+            var distance = Math.sqrt(Math.pow(a, 2) + Math.pow(b, 2));
+
+            if(spaceshipVelocity.getMagnitude() < .2 && distance < 2)
             {
+                landed = true;
                 targetScale = 120 / currentPlanet.radius;
+                mousePullxTarget = 0;
+                mousePullxTarget = 0;
             }
-            else{
+            else if(!landed){
                 mousePullxTarget = currentPlanet.x - centerX;
                 mousePullyTarget = currentPlanet.y - centerY;
             }
         }
         else if(!shopOpen.open) {
+            
             targetScale = 50 / spaceShip.radius;
             structureUpgradeables = [];
 
@@ -1725,6 +1764,8 @@ function animate() {
             closestAvailablePlanet = findClosestUnoccupiedPlanet();
     }
     else{
+        targetScale = startScale;
+        
         spaceshipVelocity.x = 0;
         spaceshipVelocity.y = 0;
     }
@@ -1790,7 +1831,7 @@ function animate() {
         proj.update();
     }
     
-    if(closestAvailablePlanet && !currentPlanet){
+    if(closestAvailablePlanet && !currentPlanet && spaceShip){
         var size = Math.round(50 / scale);
 
         c.font = size + "px Arial";
@@ -2017,7 +2058,6 @@ function animate() {
 
             c.textAlign = "left"; 
 
-
             //Display Costs
             var structureCosts = [structureUpgrades["turret"][0].costs, structureUpgrades["mine"][0].costs, structureUpgrades["shield"][0].costs, structureUpgrades["landingPad"][0].costs];
 
@@ -2158,7 +2198,6 @@ function drawShopPanel(type){
     c.globalAlpha = .9;
 
     //Name
-
     var name = "";
 
     switch (type) {
@@ -2645,7 +2684,7 @@ function shoot(x, y, rotation, speed, size, color, shooterId){
 
     var localPos = cordsToScreenPos(x, y);
 
-    projectile = new Projectile(localPos.x, localPos.y, velocity, size, color, projId);
+    projectile = new Projectile(localPos.x, localPos.y, velocity, size, color, spaceShip.shopUpgrades.bulletPenetration.value, false, projId);
     projectiles.push(projectile);
 
     sendProjectile(x, y, velocity, size, color, projId, shooterId);

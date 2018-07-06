@@ -24,8 +24,8 @@ var gridSize = 15000;
 var gridBoxScale = 200;
 var spawnTries = 5;
 
-// var numOfasteroids = 10;
-// var numOfPlanets = 0;
+// var numOfasteroids = 0;
+// var numOfPlanets = 3;
 // var numOfMoons = 0;
 // var numOfSuns = 0;
 // var numOfCrystals = 0;
