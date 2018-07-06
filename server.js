@@ -459,7 +459,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 5000, iron: 800, crystal: 10},
             speed: 23,
-            fireRate: 46,
+            fireRate: 35,
             maxHealth: 890,
             damage: 89,
             radius: 55,
@@ -468,25 +468,58 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 7000, iron: 2500, crystal: 50},
+            costs: {asteroidBits: 7000, iron: 2500, crystal: 20},
             speed: 20,
-            fireRate: 52,
+            fireRate: 40,
             maxHealth: 1440,
             damage: 144,
             radius: 60,
             turningSpeed: .01,
-            bulletRange: 11,
+            bulletRange: 13,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 10000, iron: 5000, crystal: 100},
+            costs: {asteroidBits: 10000, iron: 5000, crystal: 50},
             speed: 17,
-            fireRate: 60,
+            fireRate: 45,
             maxHealth: 2330,
             damage: 233,
             radius: 65,
             turningSpeed: .009,
-            bulletRange: 12,
+            bulletRange: 14,
+            identifier: "spaceship"
+        },
+        {   
+            costs: {asteroidBits: 20000, iron: 10000, crystal: 75},
+            speed: 16,
+            fireRate: 50,
+            maxHealth: 3000,
+            damage: 300,
+            radius: 70,
+            turningSpeed: .0085,
+            bulletRange: 15,
+            identifier: "spaceship"
+        },
+        {   
+            costs: {asteroidBits: 50000, iron: 20000, crystal: 100},
+            speed: 15,
+            fireRate: 60,
+            maxHealth: 4000,
+            damage: 400,
+            radius: 75,
+            turningSpeed: .008,
+            bulletRange: 16,
+            identifier: "spaceship"
+        },
+        {   
+            costs: {asteroidBits: 1000000, iron: 50000, crystal: 130},
+            speed: 14,
+            fireRate: 70,
+            maxHealth: 5000,
+            damage: 500,
+            radius: 80,
+            turningSpeed: .0075,
+            bulletRange: 17,
             identifier: "spaceship"
         }
         
@@ -552,47 +585,47 @@ var structureUpgrades = {
     mine: [
         {
             costs: {asteroidBits: 40},
-            amount: 10,
+            amount: 5,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 100},
-            amount: 20,
+            amount: 10,
             identifier: "mine"
         } ,
         {
             costs:  {asteroidBits: 200},
-            amount: 50,
+            amount: 20,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 400},
-            amount: 100,
+            amount: 50,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 1000},
-            amount: 200,
+            amount: 100,
             identifier: "mine"
         } ,
         {
             costs: {asteroidBits: 2000, earth: 200},
-            amount: 500,
+            amount: 200,
             identifier: "mine"
         }  ,
         {
             costs: {asteroidBits: 4000, earth: 1000},
-            amount: 1000,
+            amount: 500,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 10000, earth: 2000},
-            amount: 2500,
+            amount: 1000,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 20000, earth: 5000},
-            amount: 5000,
+            amount: 2500,
             identifier: "mine"
         }  
     ],
