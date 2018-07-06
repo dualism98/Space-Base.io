@@ -190,7 +190,7 @@ function generateWorld(){
         var colorindex = Math.round(getRndInteger(0, planetColors.length - 1));
         var color = planetColors[colorindex];
         var planetSize = getRndInteger(100, 300);
-        var planetHealth = planetSize * 18;
+        var planetHealth = planetSize * 22;
         
         var drops = {asteroidBits: Math.round(planetSize * 6), water: Math.round(planetSize * 2), earth: Math.round(planetSize * 3), iron: Math.round(planetSize * 2.5)};
 
@@ -231,7 +231,7 @@ function generateWorld(){
         var colorindex = getRndInteger(0, moonColors.length - 1);
         var color = moonColors[colorindex];
         var size = getRndInteger(50, 75);
-        var health = size * 5;
+        var health = size * 4;
         var type = "moon";
         var drops = {asteroidBits: Math.round(size * 1.2), water: Math.round(size / 4), iron: Math.round(size * .8)};
 
