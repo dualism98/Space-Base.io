@@ -583,12 +583,10 @@ function mineProduce(data){
 function onAquiredItems(data){
     for (var drop in data.drops) {
         if (data.drops.hasOwnProperty(drop)) {
-            if(Math.round(data.drops[drop] * data.precent) > 0){
-                if(playerItems[drop])
-                    playerItems[drop] += Math.round(data.drops[drop] * data.precent);
-                else
-                    playerItems[drop] = Math.round(data.drops[drop] * data.precent);
-            }
+            if(playerItems[drop])
+                playerItems[drop] += data.drops[drop];
+            else
+                playerItems[drop] = data.drops[drop];
         }
     } 
 }

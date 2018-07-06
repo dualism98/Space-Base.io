@@ -218,7 +218,7 @@ function generateWorld(){
         var health = size * 15;
         var drops = {crystal: Math.round(size / 1.2)};
 
-        var gems = getRndInteger(0, 3);
+        var gems = getRndInteger(0, 1);
 
         if(gems > 0)
             drops.gem = gems;
@@ -495,7 +495,7 @@ var playerUpgrades = [
 var structureUpgrades = {
     landingPad: [
     {
-        costs: {gem: 2},
+        costs: {gem: 1},
         identifier: "landingPad"
     }
     ],
@@ -552,47 +552,47 @@ var structureUpgrades = {
     mine: [
         {
             costs: {asteroidBits: 40},
-            amount: 2,
-            identifier: "mine"
-        },
-        {
-            costs: {asteroidBits: 100},
-            amount: 5,
-            identifier: "mine"
-        } ,
-        {
-            costs:  {asteroidBits: 200},
             amount: 10,
             identifier: "mine"
         },
         {
-            costs: {asteroidBits: 400},
+            costs: {asteroidBits: 100},
             amount: 20,
+            identifier: "mine"
+        } ,
+        {
+            costs:  {asteroidBits: 200},
+            amount: 50,
+            identifier: "mine"
+        },
+        {
+            costs: {asteroidBits: 400},
+            amount: 100,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 1000},
-            amount: 50,
+            amount: 200,
             identifier: "mine"
         } ,
         {
             costs: {asteroidBits: 2000, earth: 200},
-            amount: 100,
+            amount: 500,
             identifier: "mine"
         }  ,
         {
             costs: {asteroidBits: 4000, earth: 1000},
-            amount: 200,
+            amount: 1000,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 10000, earth: 2000},
-            amount: 500,
+            amount: 2500,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 20000, earth: 5000},
-            amount: 1000,
+            amount: 5000,
             identifier: "mine"
         }  
     ],
@@ -1323,9 +1323,13 @@ function damageObject(worldId, id, senderId, damage){
                 possiblePlanet = false;
             }
        }
-       
 
         if(target.object.drops && senderId && !possibleClient){
+
+            if(target.object.type == 'crystal' && target.object.health <= 0)
+            {   
+                itemDropped(target.object.drops, senderId, worldId, 1); 
+            }
 
             var precentDamage = 0;
 
@@ -1488,9 +1492,12 @@ function damageObject(worldId, id, senderId, damage){
 }
 
 function itemDropped(drops, playerRecivingId, worldId, precent){
-    io.sockets.connected[playerRecivingId].emit("items", {drops: drops, precent: precent});
 
     var player = findObjectWithId(worldsData[worldId].clients, playerRecivingId);
+
+    var data = {
+        drops: {}
+    }
 
     if(!player)
         return;
@@ -1499,12 +1506,22 @@ function itemDropped(drops, playerRecivingId, worldId, precent){
 
     for (var drop in drops) {
         if (drops.hasOwnProperty(drop)) {
+
+            var amount = Math.round(drops[drop] * precent);
+
             if(player.drops[drop])
-                player.drops[drop] += Math.round(drops[drop] * precent);
+                player.drops[drop] += amount;
             else
-                player.drops[drop] = Math.round(drops[drop] * precent);
+                player.drops[drop] = amount;
+
+            if(amount > 0)
+            {
+                data.drops[drop] = amount
+            }
         }
     }
+
+    io.sockets.connected[playerRecivingId].emit("items", data);
 }
 
 function syncDamage(worldId, changedIds){
