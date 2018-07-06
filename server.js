@@ -1326,19 +1326,20 @@ function damageObject(worldId, id, senderId, damage){
 
         if(target.object.drops && senderId && !possibleClient){
 
-            if(target.object.type == 'crystal' && target.object.health <= 0)
+            if(target.object.type == 'crystal' && target.object.health - damage <= 0)
             {   
                 itemDropped(target.object.drops, senderId, worldId, 1); 
             }
+            else{
+                var precentDamage = 0;
 
-            var precentDamage = 0;
-
-            if(damage > target.object.maxHealth)
-                precentDamage = 1;
-            else
-                precentDamage = damage / target.object.maxHealth;
-
-            itemDropped(target.object.drops, senderId, worldId, precentDamage); 
+                if(damage > target.object.maxHealth)
+                    precentDamage = 1;
+                else
+                    precentDamage = damage / target.object.maxHealth;
+    
+                itemDropped(target.object.drops, senderId, worldId, precentDamage); 
+            }
         }   
 
         if(target.object.type == 'sun'){
