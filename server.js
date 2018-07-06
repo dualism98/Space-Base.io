@@ -218,7 +218,7 @@ function generateWorld(){
         var health = size * 15;
         var drops = {crystal: Math.round(size / 1.2)};
 
-        var gems = getRndInteger(0, 1);
+        var gems = getRndInteger(1, 3);
 
         if(gems > 0)
             drops.gem = gems;
@@ -1326,11 +1326,13 @@ function damageObject(worldId, id, senderId, damage){
 
         if(target.object.drops && senderId && !possibleClient){
 
-            if(target.object.type == 'crystal' && target.object.health - damage <= 0)
+            if(target.object.type == 'crystal')
             {   
-                itemDropped(target.object.drops, senderId, worldId, 1); 
+                if(target.object.health - damage <= 0)
+                    itemDropped(target.object.drops, senderId, worldId, 1); 
             }
-            else{
+            else
+            {
                 var precentDamage = 0;
 
                 if(damage > target.object.maxHealth)
