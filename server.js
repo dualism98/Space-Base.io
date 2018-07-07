@@ -4,8 +4,8 @@ var DoublyList = require('./doublyLinkedList');
 
 var app = express();
 
-var server = app.listen(process.env.PORT, "0.0.0.0");
-//var server = app.listen(8080, "0.0.0.0");
+//var server = app.listen(process.env.PORT, "0.0.0.0");
+var server = app.listen(8080, "0.0.0.0");
 app.use(express.static('public'));
 var io = require('socket.io').listen(server);   //socket(server);
 
@@ -24,14 +24,14 @@ var gridSize = 15000;
 var gridBoxScale = 200;
 var spawnTries = 5;
 
-// var numOfasteroids = 0;
-// var numOfPlanets = 3;
-// var numOfMoons = 0;
-// var numOfSuns = 0;
-// var numOfCrystals = 0;
-// var gridSize = 2000;
-// var gridBoxScale = 10;
-// var spawnTries = 5;
+var numOfasteroids = 0;
+var numOfPlanets = 3;
+var numOfMoons = 0;
+var numOfSuns = 0;
+var numOfCrystals = 0;
+var gridSize = 2000;
+var gridBoxScale = 10;
+var spawnTries = 5;
 
 var mineProductionRate = 2500;
 var despawnProjectilesRate = 100;
@@ -190,7 +190,7 @@ function generateWorld(){
         var colorindex = Math.round(getRndInteger(0, planetColors.length - 1));
         var color = planetColors[colorindex];
         var planetSize = getRndInteger(100, 300);
-        var planetHealth = planetSize * 22;
+        var planetHealth = planetSize * 25;
         
         var drops = {asteroidBits: Math.round(planetSize * 6), water: Math.round(planetSize * 2), earth: Math.round(planetSize * 3), iron: Math.round(planetSize * 2.5)};
 
@@ -201,7 +201,7 @@ function generateWorld(){
 
         var asteroidSize = getRndInteger(10, 30);
         var asteroidColor = getRandomGray();
-        var asteroidHealth = asteroidSize * .2;
+        var asteroidHealth = asteroidSize * .4;
         var type = "asteroid";
         var drops = {asteroidBits: Math.round(asteroidSize / 5), water: Math.round(asteroidSize / 20)};
 
@@ -231,7 +231,7 @@ function generateWorld(){
         var colorindex = getRndInteger(0, moonColors.length - 1);
         var color = moonColors[colorindex];
         var size = getRndInteger(50, 75);
-        var health = size * 4;
+        var health = size * 3;
         var type = "moon";
         var drops = {asteroidBits: Math.round(size * 1.2), water: Math.round(size / 4), iron: Math.round(size * .8)};
 
@@ -263,7 +263,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {};//{gem: 1000, iron: 10000, asteroidBits: 1000, earth: 1000, water: 10000, crystal: 100000};
+    this.drops = {gem: 1000, iron: 10000, asteroidBits: 1000, earth: 1000, water: 10000, crystal: 100000};
 
     this.shopUpgrades = {
 
@@ -539,6 +539,7 @@ var structureUpgrades = {
         projectileSpeed: 5,
         shootInterval: 100,
         damage: 5,
+        bulletPenetration: 0,
         identifier: "turret"
     },
     {
@@ -547,6 +548,7 @@ var structureUpgrades = {
         projectileSpeed: 6,
         shootInterval: 95,
         damage: 7,
+        bulletPenetration: 0,
         identifier: "turret"
     },
     {
@@ -555,6 +557,7 @@ var structureUpgrades = {
         projectileSpeed: 10,
         shootInterval: 82,
         damage: 12,
+        bulletPenetration: 0,
         identifier: "turret"
     },
     {
@@ -563,6 +566,7 @@ var structureUpgrades = {
         projectileSpeed: 15,
         shootInterval: 70,
         damage: 20,
+        bulletPenetration: 0,
         identifier: "turret"
     },
     {
@@ -571,6 +575,7 @@ var structureUpgrades = {
         projectileSpeed: 20,
         shootInterval: 50,
         damage: 50,
+        bulletPenetration: 0,
         identifier: "turret"
     },
     {
@@ -579,55 +584,66 @@ var structureUpgrades = {
         projectileSpeed: 30,
         shootInterval: 20,
         damage: 100,
+        bulletPenetration: 0,
         identifier: "turret"
     }
     ],
     mine: [
         {
-            costs: {asteroidBits: 40},
-            amount: 5,
+            costs: {asteroidBits: 50},
+            amount: 2,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 100},
-            amount: 10,
+            amount: 5,
             identifier: "mine"
         } ,
         {
             costs:  {asteroidBits: 200},
-            amount: 20,
+            amount: 10,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 400},
-            amount: 50,
+            amount: 20,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 1000},
-            amount: 100,
+            amount: 50,
             identifier: "mine"
         } ,
         {
-            costs: {asteroidBits: 2000, earth: 200},
-            amount: 200,
+            costs: {asteroidBits: 2000},
+            amount: 100,
             identifier: "mine"
         }  ,
         {
-            costs: {asteroidBits: 4000, earth: 1000},
+            costs: {asteroidBits: 4000},
+            amount: 200,
+            identifier: "mine"
+        },
+        {
+            costs: {asteroidBits: 10000},
             amount: 500,
             identifier: "mine"
         },
         {
-            costs: {asteroidBits: 10000, earth: 2000},
+            costs: {asteroidBits: 20000},
             amount: 1000,
             identifier: "mine"
         },
         {
-            costs: {asteroidBits: 20000, earth: 5000},
+            costs: {asteroidBits: 50000},
             amount: 2500,
             identifier: "mine"
-        }  
+        },
+        {
+            costs: {asteroidBits: 100000},
+            amount: 5000,
+            identifier: "mine"
+        } 
     ],
     shield: [
     {
@@ -820,6 +836,9 @@ function newConnetcion(socket){
         }
 
         var damageDealt = projectile.object.damage;
+
+        console.log(projectile.object);
+
         damageObject(data.worldId, data.id, data.senderId, damageDealt);
 
         if(projectile.object.hitObjects)
@@ -902,15 +921,30 @@ function newConnetcion(socket){
             return;
         }
 
-        var shooter = findObjectWithId(worldsData[worldId].clients.concat(allStructures(worldId)), data.shooterId);
+        var playerShooter = findObjectWithId(worldsData[worldId].clients, data.shooterId);
+        var structureShooter = findObjectWithId(allStructures(worldId), data.shooterId);
 
-        if(!shooter){
+        var bulletPenetration;
+        var shooter;
+
+        if(structureShooter)
+        {
+            bulletPenetration = structureShooter.object.bulletPenetration;
+            shooter = structureShooter;
+        }
+        else if(playerShooter)
+        {
+            bulletPenetration = playerShooter.object.shopUpgrades.bulletPenetration.value;
+            shooter = playerShooter;
+        }
+        else 
+        {
             console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "shooter not found");
             return;
         }
 
         socket.broadcast.to(data.worldId).emit('spawnProj', data);
-        worldsData[data.worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, shooter.object.damage, shooter.object.bulletRange, shooter.object.shopUpgrades.bulletPenetration.value, data.worldId, data.id));
+        worldsData[data.worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, shooter.object.damage, shooter.object.bulletRange, bulletPenetration, data.worldId, data.id));
 
         console.log('\x1b[33m%s\x1b[0m', "spawned projectile with id: ", data.id, " total: ", worldsData[data.worldId].projectiles.length);
     });
@@ -942,6 +976,12 @@ function newConnetcion(socket){
                 io.sockets.connected[data.ownerId].emit("returnMsg", "Place landing pad first");
                 return;
             }
+        }
+
+        if(planet.hasMaxStructure(data.type, maxPlanetObjects[data.type]))
+        {
+            io.sockets.connected[data.ownerId].emit("returnMsg", "Planet aready has max " + data.type + 's');
+            return;
         }
 
         if(structureUpgrades[data.type]){
@@ -981,47 +1021,46 @@ function newConnetcion(socket){
             data.level = 0;
     
             if(planet){
+                structure = new Structure(planet.id, data.x, data.y, data.rotation, data.type, data.ownerId, data.level, data.worldId, data.id);
+                planet.structures.push(structure);
 
-                if(planet.hasMaxStructure(data.type, maxPlanetObjects[data.type]))
-                {
-                    io.sockets.connected[data.ownerId].emit("returnMsg", "Planet aready has max " + data.type + 's');
-                    return;
+                if(data.type == "landingPad"){
+                    planet.owner = socket.id;
                 }
-                else{
-                    structure = new Structure(planet.id, data.x, data.y, data.rotation, data.type, data.ownerId, data.level, data.worldId, data.id);
-                    planet.structures.push(structure);
 
-                    if(data.type == "landingPad"){
-                        planet.owner = socket.id;
-                    }
+                socket.emit("spawnStructure", data);
+                data.isFacade = true;
+                socket.broadcast.to(data.worldId).emit("spawnStructure", data);
+        
+                if(structureUpgrades[data.type]){
+                    var upgrades = structureUpgrades[data.type][structure.level];
+                    
+                    for (var upgrade in upgrades) {
+                        if (upgrades.hasOwnProperty(upgrade)) {
+                            
+                            structure[upgrade] = upgrades[upgrade];
 
-                    socket.emit("spawnStructure", data);
-                    data.isFacade = true;
-                    socket.broadcast.to(data.worldId).emit("spawnStructure", data);
-            
-                    if(structureUpgrades[data.type]){
-            
-                        var upgrades = structureUpgrades[data.type][structure.level];
-                        
-                        if(data.type == "shield"){
-                            var shieldRadius = planet.radius + 100;  
-                            var newHittableObj = {x: data.x, y: data.y, radius: shieldRadius, health: upgrades.maxHealth, maxHealth: upgrades.maxHealth, id: data.id, structure: true, planet: planet};
-                            newHittableObj.drops = upgrades.drops;
-                            worldsData[data.worldId].hittableObjects.push(newHittableObj);
-
-                            syncDamage(data.worldId, [data.id]);
-                        }
-            
-                        if(data.type == "mine"){
-                            structure.amount = upgrades.amount;
                         }
                     }
-            
-                    var owner = findObjectWithId(worldsData[data.worldId].clients, data.ownerId).object;
-                    owner.structures.push(structure);
-            
-                    console.log('\x1b[37m%s\x1b[0m', "spawned structure on planet with id: ", data.planetId, " type: ", data.type, " id:", data.id, " owner: ", data.ownerId);
+
+                    if(data.type == "shield"){
+                        var shieldRadius = planet.radius + 100;  
+                        var newHittableObj = {x: data.x, y: data.y, radius: shieldRadius, health: upgrades.maxHealth, maxHealth: upgrades.maxHealth, id: data.id, structure: true, planet: planet};
+                        newHittableObj.drops = upgrades.drops;
+                        worldsData[data.worldId].hittableObjects.push(newHittableObj);
+
+                        syncDamage(data.worldId, [data.id]);
+                    }
+        
+                    if(data.type == "mine"){
+                        structure.amount = upgrades.amount;
+                    }
                 }
+        
+                var owner = findObjectWithId(worldsData[data.worldId].clients, data.ownerId).object;
+                owner.structures.push(structure);
+        
+                console.log('\x1b[37m%s\x1b[0m', "spawned structure on planet with id: ", data.planetId, " type: ", data.type, " id:", data.id, " owner: ", data.ownerId);
             }
             else{
                 console.log("Planet not found. Failed to build structure on server");

@@ -189,7 +189,11 @@ var ownedPlanets = [];
 var windowWidth;
 var windowHeight;
 
-var planetArrowColor = "#ffffff"
+var flashingPlanetArrows = {};
+var attackedPlanets = {};
+var planetArrowFlashColor = "#ff6068";
+var planetArrowFlashInterval = 20;
+var planetArrowFlashTimes = 2;
 
 var startScale = 1;
 var targetScale = startScale;
@@ -211,9 +215,9 @@ var boostReady = false;
 var landed = false;
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
+    socket = io.connect('http://localhost:8080');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
-    socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
+    //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -424,7 +428,7 @@ function damagedOwnPlanet(attackOnShield, health, id){
     else
         console.log("HALP WE ARE UNDER ATTACK. Health Left: " + health);
 
-    planetArrowColor = "#ff3838";
+    attackedPlanets[id] = true;
     
 }
 function showWorld(){
@@ -1867,7 +1871,7 @@ function animate() {
             //Out of screen Right                                           || Left                || Up                  || Down
             if((planet.x + centerX - size > (windowWidth + centerX) / scale || planet.x + size < 0 || planet.y + size < 0 || planet.y + centerY - size > (windowHeight + centerY) / scale)){
 
-                var padding = 20;
+                var padding = 20 / scale;
                 var screenWidth = windowWidth / scale - 2 * padding;
                 var screenHeight = windowHeight / scale - 2 * padding;
 
@@ -1913,11 +1917,11 @@ function animate() {
                 {
                     if(slopeY < 0)
                     {
-                        arrowPos.x = screenHeight * slopeX / slopeY / -2 + screenHeight;
+                        arrowPos.x = screenHeight * slopeX / slopeY / -2 + screenWidth / 2;
                         arrowPos.y = padding;
                     }
                     else{
-                        arrowPos.x = screenHeight *  slopeX / slopeY / 2 + screenHeight;
+                        arrowPos.x = screenHeight *  slopeX / slopeY / 2 + screenWidth / 2 
                         arrowPos.y = screenHeight + padding;
                     }
 
@@ -1925,9 +1929,39 @@ function animate() {
                 }
 
                 var arrowRotation = Math.atan2(centerY - planet.y, centerX - planet.x) - (45 * Math.PI / 180);
-                var arrowSize = 20;
+                var arrowSize = 10 / scale;
 
-                drawArrow(arrowPos.x, arrowPos.y, arrowRotation, planetArrowColor, 10);
+                var arrowColor = "#ffffff";
+
+                if(attackedPlanets[planet.id]){
+                    if(!flashingPlanetArrows[planet.id]){
+                        flashingPlanetArrows[planet.id] = {times: 0, isFlashed: true, time: 0};
+                    }
+                    else{
+                        if(flashingPlanetArrows[planet.id].times > planetArrowFlashTimes)
+                        {
+                            attackedPlanets[planet.id] = false;
+                            delete flashingPlanetArrows[planet.id];
+                        }
+                        else{
+                            if(flashingPlanetArrows[planet.id].time < planetArrowFlashInterval)
+                                flashingPlanetArrows[planet.id].time++;
+                            else
+                            {
+                                flashingPlanetArrows[planet.id].time = 0;
+                                flashingPlanetArrows[planet.id].isFlashed = !flashingPlanetArrows[planet.id].isFlashed;
+                                flashingPlanetArrows[planet.id].times++;
+                            }
+                        }       
+                    }
+                }
+                
+                if(flashingPlanetArrows[planet.id] && flashingPlanetArrows[planet.id].isFlashed)
+                    arrowColor = planetArrowFlashColor;
+                else
+                    arrowColor = "#ffffff";
+
+                drawArrow(arrowPos.x, arrowPos.y, arrowRotation, arrowColor, arrowSize);
             }
         }
 
