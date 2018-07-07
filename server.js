@@ -4,8 +4,8 @@ var DoublyList = require('./doublyLinkedList');
 
 var app = express();
 
-//var server = app.listen(process.env.PORT, "0.0.0.0");
-var server = app.listen(8080, "0.0.0.0");
+var server = app.listen(process.env.PORT, "0.0.0.0");
+//var server = app.listen(8080, "0.0.0.0");
 app.use(express.static('public'));
 var io = require('socket.io').listen(server);   //socket(server);
 
@@ -24,14 +24,14 @@ var gridSize = 15000;
 var gridBoxScale = 200;
 var spawnTries = 5;
 
-var numOfasteroids = 0;
-var numOfPlanets = 3;
-var numOfMoons = 0;
-var numOfSuns = 0;
-var numOfCrystals = 0;
-var gridSize = 2000;
-var gridBoxScale = 10;
-var spawnTries = 5;
+// var numOfasteroids = 0;
+// var numOfPlanets = 3;
+// var numOfMoons = 0;
+// var numOfSuns = 0;
+// var numOfCrystals = 0;
+// var gridSize = 2000;
+// var gridBoxScale = 10;
+// var spawnTries = 5;
 
 var mineProductionRate = 2500;
 var despawnProjectilesRate = 100;
