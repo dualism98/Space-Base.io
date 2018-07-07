@@ -468,7 +468,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 7000, iron: 2500, crystal: 20},
+            costs: {asteroidBits: 10000, iron: 2500, crystal: 20},
             speed: 20,
             fireRate: 40,
             maxHealth: 1440,
@@ -479,7 +479,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 10000, iron: 5000, crystal: 50},
+            costs: {asteroidBits: 50000, iron: 5000, crystal: 50},
             speed: 17,
             fireRate: 45,
             maxHealth: 2330,
@@ -490,7 +490,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 20000, iron: 10000, crystal: 75},
+            costs: {asteroidBits: 100000, iron: 10000, crystal: 75},
             speed: 16,
             fireRate: 50,
             maxHealth: 3000,
@@ -501,7 +501,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 50000, iron: 20000, crystal: 100},
+            costs: {asteroidBits: 500000, iron: 20000, crystal: 100},
             speed: 15,
             fireRate: 60,
             maxHealth: 4000,
