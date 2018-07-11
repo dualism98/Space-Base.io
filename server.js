@@ -4,8 +4,8 @@ var DoublyList = require('./doublyLinkedList');
 
 var app = express();
 
-var server = app.listen(process.env.PORT, "0.0.0.0");
-//var server = app.listen(8080, "0.0.0.0");
+//var server = app.listen(process.env.PORT, "0.0.0.0");
+var server = app.listen(8080, "0.0.0.0");
 app.use(express.static('public'));
 var io = require('socket.io').listen(server);   //socket(server);
 
@@ -15,23 +15,23 @@ var worldIds = [];
 console.log("server started");
 
 //Server Config Options
-var numOfasteroids = 4000;
-var numOfPlanets = 50;
-var numOfMoons = 200;
-var numOfSuns = 10;
-var numOfCrystals = 100;
-var gridSize = 15000;
-var gridBoxScale = 200;
-var spawnTries = 5;
-
-// var numOfasteroids = 0;
-// var numOfPlanets = 3;
-// var numOfMoons = 0;
-// var numOfSuns = 0;
-// var numOfCrystals = 0;
-// var gridSize = 2000;
-// var gridBoxScale = 10;
+// var numOfasteroids = 4000;
+// var numOfPlanets = 50;
+// var numOfMoons = 200;
+// var numOfSuns = 10;
+// var numOfCrystals = 100;
+// var gridSize = 15000;
+// var gridBoxScale = 200;
 // var spawnTries = 5;
+
+var numOfasteroids = 0;
+var numOfPlanets = 3;
+var numOfMoons = 0;
+var numOfSuns = 0;
+var numOfCrystals = 0;
+var gridSize = 2000;
+var gridBoxScale = 10;
+var spawnTries = 5;
 
 var mineProductionRate = 2500;
 var despawnProjectilesRate = 100;
@@ -166,7 +166,7 @@ function generateWorld(){
     var shop1 = new Shop(gridSize / 4, gridSize / 4, shopSize, "bulletPenetration"); //TOP LEFT
     var shop2 = new Shop(gridSize / 4 * 3, gridSize / 4, shopSize, "cloakTime"); //TOP RIGHT
     var shop3 = new Shop(gridSize / 4, gridSize / 4 * 3, shopSize, "boost"); //BOTTOM LEFT
-    var shop4 = new Shop(gridSize / 4 * 3, gridSize / 4 * 3, shopSize, "bulletHoming"); //BOTTOM RIGHT
+    var shop4 = new Shop(gridSize / 4 * 3, gridSize / 4 * 3, shopSize, "shipTurret"); //BOTTOM RIGHT
 
     generatedWorldObjects.shops.push(shop1, shop2, shop3, shop4);
     generatedHittableObjects.push(shop1, shop2, shop3, shop4);
@@ -263,7 +263,9 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {};//{gem: 1000, iron: 10000, asteroidBits: 1000, earth: 1000, water: 10000, crystal: 100000};
+    this.drops = {gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
+
+    this.shipTurret;
 
     this.shopUpgrades = {
 
@@ -279,7 +281,7 @@ function Player(x, y, rotation, level, id, worldId){
             level: 0,
             value: 0
         },
-        bulletHoming: {
+        shipTurret: {
             level: 0,
             value: 0
         }
@@ -750,10 +752,26 @@ var shopUpgrades = {
             value: 110
         },
     ],
-    bulletHoming: [
+    shipTurret: [
         {
             value: 0
         },
+        {
+            costs: {crystal: 5},
+            value: 2
+        },
+        {
+            costs: {crystal: 10},
+            value: 4
+        },
+        {
+            costs: {crystal: 15},
+            value: 6
+        },
+        {
+            costs: {crystal: 20},
+            value: 6
+        }
     ]
 
     
@@ -1088,7 +1106,8 @@ function newConnetcion(socket){
 
     socket.on('shopUpgrade', function(data){
 
-        var player = findObjectWithId(worldsData[data.worldId].clients, socket.id);
+        var worldId = data.worldId;
+        var player = findObjectWithId(worldsData[worldId].clients, socket.id);
 
         if(player)
             player = player.object;
@@ -1116,7 +1135,6 @@ function newConnetcion(socket){
         }
 
         if(hasResourceCounter == neededResources){
-
             for (var cost in costsForNextLvl) {
                 if (costsForNextLvl.hasOwnProperty(cost)) {
                     player.drops[cost] -= costsForNextLvl[cost];
@@ -1127,15 +1145,29 @@ function newConnetcion(socket){
             level = player.shopUpgrades[data.type].level;
             player.shopUpgrades[data.type].value = shopUpgrades[data.type][level].value;
 
+            var turretId;
+
+            if(data.type == "shipTurret"){
+                if(player.shipTurret){
+                    player.shipTurret.level = level;
+                }
+                else{
+                    turretId = uniqueId();
+                    shipTurret = new Structure(socket.id, 0, 0, 0, "turret", socket.id, level, worldId, turretId);
+                    player.shipTurret = shipTurret;
+                }
+            }
+
             var data = {
+                playerId: socket.id,
                 level: level,
                 type: data.type,
                 value: shopUpgrades[data.type][level].value,
-                costs: shopUpgrades[data.type][level].costs
+                costs: shopUpgrades[data.type][level].costs,
+                turretId: turretId
             }
-
-            socket.emit('shopUpgrade', data);
-
+            
+            io.to(worldId).emit('shopUpgrade', data);
         }
         else{
             io.sockets.connected[socket.id].emit("returnMsg", "Not enough resources");
@@ -1884,6 +1916,15 @@ function allStructures(worldId){
                 }
             }
         }
+
+        for(var i = 0; i < worldIds.length; i++){
+            var players = worldsData[worldIds[i]].clients
+
+            for(var x = 0; x < players.length; x++){
+                if(players[x].shipTurret)
+                structures.push(players[x].shipTurret);
+            }
+        }
     }
     else
     {
@@ -1899,6 +1940,14 @@ function allStructures(worldId){
                 }
             }
         }
+
+        var players = worldsData[worldId].clients;
+
+        for(var i = 0; i < players.length; i++){
+            if(players[i].shipTurret)
+            structures.push(players[i].shipTurret);
+        }
+
     }
     return structures;
 }

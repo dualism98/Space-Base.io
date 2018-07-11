@@ -152,7 +152,6 @@ function getImage(item){
     }
 
     //No saved image
-
     var img = new Image();
         img.src = item + '.png';
         
@@ -215,9 +214,9 @@ var boostReady = false;
 var landed = false;
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
+    socket = io.connect('http://localhost:8080');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
-    socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
+    //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -268,7 +267,15 @@ function setupLocalWorld(data){
         client = data.existingPlayers[i];
 
         if(client.id != clientId){
-            otherPlayers.push(new NetworkSpaceShip(client.coordX, client.coordY, client.maxHealth, client.health, 0, client.level, client.radius, client.username, client.id));
+            var player = new NetworkSpaceShip(client.x, client.y, client.maxHealth, client.health, 0, client.level, client.radius, client.username, client.id)
+            if(client.shipTurret){
+                player.turret = new Turret(player, client.x, client.y, 0, client.shipTurret.level, true, player.id, client.shipTurret.id);
+                player.turret.distanceFromPlanet = 0;
+                player.turret.headDistanceFromBase = 0;
+                player.turret.type = "shipTurret";
+            }        
+
+            otherPlayers.push(player);
         }
         
     }
@@ -557,13 +564,37 @@ function upgradeSync(data){
     }
 }
 function shopUpgrade(data){
-    spaceShip.shopUpgrades[data.type].value = data.value;
-    spaceShip.shopUpgrades[data.type].level = data.level;
 
-    for (var cost in data.costs) {
-        if (data.costs.hasOwnProperty(cost)) {
-            playerItems[cost] -= data.costs[cost];
+    var player = findObjectWithId(otherPlayers.concat(spaceShip), data.playerId).object;
+
+    var isLocalPlayer = data.playerId == clientId
+
+    if(isLocalPlayer){
+        player.shopUpgrades[data.type].value = data.value;
+        player.shopUpgrades[data.type].level = data.level;
+    
+        for (var cost in data.costs) {
+            if (data.costs.hasOwnProperty(cost)) {
+                playerItems[cost] -= data.costs[cost];
+            }
         }
+    }
+
+    if(data.type == "shipTurret" && data.level == 1 && player){
+
+        if(!player.turret)
+        {
+            var pos = screenPosToCords(centerX, centerY);
+            player.turret = new Turret(player, pos.x, pos.y, 0, 0, !isLocalPlayer, clientId, data.turretId);
+            player.turret.distanceFromPlanet = 0;
+            player.turret.headDistanceFromBase = 0;
+            player.turret.type = "shipTurret";
+        }
+
+        player.turret.level = data.level;
+        player.turret.shootInterval = Math.round(300 / data.value);
+        player.turret.projectileSpeed = Math.round(data.value * 1.5);
+        player.turret.projectileSize = player.radius / 4;
     }
     
 }
@@ -820,7 +851,7 @@ $(document).keypress(function(e){
 
         if(e.keyCode == 32){ //SPACE
             if(playerReloadTimer <= 0){
-                shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, PROJECTIILE_SPEED, spaceShip.radius / 4, "#f45c42", clientId);
+                shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, PROJECTIILE_SPEED, spaceShip.radius / 4, spaceShip.shopUpgrades.bulletPenetration.value, "#f45c42", clientId);
                 playerReloadTimer = 1000;
             }
         } 
@@ -934,7 +965,7 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         if(planetEditMode && currentPlanet == this){
             var rad = Math.atan2(mouse.y - this.y, mouse.x - this.x) * -57.2958;
             structureSpawnRotation = rad;
-            drawPointAroundCircle(this.x, this.y, radius, rad, 1);
+            drawPointAroundCircle(this.x, this.y, radius + 20, rad, 1);
         }
     }
 
@@ -1073,22 +1104,15 @@ function Mine(planet, x, y, rotation, level, ownerId, id){
 
     this.color = "#a0a7b2";
 
-    this.distanceFromPlanet = 20;
-
     var test = false;
 
     this.level = level;
 
     this.draw = function(){
-
         c.save();
         c.translate(this.x, this.y);
-        c.rotate((rotation - 90) / -57.2958);
-        c.fillStyle = this.color ;
-        c.drawImage(getImage('mine' + this.level), -this.size + this.distanceFromPlanet, -this.size, this.size, this.size);
-
-        
-        //c.fillRect(-this.size/2 + this.distanceFromPLanet,-this.size/2,this.size,this.size);
+        c.rotate((this.rotation - 90) / -57.2958);
+        c.drawImage(getImage('mine' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
         c.restore();
     }
     this.update = function(){ 
@@ -1125,7 +1149,7 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
     this.coordX = x;
     this.coordY = y;
 
-    this.distanceFromPlanet = 20;
+    this.headDistanceFromBase = 10;
     this.range = 1000;
     this.target;
 
@@ -1134,28 +1158,24 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
     this.shootInterval = 100;
     this.shootCounter = 0;
     this.projectileSpeed = 5;
+    this.projectileSize = 5;
 
     this.shootPoint = new Vector();
 
     this.draw = function(){
-
         //Draw Base
         c.save();
         c.translate(this.x, this.y);
         c.rotate((this.rotation - 90) / -57.2958);
-        //c.fillStyle = planetColors[2];
-        c.drawImage(getImage('turret' + this.level), -this.baseSize + this.distanceFromPlanet, -this.baseSize, this.baseSize, this.baseSize);
-        //c.fillRect(-this.baseSize/2 + this.distanceFromPlanet,-this.baseSize/2,this.baseSize,this.baseSize);
+        c.drawImage(getImage(this.type + this.level), -this.baseSize / 2, -this.baseSize / 2, this.baseSize, this.baseSize);
         c.restore();
-
-        var distanceFromBase = 30;
 
         var l = this.x - this.planet.x;
         var h = this.y - this.planet.y;
 
         var hyp = this.planet.radius;
 
-        var cx = hyp + distanceFromBase;
+        var cx = hyp + this.headDistanceFromBase;
 
         var x = l * (cx / hyp);
         var y = h * (cx / hyp);
@@ -1169,13 +1189,19 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
 
         //Draw Head
         if(this.target)
-            var rad = Math.atan2(this.target.y - headY, this.target.x - headX);
+        {
+            rad = Math.atan2(this.target.y - headY, this.target.x - headX);
             this.headRotation = rad * 180 / Math.PI;
+        }
+        else{
+            rad = this.rotation * - Math.PI / 180;
+            this.headRotation = rad * 180 / Math.PI;
+        }
 
         c.save();
         c.translate(headX, headY);
         c.rotate(rad);
-        c.fillStyle = planetColors[1];
+        c.fillStyle = "red";//planetColors[1];
         c.fillRect(-this.headLength / 2 + this.headLength / 4, -this.headWidth / 2, this.headLength, this.headWidth);
         c.restore();
     }
@@ -1198,7 +1224,7 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
 
                 var angle = Math.atan2((this.shootPoint.y - this.target.y), (this.shootPoint.x - this.target.x)) - 1.5708;
 
-                shoot(spawnPos.x, spawnPos.y, angle, this.projectileSpeed, 5, "#f45c42", this.id);
+                shoot(spawnPos.x, spawnPos.y, angle, this.projectileSpeed, this.projectileSize, this.bulletPenetration, "#f45c42", this.id);
             }
         }
     }
@@ -1349,57 +1375,6 @@ function isCollidingCircles(projectile, subject) {
 
     return(distance < projectile.radius + subject.radius);
 }
-function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, radius, username, id){
-    this.x;
-    this.y;
-    this.maxHealth = maxHealth;
-    this.health = health;
-    this.rotation = rotation;
-    this.radius = radius;
-    this.username = username;
-    this.id = id;
-    this.level = level;
-
-    this.alpha = 1;
-
-    this.coordX = coordX;
-    this.coordY = coordY;
-    
-
-    this.draw = function(){
-        var healthBarWidth = 50;
-
-        c.globalAlpha = this.alpha;
-        c.translate(this.x, this.y);
-        c.rotate(this.rotation);
-        c.drawImage(getImage('spaceship' + this.level), -this.radius, -this.radius, this.radius * 2, this.radius * 2);
-        c.rotate(-this.rotation);
-        c.translate(-this.x, -this.y);
-
-        if(this.health != this.maxHealth)
-            displayBar(this.x - healthBarWidth / 2, this.y - (this.radius + 10), healthBarWidth, 5, this.health / this.maxHealth, "#36a52c");
-
-    }
-    this.update = function(){
-        var pos = cordsToScreenPos(this.coordX, this.coordY);
-        this.x = pos.x;
-        this.y = pos.y;
-
-        if(this.alpha > 0){
-            this.draw();
-
-            //Display username above person
-            c.font = "20px Arial";
-            c.fillStyle = "white";
-            c.globalAlpha = .5;
-            c.textAlign = "center"; 
-            c.fillText(this.username, this.x, this.y - radius - 20);
-    
-            c.textAlign = "left"; 
-            c.globalAlpha = 1;
-        }
-    }
-}
 function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id){
     this.x;
     this.y;
@@ -1499,6 +1474,8 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
 
     this.alpha = 1;
 
+    this.turret;
+
     this.shopUpgrades = {
         bulletPenetration: {
             level: 0,
@@ -1512,7 +1489,7 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
             level: 0,
             value: 0
         },
-        bulletHoming: {
+        shipTurret: {
             level: 0,
             value: 0
         }
@@ -1537,8 +1514,83 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     }
     this.update = function(){
         this.draw();
+
+        if(this.turret){
+            var pos = screenPosToCords(centerX, centerY);
+            this.turret.baseSize = this.radius / 2;
+            this.turret.headWidth =  this.radius / 6;
+            this.turret.headLength =  this.radius / 2;
+
+            this.turret.rotation = (this.rotation * -180 /  Math.PI) + 90;
+            this.turret.coordX = pos.x;
+            this.turret.coordY = pos.y;
+            this.turret.update();
+        }  
     }
 
+}
+function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, radius, username, id){
+    this.x;
+    this.y;
+    this.maxHealth = maxHealth;
+    this.health = health;
+    this.rotation = rotation;
+    this.radius = radius;
+    this.username = username;
+    this.id = id;
+    this.level = level;
+
+    this.alpha = 1;
+
+    this.coordX = coordX;
+    this.coordY = coordY;
+    
+    this.turret;
+
+    this.draw = function(){
+        var healthBarWidth = 50;
+
+        c.globalAlpha = this.alpha;
+        c.translate(this.x, this.y);
+        c.rotate(this.rotation);
+        c.drawImage(getImage('spaceship' + this.level), -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+        c.rotate(-this.rotation);
+        c.translate(-this.x, -this.y);
+
+        if(this.health != this.maxHealth)
+            displayBar(this.x - healthBarWidth / 2, this.y - (this.radius + 10), healthBarWidth, 5, this.health / this.maxHealth, "#36a52c");
+
+    }
+    this.update = function(){
+        var pos = cordsToScreenPos(this.coordX, this.coordY);
+        this.x = pos.x;
+        this.y = pos.y;
+
+        if(this.alpha > 0){
+            this.draw();
+
+            //Display username above person
+            c.font = "20px Arial";
+            c.fillStyle = "white";
+            c.globalAlpha = .5;
+            c.textAlign = "center"; 
+            c.fillText(this.username, this.x, this.y - radius - 20);
+    
+            c.textAlign = "left"; 
+            c.globalAlpha = 1;
+        }
+
+        if(this.turret){
+            this.turret.baseSize = this.radius / 2;
+            this.turret.headWidth =  this.radius / 6;
+            this.turret.headLength =  this.radius / 2;
+
+            this.turret.rotation = (this.rotation * -180 /  Math.PI) + 90;
+            this.turret.coordX = this.coordX;
+            this.turret.coordY = this.coordY;
+            this.turret.update();
+        }  
+    }
 }
 function Shop(coordX, coordY, radius, upgradeType){
     this.x;
@@ -2242,8 +2294,8 @@ function drawShopPanel(type){
         case "cloakTime":
             name = "Invisibility"
         break;
-        case "bulletHoming":
-            name = "Homing Bullets"
+        case "shipTurret":
+            name = "Ship Turret"
         break;
     }
 
@@ -2708,7 +2760,7 @@ function displayBar(x, y, width, height, fillPrecentage, color) {
     c.globalAlpha = 1.0;
 }
 
-function shoot(x, y, rotation, speed, size, color, shooterId){
+function shoot(x, y, rotation, speed, size, bulletPenetration, color, shooterId){
     velocity = new Vector();
     velocity.setMagnitude(speed);
     velocity.setDirection(rotation - 1.5708);
@@ -2716,8 +2768,12 @@ function shoot(x, y, rotation, speed, size, color, shooterId){
 
     var localPos = cordsToScreenPos(x, y);
 
-    projectile = new Projectile(localPos.x, localPos.y, velocity, size, color, spaceShip.shopUpgrades.bulletPenetration.value, false, projId);
+    
+    projectile = new Projectile(localPos.x, localPos.y, velocity, size, color, bulletPenetration, false, projId);
+
     projectiles.push(projectile);
+
+    
 
     sendProjectile(x, y, velocity, size, color, projId, shooterId);
 }
