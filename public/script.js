@@ -214,9 +214,9 @@ var boostReady = false;
 var landed = false;
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
+    socket = io.connect('http://localhost:8080');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
-    socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
+    //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -258,7 +258,7 @@ function setupLocalWorld(data){
     gridBoxScale = data.gridBoxScale;
 
     //Set Temporary GridPosition for spectating while not in game
-    gridPos = new Vector(gridSize / -2, gridSize / -2);
+    gridPos = new Vector(data.x + gridSize / -2, data.y + gridSize / -2);
 
     //Spawn other players
     otherPlayers = [];
@@ -448,7 +448,8 @@ function showWorld(){
     animate();
 }
 function startLocalPlayer(data){
-    gridPos = new Vector(gridSize / -2 - data.x, gridSize / -2 - data.y);//new Vector(gridSize / -2, gridSize / -2);
+    gridPos = new Vector(data.x + gridSize / -2, data.y + gridSize / -2);
+    //gridPos = new Vector(gridSize / -2 - data.x, gridSize / -2 - data.y);//new Vector(gridSize / -2, gridSize / -2);
     upgradeables.push(clientId);
     friendlyObjectIds = [clientId];
 
@@ -762,14 +763,11 @@ $("#startGame").click(function(){
 
     $("#preGameContent").fadeOut();
     $("canvas").css("filter", "none");
-
 });
 
 $("#help").click(function(){
-
     $("#mainContent").fadeOut(250);
     $("#helpContent").fadeIn(250);
-
 });
 
 $("#backHelp").click(function(){
@@ -1232,8 +1230,8 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
         this.y = pos.y;
 
         this.updateTarget();
-        this.draw();
 
+        this.draw();
          if(this.target && !this.isFacade){
             this.shootCounter += 1;
 
@@ -1265,6 +1263,20 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
             if(player.id == ownerId)
                 continue;
 
+            var playerPos = cordsToScreenPos(player.coordX, player.coordY);
+
+            c.beginPath();
+            c.moveTo(centerX, centerY);
+            c.strokeStyle = "gray";
+            c.lineWidth = 5;
+            c.lineTo(playerPos.x, playerPos.y);
+            c.stroke();
+
+            c.beginPath();
+            c.fillStyle = "pink";
+            c.arc(playerPos.x, playerPos.y, 10, 0, 0, false);
+            c.fill();
+
 
             var distance = Math.sqrt(Math.pow(this.x - player.x, 2) + Math.pow(this.y - player.y, 2));
 
@@ -1272,7 +1284,7 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
                 var x = (this.target.x - this.planet.x + gridPos.x) * -1;
                 var y = (this.target.y - this.planet.y + gridPos.y) * -1;
     
-                this.target.screenPosition = new Vector(x, y)
+                this.target.screenPosition = new Vector(x, y);
     
                 var targetDistance = Math.sqrt(Math.pow(this.x - this.target.screenPosition.x, 2) + Math.pow(this.y - this.target.screenPosition .y, 2));
     
@@ -1288,7 +1300,7 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
     }
 }
 function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
-    this.pos = new Vector(x, y);
+    this.pos = new Vector(0, 0);
     this.radius = radius;
     this.vel = velocity;
     this.id = id;
@@ -1299,6 +1311,7 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
     this.facade = facade;
     this.hitAnimDuration = 5;
     this.hitAnimTime = this.hitAnimDuration;
+    this.coord = new Vector(x, y);
 
     this.draw = function(){
 
@@ -1313,7 +1326,11 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
         c.shadowBlur = 0;
     }
     this.update = function(){
-        this.pos.add(this.vel);
+
+        this.coord.add(this.vel);
+        var localPos = cordsToScreenPos(this.coord.x, this.coord.y);
+
+        this.pos = localPos;
         
         if(this.hitAnimTime < this.hitAnimDuration){
             this.hitAnimTime++;
@@ -2812,16 +2829,9 @@ function shoot(x, y, rotation, speed, size, bulletPenetration, color, shooterId)
     velocity.setMagnitude(speed);
     velocity.setDirection(rotation - 1.5708);
     var projId = uniqueId();
-
-    var localPos = cordsToScreenPos(x, y);
-
     
-    projectile = new Projectile(localPos.x, localPos.y, velocity, size, color, bulletPenetration, false, projId);
-
+    projectile = new Projectile(x, y, velocity, size, color, bulletPenetration, false, projId);
     projectiles.push(projectile);
-
-    
-
     sendProjectile(x, y, velocity, size, color, projId, shooterId);
 }
 

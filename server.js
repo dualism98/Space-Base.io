@@ -4,8 +4,8 @@ var DoublyList = require('./doublyLinkedList');
 
 var app = express();
 
-var server = app.listen(process.env.PORT, "0.0.0.0");
-//var server = app.listen(8080, "0.0.0.0");
+//var server = app.listen(process.env.PORT, "0.0.0.0");
+var server = app.listen(8080, "0.0.0.0");
 app.use(express.static('public'));
 var io = require('socket.io').listen(server);   //socket(server);
 
@@ -32,6 +32,8 @@ var spawnTries = 5;
 // var gridSize = 2000;
 // var gridBoxScale = 10;
 // var spawnTries = 5;
+
+var edgeSpawnPadding = 100;
 
 var mineProductionRate = 2500;
 var despawnProjectilesRate = 100;
@@ -263,7 +265,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {};//{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
+    this.drops = {gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
 
     this.shipTurret;
 
@@ -547,7 +549,7 @@ var structureUpgrades = {
     {
         costs: {iron: 40},
         bulletRange: 20,
-        projectileSpeed: 6,
+        projectileSpeed: 7,
         shootInterval: 95,
         damage: 7,
         bulletPenetration: 1,
@@ -556,7 +558,7 @@ var structureUpgrades = {
     {
         costs: {iron: 100},
         bulletRange: 30,
-        projectileSpeed: 10,
+        projectileSpeed: 9,
         shootInterval: 82,
         damage: 12,
         bulletPenetration: 1,
@@ -565,7 +567,7 @@ var structureUpgrades = {
     {
         costs: {iron: 500},
         bulletRange: 35,
-        projectileSpeed: 15,
+        projectileSpeed: 11,
         shootInterval: 70,
         damage: 20,
         bulletPenetration: 1,
@@ -574,7 +576,7 @@ var structureUpgrades = {
     {
         costs: {iron: 1000},
         bulletRange: 40,
-        projectileSpeed: 20,
+        projectileSpeed: 13,
         shootInterval: 50,
         damage: 50,
         bulletPenetration: 1,
@@ -583,7 +585,7 @@ var structureUpgrades = {
     {
         costs: {iron: 5000, gem: 1},
         bulletRange: 45,
-        projectileSpeed: 30,
+        projectileSpeed: 15,
         shootInterval: 40,
         damage: 75,
         bulletPenetration: 1,
@@ -592,7 +594,7 @@ var structureUpgrades = {
     {
         costs: {iron: 10000, gem: 2},
         bulletRange: 45,
-        projectileSpeed: 40,
+        projectileSpeed: 17,
         shootInterval: 30,
         damage: 110,
         bulletPenetration: 1,
@@ -803,16 +805,19 @@ function newConnetcion(socket){
         worldId = addWorld();
     }
 
-    playerObject = {id: socket.id, worldId: worldId};
+    var spawnSize = (gridSize - edgeSpawnPadding) / 2
+    var playerPosition = {x: getRndInteger(-spawnSize, spawnSize), y: getRndInteger(-spawnSize, spawnSize)};
+
+    playerObject = {id: socket.id, worldId: worldId, x: playerPosition.x , y: playerPosition.y};
 
     socket.join(worldId);
-    socket.emit("setupLocalWorld", newPlayerData(worldId));
+    socket.emit("setupLocalWorld", newPlayerData(worldId, playerObject.x, playerObject.y));
     syncDamage(worldId);
     socket.emit("showWorld");
 
     worldsData[worldId].lobbyClients.push(playerObject);
 
-    console.log('\x1b[36m%s\x1b[0m', "player connected  : ", socket.id , " clients connected: ", worldsData[worldId].clients.length +  worldsData[worldId].lobbyClients.length);
+    console.log('\x1b[36m%s\x1b[0m', "player connected  : ", socket.id , " clients connected: ", worldsData[worldId].clients.length +  worldsData[worldId].lobbyClients.length, "In loby: ", worldsData[worldId].lobbyClients.length);
 
     socket.on("playerStartGame", function(data){
 
@@ -821,22 +826,27 @@ function newConnetcion(socket){
         var lobbyClient = findObjectWithId(worldsData[data.worldId].lobbyClients, socket.id);
 
         var level = 0;
-
+        var position = {x: 0, y: 0};
+        
         if(lobbyClient){
-            worldsData[data.worldId].lobbyClients.splice(lobbyClient.index, 1);
+
+            position.x = lobbyClient.object.x;
+            position.y = lobbyClient.object.y;
 
             if(lobbyClient.object.level)
-                level = lobbyClient.object.level;
+            level = lobbyClient.object.level;
+
+            worldsData[data.worldId].lobbyClients.splice(lobbyClient.index, 1);   
         }
-           
-        player = new Player(0, 0, 0, level, socket.id, data.worldId); 
+
+        player = new Player(position.x, position.y, 0, level, socket.id, data.worldId); 
 
         worldsData[data.worldId].clients.push(player)
 
         player.username = data.username;
         worldsData[data.worldId].hittableObjects.push(player);
 
-        socket.emit("setupLocalWorld", newPlayerData(data.worldId));
+        socket.emit("setupLocalWorld", newPlayerData(data.worldId, player.x, player.y));
 
         socket.broadcast.to(data.worldId).emit('newPlayer', player);
         socket.emit("newPlayerStart", player);
@@ -1391,7 +1401,11 @@ function disconnectPlayer(id, socket, worldId){
             if(client.object.level - levelsLostOnDeath > 0)
                 level = client.object.level - levelsLostOnDeath;
 
-            playerObject = {id: id, worldId: worldId, level: level};
+            var spawnSize = (gridSize - edgeSpawnPadding) / 2
+            var playerPosition = {x: getRndInteger(-spawnSize, spawnSize), y: getRndInteger(-spawnSize, spawnSize)};
+        
+            playerObject = {id: socket.id, worldId: worldId, x: playerPosition.x , y: playerPosition.y};
+
             worldsData[worldId].lobbyClients.push(playerObject);
 
             io.sockets.connected[id].emit("respawn");
@@ -1972,16 +1986,17 @@ function allStructures(worldId){
 }
 
 
-function newPlayerData(id) {
+function newPlayerData(id, x, y) {
 
     var data = {
         existingPlayers: worldsData[id].clients,
         worldObjects: worldsData[id].worldObjects,
         gridSize: gridSize,
         gridBoxScale: gridBoxScale,
-        worldId: id
+        worldId: id,
+        x: x,
+        y: y
     };
-
     return data;
 }
 
