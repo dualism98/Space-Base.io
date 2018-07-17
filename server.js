@@ -15,25 +15,25 @@ var worldIds = [];
 console.log("server started");
 
 //Server Config Options
-var numOfasteroids = 4000;
-var numOfPlanets = 50;
-var numOfMoons = 200;
-var numOfSuns = 10;
-var numOfCrystals = 100;
-var gridSize = 15000;
-var gridBoxScale = 200;
-var spawnTries = 5;
-
-// var numOfasteroids = 0;
-// var numOfPlanets = 3;
-// var numOfMoons = 0;
-// var numOfSuns = 0;
-// var numOfCrystals = 0;
-// var gridSize = 2000;
-// var gridBoxScale = 10;
+// var numOfasteroids = 4000;
+// var numOfPlanets = 50;
+// var numOfMoons = 200;
+// var numOfSuns = 10;
+// var numOfCrystals = 100;
+// var gridSize = 15000;
+// var gridBoxScale = 200;
 // var spawnTries = 5;
 
-var edgeSpawnPadding = 100;
+var numOfasteroids = 0;
+var numOfPlanets = 3;
+var numOfMoons = 0;
+var numOfSuns = 0;
+var numOfCrystals = 0;
+var gridSize = 2000;
+var gridBoxScale = 10;
+var spawnTries = 5;
+
+var edgeSpawnPadding = 2000;
 
 var mineProductionRate = 2500;
 var despawnProjectilesRate = 100;
@@ -494,7 +494,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 100000, iron: 10000, earth: 1200, crystal: 75},
+            costs: {asteroidBits: 100000, iron: 10000, earth: 1200, crystal: 75, gem: 1},
             speed: 16,
             fireRate: 50,
             maxHealth: 3000,
@@ -505,7 +505,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 500000, iron: 20000, earth: 5000, crystal: 100},
+            costs: {asteroidBits: 500000, iron: 20000, earth: 5000, crystal: 100, gem: 5},
             speed: 15,
             fireRate: 60,
             maxHealth: 4000,
@@ -516,7 +516,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 1000000, iron: 50000, earth: 10000, crystal: 130},
+            costs: {asteroidBits: 1000000, iron: 50000, earth: 10000, crystal: 130, gem: 10},
             speed: 14,
             fireRate: 70,
             maxHealth: 5000,
@@ -551,7 +551,7 @@ var structureUpgrades = {
         bulletRange: 20,
         projectileSpeed: 7,
         shootInterval: 95,
-        damage: 7,
+        damage: 10,
         bulletPenetration: 1,
         identifier: "turret"
     },
@@ -559,8 +559,8 @@ var structureUpgrades = {
         costs: {iron: 100},
         bulletRange: 30,
         projectileSpeed: 9,
-        shootInterval: 82,
-        damage: 12,
+        shootInterval: 90,
+        damage: 15,
         bulletPenetration: 1,
         identifier: "turret"
     },
@@ -568,7 +568,7 @@ var structureUpgrades = {
         costs: {iron: 500},
         bulletRange: 35,
         projectileSpeed: 11,
-        shootInterval: 70,
+        shootInterval: 85,
         damage: 20,
         bulletPenetration: 1,
         identifier: "turret"
@@ -577,26 +577,35 @@ var structureUpgrades = {
         costs: {iron: 1000},
         bulletRange: 40,
         projectileSpeed: 13,
-        shootInterval: 50,
-        damage: 50,
+        shootInterval: 80,
+        damage: 30,
         bulletPenetration: 1,
         identifier: "turret"
     },
     {
-        costs: {iron: 5000, gem: 1},
+        costs: {iron: 5000, crystal: 5},
         bulletRange: 45,
         projectileSpeed: 15,
-        shootInterval: 40,
-        damage: 75,
+        shootInterval: 75,
+        damage: 45,
         bulletPenetration: 1,
         identifier: "turret"
     },
     {
-        costs: {iron: 10000, gem: 2},
+        costs: {iron: 10000, crystal: 20},
         bulletRange: 45,
         projectileSpeed: 17,
-        shootInterval: 30,
-        damage: 110,
+        shootInterval: 70,
+        damage: 65,
+        bulletPenetration: 1,
+        identifier: "turret"
+    },
+    {
+        costs: {iron: 20000, crystal: 50, gem: 1},
+        bulletRange: 45,
+        projectileSpeed: 17,
+        shootInterval: 65,
+        damage: 80,
         bulletPenetration: 1,
         identifier: "turret"
     }
@@ -829,7 +838,6 @@ function newConnetcion(socket){
         var position = {x: 0, y: 0};
         
         if(lobbyClient){
-
             position.x = lobbyClient.object.x;
             position.y = lobbyClient.object.y;
 
@@ -838,6 +846,8 @@ function newConnetcion(socket){
 
             worldsData[data.worldId].lobbyClients.splice(lobbyClient.index, 1);   
         }
+        else
+            console.log("Lobby client  not found");
 
         player = new Player(position.x, position.y, 0, level, socket.id, data.worldId); 
 
@@ -1341,10 +1351,12 @@ function newConnetcion(socket){
         disconnectPlayer(socket.id, socket, worldId);
 
         if(worldsData[worldId])
+        {
             console.log('\x1b[31m%s\x1b[0m', "player disconected: ", socket.id,  " clients connected: ", worldsData[worldId].clients.length, "In loby: ", worldsData[worldId].lobbyClients.length);
 
-        if(worldsData[worldId].clients.length + worldsData[worldId].lobbyClients.length == 0){
-            removeWorld(worldId);
+            if(worldsData[worldId].clients.length + worldsData[worldId].lobbyClients.length == 0){
+                removeWorld(worldId);
+            }
         }
 
     });
@@ -1374,8 +1386,22 @@ function disconnectPlayer(id, socket, worldId){
                 if(planet){
                     planet = planet.object;
 
+                    planet.owner = null;
+                    planet.occupiedBy = null;
+
                     var planetStructure = findObjectWithId(planet.structures, structure.id);
-    
+
+                    if(planetStructure.object.type == "shield")
+                    {
+                        var shield = findObjectWithId(worldsData[worldId].hittableObjects, structure.id);
+
+                        if(shield)
+                        {
+                            worldsData[worldId].hittableObjects.splice(shield.index, 1);
+                            syncDamage(worldId, [structure.id]);
+                        }
+                    }
+
                     if(planetStructure)
                         planet.structures.splice(planetStructure.index, 1);
                 }
@@ -1394,6 +1420,12 @@ function disconnectPlayer(id, socket, worldId){
         }
         
         if(id != socket.id){ //Player was killed
+
+            if(!io.sockets.connected[id]){
+                console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "Player killed not found");
+                return;
+            }
+
             io.sockets.connected[id].broadcast.to(worldId).emit('playerExited', data);
             
             var level = 0;
@@ -1491,9 +1523,12 @@ function damageObject(worldId, id, senderId, damage){
         else {
             target.object.health = 0;
 
-            if(target.object.structure){
+            if(target.object.structure){ //Is a structure (shield)
+                
+
                 worldWorldObjects.planets.forEach(function(planet){
-                    var possibleStructure = findObjectWithId(planet.structures, target.object.id)
+                    var possibleStructure = findObjectWithId(planet.structures, target.object.id);
+
                     if(possibleStructure){
                         planet.structures.splice(possibleStructure.index, 1);
                         console.log("destroyed structure off planet");
@@ -1666,15 +1701,11 @@ function itemDropped(drops, playerRecivingId, worldId, precent){
 
 function syncDamage(worldId, changedIds){
 
-    var healthData = {hittableObjects: []};
-    var deadObejcts = [];
-
+    var healthData = {hittableObjects: [], deadObjects:[]};
     var worldHittableObjects = worldsData[worldId].hittableObjects;
 
     if(changedIds){
-
         var changedObjects = [];
-
         changedIds.forEach(id => {
             changedObject = findObjectWithId(worldHittableObjects, id);
 
@@ -1692,6 +1723,9 @@ function syncDamage(worldId, changedIds){
                 }
 
                 changedObjects.push(healthObj);
+            }
+            else{
+                healthData.deadObjects.push(id);
             }
         });
         
@@ -1769,7 +1803,6 @@ function shieldHeal()
     allStructures().forEach(structure => {
         if(structure.type == "shield"){
             var shield = findObjectWithId(worldsData[structure.worldId].hittableObjects, structure.id).object;
-
 
             var addamount = shield.maxHealth / 25;
 

@@ -315,6 +315,7 @@ function setupLocalWorld(data){
 
         var planetObject = new Planet(planet.x, planet.y, planet.radius, planet.color, planet.health, planet.maxHealth, planet.id);
         planetObject.occupiedBy = planet.occupiedBy;
+        planetObject.owner = planet.owner; 
 
         //Add all existing structures
         for (let i = 0; i < planet.structures.length; i++) {
@@ -360,9 +361,9 @@ function newWorldObjectSync(data){
         else{
             var planet = data.newObject;
             var planetObject = new Planet(planet.x, planet.y, planet.radius, planet.color, planet.health, planet.maxHealth, data.id);
-            
-            planetObject.occupiedBy = planet.occupiedBy;   
-    
+              
+            planetObject.owner = planet.owner;
+
             if(changedPlanet)
                 worldObjects.planets[changedPlanet.index] = planetObject;
             else
@@ -394,6 +395,14 @@ function newWorldObjectSync(data){
     allWorldObjects = getAllWorldObjects();
 }
 function receiveDamageSync(data){
+
+    for (let i = 0; i < data.deadObjects.length; i++) {
+        var localObj = findObjectWithId(hittableObjects, data.deadObjects[i]);
+
+        if(localObj)
+            hittableObjects.splice(localObj.index);
+    }
+
     for (let i = 0; i < data.hittableObjects.length; i++) {
         const sentHittableObject = data.hittableObjects[i];
         
@@ -449,7 +458,6 @@ function showWorld(){
 }
 function startLocalPlayer(data){
     gridPos = new Vector(data.x + gridSize / -2, data.y + gridSize / -2);
-    //gridPos = new Vector(gridSize / -2 - data.x, gridSize / -2 - data.y);//new Vector(gridSize / -2, gridSize / -2);
     upgradeables.push(clientId);
     friendlyObjectIds = [clientId];
 
@@ -491,8 +499,7 @@ function updatePlayerPosition(data){
     }
 }
 function spawnNetworkedProjectile(data){
-    var pos = cordsToScreenPos(data.x, data.y);
-    otherProjectiles.push(new Projectile(pos.x, pos.y, data.vel, data.size, data.color, data.bulletPenetration, true, data.id));
+    otherProjectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, data.bulletPenetration, true, data.id));
 }
 function destroyNetworkedProjectile(data){
     var deadProjOther = findObjectWithId(otherProjectiles, data.id);
@@ -581,23 +588,22 @@ function shopUpgrade(data){
         }
     }
 
-    if(data.type == "shipTurret" && data.level == 1 && player){
-
+    if(data.type == "shipTurret" && player){
         if(!player.turret)
         {
-            var pos = screenPosToCords(centerX, centerY);
-            player.turret = new Turret(player, pos.x, pos.y, 0, 0, !isLocalPlayer, clientId, data.turretId);
+            var planet = {x: centerX, y: centerY, radius: player.radius};
+
+            player.turret = new Turret(planet, 0, 0, 0, 0, !isLocalPlayer, clientId, data.turretId);
             player.turret.distanceFromPlanet = 0;
             player.turret.headDistanceFromBase = 0;
             player.turret.type = "shipTurret";
         }
 
-        player.turret.level = data.level;
-        player.turret.shootInterval = Math.round(300 / data.value);
-        player.turret.projectileSpeed = Math.round(data.value * 1.5);
+        player.turret.level = data.level - 1;
+        player.turret.shootInterval = Math.round(1000 / data.value);
+        player.turret.projectileSpeed = Math.round(data.value);
         player.turret.projectileSize = player.radius / 4;
     }
-    
 }
 function mineProduce(data){
     data.forEach(mine => {
@@ -653,8 +659,16 @@ function cloak(data){
 function playerExited(data){
 
     otherPlayer = findObjectWithId(otherPlayers, data.clientId);
+    
+   
 
     if(otherPlayer){
+
+        worldObjects.planets.forEach(planet => {
+            if(planet.occupiedBy == data.clientId)
+                planet.occupiedBy = null;
+        });
+
         otherPlayers.splice(otherPlayer.index, 1);
 
         var otherPlayerHittableObj = findObjectWithId(hittableObjects, data.clientId);
@@ -670,6 +684,7 @@ function playerExited(data){
             data.structureIds.forEach(id => {
                 if(id == structure.id){
                     planet = findObjectWithId(worldObjects.planets, structure.planet.id);
+                    planet.object.owner = null;
                     planetStructureIndex = findObjectWithId(planet.object.structures, structure.id).index;
                     planet.object.structures.splice(planetStructureIndex, 1);
                 }
@@ -1167,6 +1182,7 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
     this.coordX = x;
     this.coordY = y;
 
+    this.shootRotation;
     this.headDistanceFromBase = 10;
     this.range = 1000;
     this.target;
@@ -1203,22 +1219,24 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
 
         this.shootPoint = new Vector(headX, headY);
         
-        var rad = 0;
+        this.shootRotation = 0;
 
         //Draw Head
         if(this.target)
         {
-            rad = Math.atan2(this.target.y - headY, this.target.x - headX);
-            this.headRotation = rad * 180 / Math.PI;
+            var playerPos = cordsToScreenPos(this.target.coordX, this.target.coordY);
+
+            this.shootRotation = Math.atan2(playerPos.y - headY, playerPos.x - headX);
+            this.headRotation = this.shootRotation * 180 / Math.PI;
         }
         else{
-            rad = this.rotation * - Math.PI / 180;
-            this.headRotation = rad * 180 / Math.PI;
+            this.shootRotation = this.rotation * - Math.PI / 180;
+            this.headRotation = this.shootRotation * 180 / Math.PI;
         }
 
         c.save();
         c.translate(headX, headY);
-        c.rotate(rad);
+        c.rotate(this.shootRotation);
         c.fillStyle = planetColors[1];
         c.fillRect(-this.headLength / 2 + this.headLength / 4, -this.headWidth / 2, this.headLength, this.headWidth);
         c.restore();
@@ -1239,10 +1257,7 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
                 this.shootCounter = 0;
 
                 var spawnPos = screenPosToCords(this.shootPoint.x, this.shootPoint.y);
-
-                var angle = Math.atan2((this.shootPoint.y - this.target.y), (this.shootPoint.x - this.target.x)) - 1.5708;
-
-                shoot(spawnPos.x, spawnPos.y, angle, this.projectileSpeed, this.projectileSize, this.bulletPenetration, "#f45c42", this.id);
+                shoot(spawnPos.x, spawnPos.y, this.shootRotation + Math.PI / 180 * 90, this.projectileSpeed, this.projectileSize, this.bulletPenetration, "#f45c42", this.id);
             }
         }
     }
@@ -1265,28 +1280,12 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
 
             var playerPos = cordsToScreenPos(player.coordX, player.coordY);
 
-            c.beginPath();
-            c.moveTo(centerX, centerY);
-            c.strokeStyle = "gray";
-            c.lineWidth = 5;
-            c.lineTo(playerPos.x, playerPos.y);
-            c.stroke();
-
-            c.beginPath();
-            c.fillStyle = "pink";
-            c.arc(playerPos.x, playerPos.y, 10, 0, 0, false);
-            c.fill();
-
-
-            var distance = Math.sqrt(Math.pow(this.x - player.x, 2) + Math.pow(this.y - player.y, 2));
+            var distance = Math.sqrt(Math.pow(this.x - playerPos.x, 2) + Math.pow(this.y - playerPos.y, 2));
 
             if(this.target != null){
-                var x = (this.target.x - this.planet.x + gridPos.x) * -1;
-                var y = (this.target.y - this.planet.y + gridPos.y) * -1;
+                var targetScreenPosition = cordsToScreenPos(this.target.coordX, this.target.coordY);
     
-                this.target.screenPosition = new Vector(x, y);
-    
-                var targetDistance = Math.sqrt(Math.pow(this.x - this.target.screenPosition.x, 2) + Math.pow(this.y - this.target.screenPosition .y, 2));
+                var targetDistance = Math.sqrt(Math.pow(this.x - targetScreenPosition.x, 2) + Math.pow(this.y - targetScreenPosition.y, 2));
     
                 if(distance < targetDistance && distance <= this.range)
                     this.target = player;
@@ -1343,7 +1342,6 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
     
                 if(this.hitsLeft <= 0)
                     return;
-                    //projectiles.splice(findObjectWithId(projectiles, this.id).index);
             }
         }
         
@@ -1500,7 +1498,8 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
     }
 }
 function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, fireRate, id){
-    this.pos = new Vector(x, y);
+    this.coordX = x;
+    this.coordY = y;
     this.rotation = 0;
     this.radius = radius;
     this.maxHealth = maxHealth;
@@ -1615,7 +1614,7 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, ra
             c.fillStyle = "white";
             c.globalAlpha = .5;
             c.textAlign = "center"; 
-            c.fillText(this.username, this.x, this.y - radius - 20);
+            c.fillText(this.username, this.x, this.y - this.radius - 20);
     
             c.textAlign = "left"; 
             c.globalAlpha = 1;
@@ -1645,7 +1644,7 @@ function Shop(coordX, coordY, radius, upgradeType){
 
     this.range = 100;
 
-    this.ringColor;
+    this.ringColor = "#59616d";
 
     this.draw = function(){
 
@@ -1826,24 +1825,26 @@ function animate() {
             
         });
 
-        spaceShip.x = (gridPos.x + gridSize / 2) * -1;
-        spaceShip.y = gridPos.y + gridSize / 2;
+        var spaceShipCoords = screenPosToCords(centerX, centerY);
+
+        spaceShip.coordX = spaceShipCoords.x; //(gridPos.x + gridSize / 2) * -1;
+        spaceShip.coordY = spaceShipCoords.y; //gridPos.y + gridSize / 2;
     
         //Screen Bounds
         //Left 
-        if(spaceShip.x <= gridSize/2 * -1 && spaceshipVelocity.x < 0){
+        if(spaceShip.coordX <= 0 && spaceshipVelocity.x < 0){
             spaceshipVelocity.x = 0;
         }
         //Right 
-        if(spaceShip.x >= gridSize/2 && spaceshipVelocity.x > 0){
+        if(spaceShip.coordX >= gridSize && spaceshipVelocity.x > 0){
             spaceshipVelocity.x = 0;
         }
         //Top 
-        if(spaceShip.y <= gridSize/2 * -1 && spaceshipVelocity.y > 0){
+        if(spaceShip.coordY <= 0 && spaceshipVelocity.y < 0){
             spaceshipVelocity.y = 0;
         }
         //Bottom 
-        if(spaceShip.y >= gridSize/2 && spaceshipVelocity.y < 0){
+        if(spaceShip.coordY >= gridSize && spaceshipVelocity.y > 0){
             spaceshipVelocity.y = 0;
         }
         
@@ -2217,7 +2218,7 @@ function animate() {
     
         if(statsView){
             c.font = "20px Arial";
-            c.fillText("x: " + Math.round(spaceShip.x) + " y: " + Math.round(spaceShip.y), 5, canvas.height - 5);
+            c.fillText("x: " + Math.round(spaceShip.coordX) + " y: " + Math.round(spaceShip.coordY), 5, canvas.height - 5);
         }
     
         var cloakedBarDisplayed = false;
@@ -2475,7 +2476,7 @@ function showUpgrades(){
         var upgradeeId = upgradeableObjects()[i];
         var upgrade = Object.assign({}, findUpgrade(upgradeeId));
 
-        if(upgrade.identifier == "landingPad")
+        if(!upgrade || upgrade.identifier == "landingPad")
             continue;
 
         upgrade.id = upgradeeId;
@@ -3003,8 +3004,14 @@ function findUpgrade(id){
         var upgrade = {};
         var upgrades;
 
-        var upgradee = findObjectWithId(allWorldObjects.concat(allStructures).concat(spaceShip), id).object;
+        var upgradee = findObjectWithId(allWorldObjects.concat(allStructures).concat(spaceShip), id);
             
+        if(upgradee){
+            upgradee = upgradee.object;
+        }
+        else
+            return false;
+
         if(upgradee.type){
             upgrades = structureUpgrades[upgradee.type];
         }
