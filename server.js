@@ -4,8 +4,8 @@ var DoublyList = require('./doublyLinkedList');
 
 var app = express();
 
-//var server = app.listen(process.env.PORT, "0.0.0.0");
-var server = app.listen(8080, "0.0.0.0");
+var server = app.listen(process.env.PORT, "0.0.0.0");
+//var server = app.listen(8080, "0.0.0.0");
 app.use(express.static('public'));
 var io = require('socket.io').listen(server);   //socket(server);
 
@@ -15,23 +15,23 @@ var worldIds = [];
 console.log("server started");
 
 //Server Config Options
-// var numOfasteroids = 4000;
-// var numOfPlanets = 50;
-// var numOfMoons = 200;
-// var numOfSuns = 10;
-// var numOfCrystals = 100;
-// var gridSize = 15000;
-// var gridBoxScale = 200;
-// var spawnTries = 5;
-
-var numOfasteroids = 0;
-var numOfPlanets = 3;
-var numOfMoons = 0;
-var numOfSuns = 0;
-var numOfCrystals = 0;
-var gridSize = 2000;
-var gridBoxScale = 10;
+var numOfasteroids = 4000;
+var numOfPlanets = 50;
+var numOfMoons = 200;
+var numOfSuns = 10;
+var numOfCrystals = 100;
+var gridSize = 15000;
+var gridBoxScale = 200;
 var spawnTries = 5;
+
+// var numOfasteroids = 0;
+// var numOfPlanets = 3;
+// var numOfMoons = 0;
+// var numOfSuns = 0;
+// var numOfCrystals = 0;
+// var gridSize = 2000;
+// var gridBoxScale = 10;
+// var spawnTries = 5;
 
 var mineProductionRate = 2500;
 var despawnProjectilesRate = 100;
@@ -190,11 +190,23 @@ function generateWorld(){
         var colorindex = Math.round(getRndInteger(0, planetColors.length - 1));
         var color = planetColors[colorindex];
         var planetSize = getRndInteger(100, 300);
-        var planetHealth = planetSize * 25;
+        var planetHealth = planetSize * 40;
         
         var drops = {asteroidBits: Math.round(planetSize * 6), water: Math.round(planetSize * 2), earth: Math.round(planetSize * 3), iron: Math.round(planetSize * 2.5)};
 
         generatePlanet(planetSize, color, planetHealth, drops, generatedWorldObjects, generatedHittableObjects);
+    }
+
+    for(var i = 0; i < numOfMoons; i++){
+        var colorindex = getRndInteger(0, moonColors.length - 1);
+        var color = moonColors[colorindex];
+        var size = getRndInteger(50, 75);
+        var health = size * 5;
+        var type = "moon";
+        var drops = {asteroidBits: Math.round(size * 1.2), water: Math.round(size / 4), iron: Math.round(size * .8)};
+
+        generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
+        
     }
 
     for(var i = 0; i < numOfasteroids; i++){
@@ -227,18 +239,6 @@ function generateWorld(){
         
     }
 
-    for(var i = 0; i < numOfMoons; i++){
-        var colorindex = getRndInteger(0, moonColors.length - 1);
-        var color = moonColors[colorindex];
-        var size = getRndInteger(50, 75);
-        var health = size * 3;
-        var type = "moon";
-        var drops = {asteroidBits: Math.round(size * 1.2), water: Math.round(size / 4), iron: Math.round(size * .8)};
-
-        generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
-        
-    }
-
     console.log('world generation complete: /n', generatedWorldObjects.asteroids.length, ' asteroids spawned /n', generatedWorldObjects.planets.length, ' planets spawned');
 
     return {worldObjects: generatedWorldObjects, hittableObjects: generatedHittableObjects};
@@ -263,7 +263,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
+    this.drops = {};//{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
 
     this.shipTurret;
 
@@ -437,7 +437,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 1200, iron: 100},
+            costs: {asteroidBits: 1200, iron: 100, earth: 10},
             speed: 29,
             fireRate: 25,
             maxHealth: 340,
@@ -448,7 +448,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 2000, iron: 300, crystal: 5},
+            costs: {asteroidBits: 2000, iron: 300, earth: 50, crystal: 5},
             speed: 26,
             fireRate: 30,
             maxHealth: 500,
@@ -459,7 +459,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 5000, iron: 800, crystal: 10},
+            costs: {asteroidBits: 5000, iron: 800, earth: 300, crystal: 10},
             speed: 23,
             fireRate: 35,
             maxHealth: 890,
@@ -470,7 +470,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 10000, iron: 2500, crystal: 20},
+            costs: {asteroidBits: 10000, iron: 2500, earth: 500, crystal: 20},
             speed: 20,
             fireRate: 40,
             maxHealth: 1440,
@@ -481,7 +481,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 50000, iron: 5000, crystal: 50},
+            costs: {asteroidBits: 50000, iron: 5000, earth: 800, crystal: 50},
             speed: 17,
             fireRate: 45,
             maxHealth: 2330,
@@ -492,7 +492,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 100000, iron: 10000, crystal: 75},
+            costs: {asteroidBits: 100000, iron: 10000, earth: 1200, crystal: 75},
             speed: 16,
             fireRate: 50,
             maxHealth: 3000,
@@ -503,7 +503,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 500000, iron: 20000, crystal: 100},
+            costs: {asteroidBits: 500000, iron: 20000, earth: 5000, crystal: 100},
             speed: 15,
             fireRate: 60,
             maxHealth: 4000,
@@ -514,7 +514,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 1000000, iron: 50000, crystal: 130},
+            costs: {asteroidBits: 1000000, iron: 50000, earth: 10000, crystal: 130},
             speed: 14,
             fireRate: 70,
             maxHealth: 5000,
@@ -541,7 +541,7 @@ var structureUpgrades = {
         projectileSpeed: 5,
         shootInterval: 100,
         damage: 5,
-        bulletPenetration: 0,
+        bulletPenetration: 1,
         identifier: "turret"
     },
     {
@@ -550,7 +550,7 @@ var structureUpgrades = {
         projectileSpeed: 6,
         shootInterval: 95,
         damage: 7,
-        bulletPenetration: 0,
+        bulletPenetration: 1,
         identifier: "turret"
     },
     {
@@ -559,7 +559,7 @@ var structureUpgrades = {
         projectileSpeed: 10,
         shootInterval: 82,
         damage: 12,
-        bulletPenetration: 0,
+        bulletPenetration: 1,
         identifier: "turret"
     },
     {
@@ -568,7 +568,7 @@ var structureUpgrades = {
         projectileSpeed: 15,
         shootInterval: 70,
         damage: 20,
-        bulletPenetration: 0,
+        bulletPenetration: 1,
         identifier: "turret"
     },
     {
@@ -577,16 +577,25 @@ var structureUpgrades = {
         projectileSpeed: 20,
         shootInterval: 50,
         damage: 50,
-        bulletPenetration: 0,
+        bulletPenetration: 1,
         identifier: "turret"
     },
     {
         costs: {iron: 5000, gem: 1},
         bulletRange: 45,
         projectileSpeed: 30,
-        shootInterval: 20,
-        damage: 100,
-        bulletPenetration: 0,
+        shootInterval: 40,
+        damage: 75,
+        bulletPenetration: 1,
+        identifier: "turret"
+    },
+    {
+        costs: {iron: 10000, gem: 2},
+        bulletRange: 45,
+        projectileSpeed: 40,
+        shootInterval: 30,
+        damage: 110,
+        bulletPenetration: 1,
         identifier: "turret"
     }
     ],
@@ -694,20 +703,20 @@ var shopUpgrades = {
             value: 0
         },
         {
-            costs: {crystal: 5},
-            value: 2
-        },
-        {
             costs: {crystal: 10},
-            value: 4
-        },
-        {
-            costs: {crystal: 15},
-            value: 6
+            value: 1
         },
         {
             costs: {crystal: 20},
-            value: 6
+            value: 2
+        },
+        {
+            costs: {crystal: 30},
+            value: 3
+        },
+        {
+            costs: {crystal: 50},
+            value: 4
         }
     ],
     cloakTime: [
@@ -715,19 +724,19 @@ var shopUpgrades = {
             value: 0
         },
         {
-            costs: {crystal: 5},
+            costs: {crystal: 10},
             value: 3000
         },
         {
-            costs: {crystal: 10},
+            costs: {crystal: 20},
             value: 4000
         },
         {
-            costs: {crystal: 15},
+            costs: {crystal: 30},
             value: 5000
         },
         {
-            costs: {crystal: 20},
+            costs: {crystal: 50},
             value: 6000
         },
     ],
@@ -736,19 +745,19 @@ var shopUpgrades = {
             value: 0
         },
         {
-            costs: {crystal: 5},
+            costs: {crystal: 10},
             value: 40
         },
         {
-            costs: {crystal: 10},
+            costs: {crystal: 20},
             value: 60
         },
         {
-            costs: {crystal: 15},
+            costs: {crystal: 30},
             value: 90
         },
         {
-            costs: {crystal: 20},
+            costs: {crystal: 50},
             value: 110
         },
     ],
@@ -757,20 +766,20 @@ var shopUpgrades = {
             value: 0
         },
         {
-            costs: {crystal: 5},
+            costs: {crystal: 10},
             value: 2
         },
         {
-            costs: {crystal: 10},
+            costs: {crystal: 20},
             value: 4
         },
         {
-            costs: {crystal: 15},
-            value: 6
+            costs: {crystal: 30},
+            value: 8
         },
         {
-            costs: {crystal: 20},
-            value: 6
+            costs: {crystal: 50},
+            value: 16
         }
     ]
 
@@ -854,8 +863,6 @@ function newConnetcion(socket){
         }
 
         var damageDealt = projectile.object.damage;
-
-        console.log(projectile.object);
 
         damageObject(data.worldId, data.id, data.senderId, damageDealt);
 
@@ -964,7 +971,7 @@ function newConnetcion(socket){
         socket.broadcast.to(data.worldId).emit('spawnProj', data);
         worldsData[data.worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, shooter.object.damage, shooter.object.bulletRange, bulletPenetration, data.worldId, data.id));
 
-        console.log('\x1b[33m%s\x1b[0m', "spawned projectile with id: ", data.id, " total: ", worldsData[data.worldId].projectiles.length);
+        //console.log('\x1b[33m%s\x1b[0m', "spawned projectile with id: ", data.id, " total: ", worldsData[data.worldId].projectiles.length);
     });
 
     socket.on('requestSpawnStructure', function(data){
@@ -1132,7 +1139,7 @@ function newConnetcion(socket){
                 }
                 neededResources++;
             }
-        }
+        } 
 
         if(hasResourceCounter == neededResources){
             for (var cost in costsForNextLvl) {
@@ -1154,6 +1161,17 @@ function newConnetcion(socket){
                 else{
                     turretId = uniqueId();
                     shipTurret = new Structure(socket.id, 0, 0, 0, "turret", socket.id, level, worldId, turretId);
+
+                    var upgrades = structureUpgrades["turret"][level];
+
+                    for (var upgrade in upgrades) {
+                        if (upgrades.hasOwnProperty(upgrade)) {
+                            
+                            shipTurret[upgrade] = upgrades[upgrade];
+
+                        }
+                    }
+
                     player.shipTurret = shipTurret;
                 }
             }
@@ -1188,6 +1206,10 @@ function newConnetcion(socket){
         else
             upgrades = playerUpgrades;
         
+        if(!upgrades[upgradee.level + 1]){
+            console.log("upgrade not found");
+            return;
+        }
 
         var costsForNextLvl = upgrades[upgradee.level + 1].costs;
         var hasResourceCounter = 0;
@@ -1214,8 +1236,6 @@ function newConnetcion(socket){
 
     function upgrade(thing, upgrade, costs, playerUpgrading, worldId){
 
-        console.log(thing);
-
         for (var property in upgrade) {
             if (upgrade.hasOwnProperty(property)) {
 
@@ -1223,7 +1243,6 @@ function newConnetcion(socket){
                     var hittableThingObject = findObjectWithId(worldsData[worldId].hittableObjects, thing.id).object;
 
                     var precent = hittableThingObject["health"] / hittableThingObject[property];
-                    console.log(precent, upgrade[property], precent * upgrade[property]);
 
                     hittableThingObject.maxHealth = upgrade[property];
                     hittableThingObject.health = precent * upgrade[property];

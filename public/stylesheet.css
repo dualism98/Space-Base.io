@@ -62,7 +62,6 @@ li {
     margin-right: auto;
 
     padding: 5px;
-
 }
 
 #startGame:hover {
@@ -74,7 +73,62 @@ li {
     filter: saturate(400%) brightness(30%);
 }
 
-#preGameContent {
+#helpContent {
+    display: none;
+    position: absolute;
+    top: 0%;
+    width: 100%;
+    height: 100%;
+}
+
+
+#helpScrollDiv {
+    position: absolute;
+
+    margin-left: auto;
+    margin-right: auto;
+
+    overflow-y: scroll;
+
+    left:0;
+    right:0;
+    width: 50%;
+    height: 100%;
+}
+
+#howTo{
+    position: absolute;
+
+    
+
+    margin-left: auto;
+    margin-right: auto;
+
+    padding-top: 10%;
+    padding-bottom: 10%;
+
+    left:0;
+    right:0;
+    width: 85%;
+}
+
+#backHelp {
+    position: absolute;
+    background: url(backX.png) no-repeat;
+    background-size: 100%;
+    cursor:pointer;
+
+    cursor: pointer;
+
+    border: none;
+
+    left: 22%;
+    top: 10%;
+    width: 5vw;
+    height: 5vw;
+}
+
+#mainContent {
     position: absolute;
     top: 10%;
 
@@ -93,9 +147,8 @@ li {
     vertical-align: middle;
 
     border: none;
-    background-size: 100%;
     width: 286px;
-    height: 363px;
+    height: 414px;
 
     display: "inline-block";
 
@@ -105,6 +158,35 @@ li {
     margin-right: auto;
     
     padding: 5px;
+}
+
+#help {
+    display: table-row;
+    vertical-align: middle;
+
+    background: url(help.png) no-repeat;
+    background-size: 100%;
+    cursor:pointer;
+
+    cursor: pointer;
+
+    border: none;
+    width: 60px;
+    height: 60px;
+    margin-top: 10px;
+    margin-left: auto;
+    margin-right: auto;
+
+    padding: 5px;
+}
+
+#help:hover {
+    filter: saturate(200%) brightness(70%);
+
+}
+
+#help:active {
+    filter: saturate(400%) brightness(30%);
 }
 
 

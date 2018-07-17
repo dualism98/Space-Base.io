@@ -214,9 +214,9 @@ var boostReady = false;
 var landed = false;
 
 function setup(){
-    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://localhost:8080');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
-    //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
+    socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -272,7 +272,7 @@ function setupLocalWorld(data){
                 player.turret = new Turret(player, client.x, client.y, 0, client.shipTurret.level, true, player.id, client.shipTurret.id);
                 player.turret.distanceFromPlanet = 0;
                 player.turret.headDistanceFromBase = 0;
-                player.turret.type = "shipTurret";
+                player.turret.type = "shipTurretBase";
             }        
 
             otherPlayers.push(player);
@@ -765,6 +765,26 @@ $("#startGame").click(function(){
 
 });
 
+$("#help").click(function(){
+
+    $("#mainContent").fadeOut(250);
+    $("#helpContent").fadeIn(250);
+
+});
+
+$("#backHelp").click(function(){
+
+    $("#mainContent").fadeIn(250);
+    $("#helpContent").fadeOut(250);
+
+});
+
+$(document).ready(function() {
+    $("#mainContent").fadeIn(0);
+    $("#helpContent").fadeOut(0);
+    $("#helpContent").css('display', '');
+});
+
 $(document).keypress(function(e){
 
     if(currentPlanet && spaceShip){
@@ -851,7 +871,7 @@ $(document).keypress(function(e){
 
         if(e.keyCode == 32){ //SPACE
             if(playerReloadTimer <= 0){
-                shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, PROJECTIILE_SPEED, spaceShip.radius / 4, spaceShip.shopUpgrades.bulletPenetration.value, "#f45c42", clientId);
+                shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, PROJECTIILE_SPEED, spaceShip.radius / 4, spaceShip.shopUpgrades.bulletPenetration.value + 1, "#f45c42", clientId);
                 playerReloadTimer = 1000;
             }
         } 
@@ -1201,7 +1221,7 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
         c.save();
         c.translate(headX, headY);
         c.rotate(rad);
-        c.fillStyle = "red";//planetColors[1];
+        c.fillStyle = planetColors[1];
         c.fillRect(-this.headLength / 2 + this.headLength / 4, -this.headWidth / 2, this.headLength, this.headWidth);
         c.restore();
     }
@@ -1305,7 +1325,8 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
                 this.hitsLeft--;
     
                 if(this.hitsLeft <= 0)
-                    projectiles.splice(findObjectWithId(projectiles, this.id).index);
+                    return;
+                    //projectiles.splice(findObjectWithId(projectiles, this.id).index);
             }
         }
         
@@ -1524,7 +1545,10 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
             this.turret.rotation = (this.rotation * -180 /  Math.PI) + 90;
             this.turret.coordX = pos.x;
             this.turret.coordY = pos.y;
+
+            c.globalAlpha = this.alpha;
             this.turret.update();
+            c.globalAlpha = 1;
         }  
     }
 
@@ -1875,6 +1899,9 @@ function animate() {
         projectile.pos.y -= spaceshipVelocity.y;
 
         projectile.update();
+
+        if(projectile.hitsLeft <= 0)
+            projectiles.splice(i, 1);
     }
 
     //NetworkedProjectiles
@@ -2311,7 +2338,7 @@ function drawShopPanel(type){
     if(currentLevel + 1 >= shopUpgrades[type].length)
     {
         c.fillRect(windowWidth / 2 - imageSize / 2 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
-        c.drawImage(getImage(type + currentLevel), windowWidth / 2 - imageSize / 2, imageY, imageSize, imageSize);
+        c.drawImage(getImage(type + (currentLevel - 1)), windowWidth / 2 - imageSize / 2, imageY, imageSize, imageSize);
 
         var textWidth = height / 5;
 
@@ -2328,10 +2355,10 @@ function drawShopPanel(type){
 
             label = "Upgrade";
             c.fillRect((windowWidth - width) / 2 + imageSize / 2 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
-            c.drawImage(getImage(type + currentLevel), (windowWidth - width) / 2 + imageSize / 2, imageY, imageSize, imageSize);
+            c.drawImage(getImage(type + (currentLevel - 1)), (windowWidth - width) / 2 + imageSize / 2, imageY, imageSize, imageSize);
             
             c.fillRect((windowWidth - width) / 2 + width - imageSize * 1.5 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
-            c.drawImage(getImage(type + (currentLevel + 1)), (windowWidth - width) / 2 + width - imageSize * 1.5, imageY, imageSize, imageSize);
+            c.drawImage(getImage(type + (currentLevel)), (windowWidth - width) / 2 + width - imageSize * 1.5, imageY, imageSize, imageSize);
 
             c.globalAlpha = 1;
             drawArrow(windowWidth / 2 + arrowSize, imageY + imageSize / 2, 135 * Math.PI / 180, "white", arrowSize);
@@ -2388,8 +2415,6 @@ function drawShopPanel(type){
         c.textAlign = "left";
 
         //Costs
-        
-
         var upgradeCosts = shopUpgrades[type][currentLevel + 1].costs;
         var costSize = height / 15;
         var costPadding = height / 25;
@@ -2433,11 +2458,15 @@ function showUpgrades(){
         var upgradeeId = upgradeableObjects()[i];
         var upgrade = Object.assign({}, findUpgrade(upgradeeId));
 
+        if(upgrade.identifier == "landingPad")
+            continue;
+
         upgrade.id = upgradeeId;
 
         var alreadyInside = false;
 
         for (var group in groupedUpgrades) {
+
             if (groupedUpgrades.hasOwnProperty(group)) {
 
                 if(group == upgrade.identifier){
@@ -2471,7 +2500,6 @@ function showUpgrades(){
             var upgrade = null;
             var upgradeCosts = {};
             var groupIndex = 0;
-
             
             var costSize = windowHeight / 40;
             var costPadding = windowHeight / 100;
@@ -2498,6 +2526,7 @@ function showUpgrades(){
                 while(upgrade.fullyUpgraded && groupIndex < numberInGroup)
                 {
                     upgrade = groupedUpgrades[group][groupIndex];
+                    groupIndex++;
                 }
             }
 
@@ -2533,7 +2562,7 @@ function showUpgrades(){
             else{
                 var arrowSize = size / 4;
                 var arrowX = drawx + size / 2;
-                var arrowY = drawy - arrowSize - costPadding;
+                var arrowY = drawy - arrowSize - costPadding * 3;
 
                 var arrowButtonSize = size / 2;
 
@@ -2552,7 +2581,6 @@ function showUpgrades(){
 
                         var upgradeInGroup = groupedUpgrades[group][i];
                         var numberOfCosts = 0;
-                        //groupCostY = size + 10;
 
                         for (var cost in upgradeInGroup.costs) {
                             if (upgradeInGroup.costs.hasOwnProperty(cost)) {
@@ -2567,13 +2595,22 @@ function showUpgrades(){
                         }
 
                         c.globalAlpha = .5;
-
-                        upgradeButtons.push({x: drawx, y: groupY, upgrades: [upgradeInGroup.id]});
-                        c.drawImage(getImage(upgradeInGroup.identifier + upgradeInGroup.upgradeToLevel), drawx, groupY, size, size);
-
                         c.fillStyle = planetColors[0];
                         c.fillRect(drawx, groupY, size, size);
                         c.globalAlpha = 1;
+
+                        c.globalAlpha = .8;
+                        c.drawImage(getImage(upgradeInGroup.identifier + upgradeInGroup.upgradeToLevel), drawx, groupY, size, size);
+
+                        if(upgradeInGroup.fullyUpgraded){
+                            c.globalAlpha = 1;
+                            c.font = size / 7 + "px Helvetica";
+                            c.fillStyle = "white"; 
+                            c.fillText("Fully Upgraded", drawx, groupY + size / 2);
+                        }
+                        else{
+                            upgradeButtons.push({x: drawx, y: groupY, upgrades: [upgradeInGroup.id]});
+                        }
 
                         numberOfUpgrades++;
                         groupCostY += size + costPadding;
@@ -2585,15 +2622,16 @@ function showUpgrades(){
                 {
                     var insertedCosts = [];
                     var buttonUpgrades = [];
+                    var numFullyUpgraded = 0;
 
                     for(var i = 0; i < numberInGroup; i++){
     
                         var upgradeInGroup = groupedUpgrades[group][i];
 
-                        buttonUpgrades.push(upgradeInGroup.id);
-
                         if(!upgradeInGroup.fullyUpgraded){
                             
+                            buttonUpgrades.push(upgradeInGroup.id);
+
                             for (var cost in upgradeInGroup.costs) {
                                 if (upgradeInGroup.costs.hasOwnProperty(cost)) {
                                     if(!insertedCosts.contains(cost)){
@@ -2607,19 +2645,8 @@ function showUpgrades(){
                                 }
                             }
                         }
-                    }
-
-                    upgradeButtons.push({x: drawx, y: drawy, upgrades: buttonUpgrades});
-
-                    for (var cost in upgradeCosts) {
-                        if (upgradeCosts.hasOwnProperty(cost)) {
-                            c.drawImage(getImage(cost), drawx + costX, drawy + costY, costSize, costSize);
-                            c.font = size / 4 + "px Helvetica";
-                            c.fillStyle = "white";
-                            c.fillText(upgradeCosts[cost], drawx + costX + costSize * 1.2, drawy + costY + costSize / 1.3);
-            
-                            costY += costSize + costPadding;
-                        }
+                        else
+                            numFullyUpgraded++;
                     }
 
                     c.globalAlpha = .5;
@@ -2627,16 +2654,36 @@ function showUpgrades(){
                     c.fillRect(drawx, drawy, size, size);
 
                     c.drawImage(getImage(upgrade.identifier + upgrade.upgradeToLevel), drawx, drawy, size, size);
-
-
                     c.globalAlpha = 1;
-                    
-                    c.font = size / 7 + "px Helvetica";
-                    c.textAlign = "center";
-                    c.fillStyle = "white";
-                    c.fillText("Upgrade all (" + numberInGroup + ")", drawx + size / 2, drawy + size  / 2);
-                    c.textAlign = "left";
 
+                    if(numFullyUpgraded < numberInGroup)
+                    {
+                        upgradeButtons.push({x: drawx, y: drawy, upgrades: buttonUpgrades});
+
+                        for (var cost in upgradeCosts) {
+                            if (upgradeCosts.hasOwnProperty(cost)) {
+                                c.drawImage(getImage(cost), drawx + costX, drawy + costY, costSize, costSize);
+                                c.font = size / 4 + "px Helvetica";
+                                c.fillStyle = "white";
+                                c.fillText(upgradeCosts[cost], drawx + costX + costSize * 1.2, drawy + costY + costSize / 1.3);
+                
+                                costY += costSize + costPadding;
+                            }
+                        }
+                        
+                        c.font = size / 7 + "px Helvetica";
+                        c.textAlign = "center";
+                        c.fillStyle = "white";
+                        c.fillText("Upgrade all (" + (numberInGroup - numFullyUpgraded) + ")", drawx + size / 2, drawy + size  / 2);
+                        c.textAlign = "left";
+                    }
+                    else{
+                        c.font = size / 7 + "px Helvetica";
+                        c.fillStyle = "white"; 
+                        c.fillText("Fully Upgraded", drawx, drawy - costPadding);
+                    }
+
+                    
                 }
                 
                 var arrowRotation = Math.PI * 1.25;
