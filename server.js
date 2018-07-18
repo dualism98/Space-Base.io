@@ -846,7 +846,7 @@ function newConnetcion(socket){
             position.y = lobbyClient.object.y;
 
             if(lobbyClient.object.level)
-            level = lobbyClient.object.level;
+                level = lobbyClient.object.level;
 
             worldsData[data.worldId].lobbyClients.splice(lobbyClient.index, 1);   
         }
@@ -1451,7 +1451,7 @@ function disconnectPlayer(id, socket, worldId){
             var spawnSize = (gridSize - edgeSpawnPadding) / 2
             var playerPosition = {x: getRndInteger(-spawnSize, spawnSize), y: getRndInteger(-spawnSize, spawnSize)};
         
-            playerObject = {id: id, worldId: worldId, x: playerPosition.x , y: playerPosition.y};
+            playerObject = {id: id, worldId: worldId, x: playerPosition.x , y: playerPosition.y, level: level};
 
             worldsData[worldId].lobbyClients.push(playerObject);
 
