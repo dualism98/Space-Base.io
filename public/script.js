@@ -98,6 +98,15 @@ function getAllStructures(){
             }
         }
     }
+
+    for(var x = 0; x < otherPlayers.length; x++){
+        if(otherPlayers[x].turret)
+            structures.push(otherPlayers[x].turret);
+    }
+
+    if(spaceShip && spaceShip.turret)
+        structures.push(spaceShip.turret);
+    
     return structures;
 }
 
@@ -214,9 +223,9 @@ var boostReady = false;
 var landed = false;
 
 function setup(){
-    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://localhost:8080');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
-    //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
+    socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -269,7 +278,7 @@ function setupLocalWorld(data){
         if(client.id != clientId){
             var player = new NetworkSpaceShip(client.x, client.y, client.maxHealth, client.health, 0, client.level, client.radius, client.username, client.id)
             if(client.shipTurret){
-                player.turret = new Turret(player, client.x, client.y, 0, client.shipTurret.level, true, player.id, client.shipTurret.id);
+                player.turret = new Turret(player, client.x, client.y, 0, client.shipTurret.level - 1, true, player.id, client.shipTurret.id);
                 player.turret.distanceFromPlanet = 0;
                 player.turret.headDistanceFromBase = 0;
                 player.turret.type = "shipTurretBase";
@@ -475,6 +484,7 @@ function respawn(){
     spaceShip = null;
     upgradeables = [];
     structureUpgradeables = [];
+    shopOpen = {shopRef: null, type: null, open: false};
 
     $("#preGameContent").fadeIn();
     $("canvas").css("filter", "blur(5px)");
@@ -604,6 +614,8 @@ function shopUpgrade(data){
         player.turret.projectileSpeed = Math.round(data.value);
         player.turret.projectileSize = player.radius / 4;
     }
+
+    allStructures = getAllStructures();
 }
 function mineProduce(data){
     data.forEach(mine => {
@@ -2314,6 +2326,9 @@ function drawShopPanel(type){
 
     var label;
 
+    var costSize = height / 15;
+    var costPadding = height / 25;
+
     //Background pane
     c.globalAlpha = .5;
     c.fillStyle = "#516689";
@@ -2328,19 +2343,24 @@ function drawShopPanel(type){
 
     //Name
     var name = "";
+    var description = "";
 
     switch (type) {
         case "bulletPenetration":
             name = "Bullet Penetration"
+            description = "Bullets go through multiple objects, damaging each one.";
         break;
         case "boost":
             name = "Speed Boost"
+            description = "Press and hold Shift to get a temoporaty speed boost.";
         break;
         case "cloakTime":
             name = "Invisibility"
+            description = "Press C to get temporaty invisibility";
         break;
         case "shipTurret":
             name = "Ship Turret"
+            description = "Mounts an auto firing and aiming turret onto your ship."
         break;
     }
 
@@ -2349,6 +2369,14 @@ function drawShopPanel(type){
     c.fillStyle = "white";
     c.fillText(name, windowWidth / 2, (windowHeight - height) / 2 + height * .1);
     c.textAlign = "left";
+
+    c.fillStyle = "#5784ba";
+    var descriptionBoxX = windowWidth - ((windowWidth - width) / 2) - costPadding - width / 4;
+    var descriptionBoxY = (windowHeight - height) / 2 + (height * .65) - costPadding;
+
+    c.fillRect(descriptionBoxX, descriptionBoxY, width / 4, height / 2.8);
+    c.fillStyle = "white";
+    wrapText(c, description, descriptionBoxX + costPadding / 2, descriptionBoxY + height / 20 + costPadding / 2, width / 4 - costPadding, height / 20);
 
     c.fillStyle = "#516689";
 
@@ -2434,14 +2462,12 @@ function drawShopPanel(type){
 
         //Costs
         var upgradeCosts = shopUpgrades[type][currentLevel + 1].costs;
-        var costSize = height / 15;
-        var costPadding = height / 25;
-
         var costX = (windowWidth - width) / 2 + costPadding * 2;
         var costY = (windowHeight - height) / 2 + (height * .65);
+
         c.fillStyle = "#5784ba";
         c.fillRect(costX - costPadding, costY - costPadding, width / 4, height / 2.8);
-
+        
         if(upgradeCosts){
             for (var cost in upgradeCosts) {
                 if (upgradeCosts.hasOwnProperty(cost)) {
@@ -2863,6 +2889,45 @@ function findClosestUnoccupiedPlanet() {
         }
     }
     return closestPlanet;
+}
+
+function wrapText (context, text, x, y, maxWidth, lineHeight) {
+    var words = text.split(' '),
+        line = '',
+        lineCount = 0,
+        i,
+        test,
+        metrics;
+
+    for (i = 0; i < words.length; i++) {
+        test = words[i];
+        metrics = context.measureText(test);
+
+        if(metrics.width > maxWidth) {
+            // Determine how much of the word will fit
+            test = test.substring(0, test.length - 1);
+            metrics = context.measureText(test);
+        }
+        if (words[i] != test) {
+            words.splice(i + 1, 0,  words[i].substr(test.length))
+            words[i] = test;
+        }  
+
+        test = line + words[i] + ' ';  
+        metrics = context.measureText(test);
+        
+        if (metrics.width > maxWidth && i > 0) {
+            context.fillText(line, x, y);
+            line = words[i] + ' ';
+            y += lineHeight;
+            lineCount++;
+        }
+        else {
+            line = test;
+        }
+    }
+            
+    context.fillText(line, x, y);
 }
 
 function drawArrow(x, y, rotation, color, size){

@@ -4,8 +4,8 @@ var DoublyList = require('./doublyLinkedList');
 
 var app = express();
 
-//var server = app.listen(process.env.PORT, "0.0.0.0");
-var server = app.listen(8080, "0.0.0.0");
+var server = app.listen(process.env.PORT, "0.0.0.0");
+//var server = app.listen(8080, "0.0.0.0");
 app.use(express.static('public'));
 var io = require('socket.io').listen(server);   //socket(server);
 
@@ -15,23 +15,23 @@ var worldIds = [];
 console.log("server started");
 
 //Server Config Options
-// var numOfasteroids = 4000;
-// var numOfPlanets = 50;
-// var numOfMoons = 200;
-// var numOfSuns = 10;
-// var numOfCrystals = 100;
-// var gridSize = 15000;
-// var gridBoxScale = 200;
-// var spawnTries = 5;
-
-var numOfasteroids = 0;
-var numOfPlanets = 3;
-var numOfMoons = 0;
-var numOfSuns = 0;
-var numOfCrystals = 0;
-var gridSize = 2000;
-var gridBoxScale = 10;
+var numOfasteroids = 4000;
+var numOfPlanets = 50;
+var numOfMoons = 200;
+var numOfSuns = 10;
+var numOfCrystals = 100;
+var gridSize = 15000;
+var gridBoxScale = 200;
 var spawnTries = 5;
+
+// var numOfasteroids = 0;
+// var numOfPlanets = 3;
+// var numOfMoons = 0;
+// var numOfSuns = 0;
+// var numOfCrystals = 0;
+// var gridSize = 2000;
+// var gridBoxScale = 10;
+// var spawnTries = 5;
 
 var edgeSpawnPadding = 2000;
 
@@ -786,11 +786,15 @@ var shopUpgrades = {
         },
         {
             costs: {crystal: 30},
-            value: 8
+            value: 6
         },
         {
             costs: {crystal: 50},
-            value: 16
+            value: 8
+        },
+        {
+            costs: {crystal: 100},
+            value: 10
         }
     ]
 
@@ -847,7 +851,10 @@ function newConnetcion(socket){
             worldsData[data.worldId].lobbyClients.splice(lobbyClient.index, 1);   
         }
         else
+        {
             console.log("Lobby client  not found");
+            return;
+        }
 
         player = new Player(position.x, position.y, 0, level, socket.id, data.worldId); 
 
@@ -1132,8 +1139,13 @@ function newConnetcion(socket){
     });
 
     socket.on('shopUpgrade', function(data){
-
         var worldId = data.worldId;
+
+        if(!worldIds.contains(worldId)){
+            console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "world Id not accounted for on server. most likely old session.");
+            return;
+        }
+
         var player = findObjectWithId(worldsData[worldId].clients, socket.id);
 
         if(player)
@@ -1162,6 +1174,7 @@ function newConnetcion(socket){
         } 
 
         if(hasResourceCounter == neededResources){
+            
             for (var cost in costsForNextLvl) {
                 if (costsForNextLvl.hasOwnProperty(cost)) {
                     player.drops[cost] -= costsForNextLvl[cost];
@@ -1176,7 +1189,7 @@ function newConnetcion(socket){
 
             if(data.type == "shipTurret"){
                 if(player.shipTurret){
-                    player.shipTurret.level = level;
+                    upgrade(player.shipTurret, structureUpgrades.turret[player.shipTurret.level + 1], {}, {id: socket.id}, worldId);
                 }
                 else{
                     turretId = uniqueId();
@@ -1184,10 +1197,10 @@ function newConnetcion(socket){
 
                     var upgrades = structureUpgrades["turret"][level];
 
-                    for (var upgrade in upgrades) {
-                        if (upgrades.hasOwnProperty(upgrade)) {
+                    for (var shopUpgrade in upgrades) {
+                        if (upgrades.hasOwnProperty(shopUpgrade)) {
                             
-                            shipTurret[upgrade] = upgrades[upgrade];
+                            shipTurret[shopUpgrade] = upgrades[shopUpgrade];
 
                         }
                     }
@@ -1279,6 +1292,8 @@ function newConnetcion(socket){
         }
 
         thing.level++;
+
+        console.log(thing);
 
         var data = {
             upgrade: upgrade,
@@ -1436,7 +1451,7 @@ function disconnectPlayer(id, socket, worldId){
             var spawnSize = (gridSize - edgeSpawnPadding) / 2
             var playerPosition = {x: getRndInteger(-spawnSize, spawnSize), y: getRndInteger(-spawnSize, spawnSize)};
         
-            playerObject = {id: socket.id, worldId: worldId, x: playerPosition.x , y: playerPosition.y};
+            playerObject = {id: id, worldId: worldId, x: playerPosition.x , y: playerPosition.y};
 
             worldsData[worldId].lobbyClients.push(playerObject);
 
