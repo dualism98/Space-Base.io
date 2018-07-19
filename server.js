@@ -34,7 +34,7 @@ var spawnTries = 5;
 // var spawnTries = 5;
 
 var edgeSpawnPadding = 2000;
-var precentItemKillBoost;
+var precentItemKillBoost = .5;
 
 var mineProductionRate = 2500;
 var despawnProjectilesRate = 100;
