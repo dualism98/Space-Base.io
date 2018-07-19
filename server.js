@@ -34,6 +34,7 @@ var spawnTries = 5;
 // var spawnTries = 5;
 
 var edgeSpawnPadding = 2000;
+var precentItemKillBoost;
 
 var mineProductionRate = 2500;
 var despawnProjectilesRate = 100;
@@ -1575,6 +1576,10 @@ function damageObject(worldId, id, senderId, damage){
                 else
                     precentDamage = damage / target.object.maxHealth;
     
+                if(target.object.health - damage <= 0)
+                    precentDamage += precentItemKillBoost;
+
+
                 itemDropped(target.object.drops, senderId, worldId, precentDamage); 
             }
         }   
