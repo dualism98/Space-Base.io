@@ -24,7 +24,7 @@ var gridSize = 15000;
 var gridBoxScale = 200;
 var spawnTries = 5;
 
-// var numOfasteroids = 0;
+//var numOfasteroids = 0;
 // var numOfPlanets = 3;
 // var numOfMoons = 0;
 // var numOfSuns = 0;
@@ -194,7 +194,7 @@ function generateWorld(){
         var planetSize = getRndInteger(100, 300);
         var planetHealth = planetSize * 40;
         
-        var drops = {asteroidBits: Math.round(planetSize * 6), water: Math.round(planetSize * 2), earth: Math.round(planetSize * 3), iron: Math.round(planetSize * 2.5)};
+        var drops = {asteroidBits: Math.round(planetSize * 12), water: Math.round(planetSize * 4), earth: Math.round(planetSize * 6), iron: Math.round(planetSize * 5)};
 
         generatePlanet(planetSize, color, planetHealth, drops, generatedWorldObjects, generatedHittableObjects);
     }
@@ -205,7 +205,7 @@ function generateWorld(){
         var size = getRndInteger(50, 75);
         var health = size * 5;
         var type = "moon";
-        var drops = {asteroidBits: Math.round(size * 1.2), water: Math.round(size / 4), iron: Math.round(size * .8)};
+        var drops = {asteroidBits: Math.round(size * 2.4), water: Math.round(size / 2), iron: Math.round(size * 1.6)};
 
         generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
         
@@ -217,7 +217,7 @@ function generateWorld(){
         var asteroidColor = getRandomGray();
         var asteroidHealth = asteroidSize * .4;
         var type = "asteroid";
-        var drops = {asteroidBits: Math.round(asteroidSize / 5), water: Math.round(asteroidSize / 20)};
+        var drops = {asteroidBits: Math.round(asteroidSize / 2.5), water: Math.round(asteroidSize / 10)};
 
         generateSpaceMatter(asteroidSize, asteroidColor, asteroidHealth, drops, generatedWorldObjects, generatedHittableObjects, type);
         
@@ -230,7 +230,7 @@ function generateWorld(){
         var type = "crystal";
         var size = getRndInteger(10, 20);
         var health = size * 15;
-        var drops = {crystal: Math.round(size / 1.2)};
+        var drops = {crystal: Math.round(size / 2.4)};
 
         var gems = getRndInteger(1, 3);
 
@@ -265,7 +265,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {};//{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
+    this.drops = {}//{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
 
     this.shipTurret;
 
@@ -540,7 +540,7 @@ var structureUpgrades = {
     {
         costs: {iron: 20},
         bulletRange: 15,
-        projectileSpeed: 5,
+        projectileSpeed: 12,
         shootInterval: 100,
         damage: 5,
         bulletPenetration: 1,
@@ -549,7 +549,7 @@ var structureUpgrades = {
     {
         costs: {iron: 40},
         bulletRange: 20,
-        projectileSpeed: 7,
+        projectileSpeed: 14,
         shootInterval: 95,
         damage: 10,
         bulletPenetration: 1,
@@ -558,7 +558,7 @@ var structureUpgrades = {
     {
         costs: {iron: 100},
         bulletRange: 30,
-        projectileSpeed: 9,
+        projectileSpeed: 16,
         shootInterval: 90,
         damage: 15,
         bulletPenetration: 1,
@@ -567,7 +567,7 @@ var structureUpgrades = {
     {
         costs: {iron: 500},
         bulletRange: 35,
-        projectileSpeed: 11,
+        projectileSpeed: 18,
         shootInterval: 85,
         damage: 20,
         bulletPenetration: 1,
@@ -576,7 +576,7 @@ var structureUpgrades = {
     {
         costs: {iron: 1000},
         bulletRange: 40,
-        projectileSpeed: 13,
+        projectileSpeed: 20,
         shootInterval: 80,
         damage: 30,
         bulletPenetration: 1,
@@ -585,7 +585,7 @@ var structureUpgrades = {
     {
         costs: {iron: 5000, crystal: 5},
         bulletRange: 45,
-        projectileSpeed: 15,
+        projectileSpeed: 22,
         shootInterval: 75,
         damage: 45,
         bulletPenetration: 1,
@@ -594,7 +594,7 @@ var structureUpgrades = {
     {
         costs: {iron: 10000, crystal: 20},
         bulletRange: 45,
-        projectileSpeed: 17,
+        projectileSpeed: 24,
         shootInterval: 70,
         damage: 65,
         bulletPenetration: 1,
@@ -603,7 +603,7 @@ var structureUpgrades = {
     {
         costs: {iron: 20000, crystal: 50, gem: 1},
         bulletRange: 45,
-        projectileSpeed: 17,
+        projectileSpeed: 26,
         shootInterval: 65,
         damage: 80,
         bulletPenetration: 1,
@@ -628,42 +628,42 @@ var structureUpgrades = {
         },
         {
             costs: {asteroidBits: 400},
-            amount: 20,
+            amount: 15,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 1000},
-            amount: 50,
+            amount: 20,
             identifier: "mine"
         } ,
         {
             costs: {asteroidBits: 2000},
-            amount: 100,
+            amount: 50,
             identifier: "mine"
         }  ,
         {
             costs: {asteroidBits: 4000},
-            amount: 200,
+            amount: 100,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 10000},
-            amount: 500,
+            amount: 200,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 20000},
-            amount: 1000,
+            amount: 500,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 50000},
-            amount: 2500,
+            amount: 1000,
             identifier: "mine"
         },
         {
             costs: {asteroidBits: 100000},
-            amount: 5000,
+            amount: 2500,
             identifier: "mine"
         } 
     ],
@@ -671,37 +671,43 @@ var structureUpgrades = {
     {
         costs: {water: 20},
         maxHealth: 100,
-        drops: {iron: 20},
+        drops: {crystal: 10, iron: 50, water: 20},
+        identifier: "shield"
+    },
+    {
+        costs: {water: 50},
+        maxHealth: 250,
+        drops: {crystal: 20, iron: 60, water: 30},
         identifier: "shield"
     },
     {
         costs: {water: 100},
-        maxHealth: 200,
+        maxHealth: 750,
+        drops: {crystal: 30, iron: 70, water: 40},
         identifier: "shield"
     },
     {
-        costs: {water: 500},
-        maxHealth: 5000,
-        identifier: "shield"
-    },
-    {
-        costs: {water: 1000},
-        maxHealth: 1000,
-        identifier: "shield"
-    },
-    {
-        costs: {water: 2500, crystal: 5},
+        costs: {water: 5000},
         maxHealth: 2500,
+        drops: {crystal: 40, iron: 80, water: 50},
         identifier: "shield"
     },
     {
-        costs: {water: 5000, crystal: 20},
+        costs: {water: 1000, crystal: 5},
         maxHealth: 5000,
+        drops: {crystal: 50, iron: 90, water: 60},
         identifier: "shield"
     },
     {
-        costs: {water: 10000, crystal: 50},
+        costs: {water: 2500, crystal: 20},
         maxHealth: 10000,
+        drops: {crystal: 60, iron: 100, water: 70},
+        identifier: "shield"
+    },
+    {
+        costs: {water: 5000, crystal: 50},
+        maxHealth: 25000,
+        drops: {crystal: 70, iron: 110, water: 80},
         identifier: "shield"
     },
     ]
@@ -718,15 +724,15 @@ var shopUpgrades = {
             value: 1
         },
         {
-            costs: {crystal: 20},
+            costs: {crystal: 20, gem: 1},
             value: 2
         },
         {
-            costs: {crystal: 30},
+            costs: {crystal: 30, gem: 5},
             value: 3
         },
         {
-            costs: {crystal: 50},
+            costs: {crystal: 50, gem: 10},
             value: 4
         }
     ],
@@ -739,15 +745,15 @@ var shopUpgrades = {
             value: 3000
         },
         {
-            costs: {crystal: 20},
+            costs: {crystal: 20, gem: 1},
             value: 4000
         },
         {
-            costs: {crystal: 30},
+            costs: {crystal: 30, gem: 5},
             value: 5000
         },
         {
-            costs: {crystal: 50},
+            costs: {crystal: 50, gem: 10},
             value: 6000
         },
     ],
@@ -760,15 +766,15 @@ var shopUpgrades = {
             value: 40
         },
         {
-            costs: {crystal: 20},
+            costs: {crystal: 20, gem: 1},
             value: 60
         },
         {
-            costs: {crystal: 30},
+            costs: {crystal: 30, gem: 5},
             value: 90
         },
         {
-            costs: {crystal: 50},
+            costs: {crystal: 50, gem: 10},
             value: 110
         },
     ],
@@ -778,23 +784,23 @@ var shopUpgrades = {
         },
         {
             costs: {crystal: 10},
+            value: 1
+        },
+        {
+            costs: {crystal: 20, gem: 1},
             value: 2
         },
         {
-            costs: {crystal: 20},
-            value: 4
+            costs: {crystal: 30, gem: 5},
+            value: 3
         },
         {
-            costs: {crystal: 30},
-            value: 6
+            costs: {crystal: 50, gem: 10},
+            value: 5
         },
         {
-            costs: {crystal: 50},
-            value: 8
-        },
-        {
-            costs: {crystal: 100},
-            value: 10
+            costs: {crystal: 100, gem: 25},
+            value: 7
         }
     ]
 
@@ -1189,18 +1195,18 @@ function newConnetcion(socket){
 
             if(data.type == "shipTurret"){
                 if(player.shipTurret){
-                    upgrade(player.shipTurret, structureUpgrades.turret[player.shipTurret.level + 1], {}, {id: socket.id}, worldId);
+                    upgrade(player.shipTurret, structureUpgrades.turret[shopUpgrades[data.type][level].value], {}, {id: socket.id}, worldId);
                 }
                 else{
                     turretId = uniqueId();
                     shipTurret = new Structure(socket.id, 0, 0, 0, "turret", socket.id, level, worldId, turretId);
 
-                    var upgrades = structureUpgrades["turret"][level];
+                    var upgrades = structureUpgrades["turret"][shopUpgrades[data.type][level].value];
 
-                    for (var shopUpgrade in upgrades) {
-                        if (upgrades.hasOwnProperty(shopUpgrade)) {
+                    for (var turretUpgrade in upgrades) {
+                        if (upgrades.hasOwnProperty(turretUpgrade)) {
                             
-                            shipTurret[shopUpgrade] = upgrades[shopUpgrade];
+                            shipTurret[turretUpgrade] = upgrades[turretUpgrade];
 
                         }
                     }
@@ -1292,8 +1298,6 @@ function newConnetcion(socket){
         }
 
         thing.level++;
-
-        console.log(thing);
 
         var data = {
             upgrade: upgrade,
@@ -1406,19 +1410,20 @@ function disconnectPlayer(id, socket, worldId){
 
                     var planetStructure = findObjectWithId(planet.structures, structure.id);
 
-                    if(planetStructure.object.type == "shield")
-                    {
-                        var shield = findObjectWithId(worldsData[worldId].hittableObjects, structure.id);
-
-                        if(shield)
+                    if(planetStructure){
+                        if(planetStructure.object.type == "shield")
                         {
-                            worldsData[worldId].hittableObjects.splice(shield.index, 1);
-                            syncDamage(worldId, [structure.id]);
+                            var shield = findObjectWithId(worldsData[worldId].hittableObjects, structure.id);
+    
+                            if(shield)
+                            {
+                                worldsData[worldId].hittableObjects.splice(shield.index, 1);
+                                syncDamage(worldId, [structure.id]);
+                            }
                         }
-                    }
 
-                    if(planetStructure)
                         planet.structures.splice(planetStructure.index, 1);
+                    }
                 }
                 
             });
@@ -1499,12 +1504,58 @@ function damageObject(worldId, id, senderId, damage){
         //If the thing attacked was space matter
        var possibleSpaceMatter = findObjectWithId(worldWorldObjects.asteroids, target.object.id);
 
-       if(possiblePlanet && possiblePlanet.shield)
+       if(possibleClient)
        {
-            var shield = findObjectWithId(worldHittableObjects, possiblePlanet.shield.id);
-            if(shield && shield.object.health > 0){
-                target = shield;
-                possiblePlanet = false;
+            worldsData[worldId].worldObjects.planets.forEach(planet => {
+                if(planet.occupiedBy == target.object.id)
+                {
+
+                    var shieldRef = false;
+
+                    planet.structures.forEach(structure => {
+                        if(structure.type == "shield")
+                            shieldRef = structure;
+                    });
+
+                    if(shieldRef)
+                    {
+                        var shield = findObjectWithId(worldHittableObjects, shieldRef.id);
+
+                        if(shield){
+                            target = shield;
+                            possibleClient = false;
+                            console.log("damaging Shield Instead of player");
+                        }
+                    }
+                    else{
+                        var planetHittableObject = findObjectWithId(worldHittableObjects, planet.id);
+
+                        if(planetHittableObject)
+                            target = planetHittableObject;
+
+                        console.log("damaging Planet Instead of player");
+                    }
+                }
+
+            });
+       }
+    
+       if(possiblePlanet)
+       {
+            var shieldRef = false;
+
+            possiblePlanet.object.structures.forEach(structure => {
+                if(structure.type == "shield")
+                    shieldRef = structure;
+            });
+
+            if(shieldRef)
+            {
+                var shield = findObjectWithId(worldHittableObjects, shieldRef.id);
+                if(shield && shield.object.health > 0){
+                    target = shield;
+                    possiblePlanet = false;
+                }
             }
        }
 
@@ -1539,14 +1590,11 @@ function damageObject(worldId, id, senderId, damage){
             target.object.health = 0;
 
             if(target.object.structure){ //Is a structure (shield)
-                
-
                 worldWorldObjects.planets.forEach(function(planet){
                     var possibleStructure = findObjectWithId(planet.structures, target.object.id);
 
                     if(possibleStructure){
                         planet.structures.splice(possibleStructure.index, 1);
-                        console.log("destroyed structure off planet");
                     }
                 });
             }
@@ -1873,7 +1921,7 @@ function despawnProjectiles()
 setInterval(mineProduce, mineProductionRate);
 function mineProduce()
 {
-    var mineProduceItems = [{item: 'iron', chance: .25}, {item: 'asteroidBits', chance: 1}];
+    var mineProduceItems = [{item: 'iron', chance: .1}, {item: 'asteroidBits', chance: 1}];
 
     allClients().forEach(client => {
 

@@ -151,8 +151,9 @@ var playerItems = {};
 
 var images = {};
 
-function getImage(item){
+var images = ["asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "S", "shield0", "shield1", "shield2", "shield3", "shield4", "shield5", "shield6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "shop", "spaceShip0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "water"];
 
+function getImage(item){
     for (var image in images) {
         if (images.hasOwnProperty(image)) {
             if(image == item)
@@ -162,10 +163,10 @@ function getImage(item){
 
     //No saved image
     var img = new Image();
-        img.src = item + '.png';
-        
-        images[item] = img;
-        return img;
+    img.src = item + '.png';
+    
+    images[item] = img;
+    return img;
 }
 
 var upgradeables = [];
@@ -348,13 +349,12 @@ function newWorldObjectSync(data){
         var changedPlanet = findObjectWithId(worldObjects.planets, data.id);
         var ownedPlanet = findObjectWithId(ownedPlanets, data.id);
 
+        if(currentPlanet && data.id == currentPlanet.id){
+            currentPlanet = null;
+            landed = false;
+        }
+
         if(ownedPlanet){
-
-            if(ownedPlanet == currentPlanet){
-                currentPlanet = null;
-                landed = false;
-            }
-
             ownedPlanet.object.structures = [];
             allStructures = getAllStructures();
             ownedPlanets.splice(ownedPlanet.index, 1);
@@ -435,7 +435,18 @@ function receiveDamageSync(data){
                 if(sentHittableObject.health > 0)
                     hittableObjects[localObj.index] = sentHittableObject;
                 else
+                {
                     hittableObjects.splice(localObj.index, 1);
+
+                    var isStructure = false;
+
+                    for (let i = 0; i < structureUpgradeables.length; i++) {
+                        if(structureUpgradeables[i] == sentHittableObject.id){
+                            structureUpgradeables.splice(i, 1);
+                            isStructure = true;
+                        }
+                    }
+                }
             }
             else{
                 if(sentHittableObject.health > 0)
@@ -671,8 +682,6 @@ function cloak(data){
 function playerExited(data){
 
     otherPlayer = findObjectWithId(otherPlayers, data.clientId);
-    
-   
 
     if(otherPlayer){
 
@@ -805,6 +814,11 @@ $("#backHelp").click(function(){
 });
 
 $(document).ready(function() {
+
+    images.forEach(image => {
+        getImage(image);
+    });
+
     $("#mainContent").fadeIn(0);
     $("#helpContent").fadeOut(0);
     $("#helpContent").css('display', '');
@@ -867,30 +881,6 @@ $(document).keypress(function(e){
                 displayMessage("Purchase cloak ability at shop first", 10, 2);
         }
 
-        if(e.keyCode == 115){ //S
-
-            if(!shopOpen.open){
-                var shopInRange = false;
-
-                worldObjects.shops.forEach(shop => {
-    
-                    if(shop.isInRange){
-                        shopOpen.type = shop.upgradeType;
-                        shopOpen.shopRef = shop;
-                        shopOpen.open = true;
-                        shopInRange = true;
-                    }
-    
-                });
-    
-                if(!shopInRange)
-                {
-                    displayMessage("No shops in range", 10, 2);
-                }
-            }
-            else
-                shopOpen.open = false;
-        }
         if(e.keyCode == 104) // H
             socket.emit("heal", {id: clientId, worldId: worldId});
 
@@ -925,8 +915,41 @@ $(document).keypress(function(e){
 });
 
 $(document).on('keydown', function(e){
-
+    
     if(spaceShip){
+
+        if(shopOpen)
+        {
+            if(e.keyCode == 27){ //Escape
+                shopOpen.open = false;
+            }
+        }
+
+        if(e.keyCode == 83){ //S
+
+            if(!shopOpen.open){
+                var shopInRange = false;
+
+                worldObjects.shops.forEach(shop => {
+    
+                    if(shop.isInRange){
+                        shopOpen.type = shop.upgradeType;
+                        shopOpen.shopRef = shop;
+                        shopOpen.open = true;
+                        shopInRange = true;
+                    }
+    
+                });
+    
+                if(!shopInRange)
+                {
+                    displayMessage("No shops in range", 10, 2);
+                }
+            }
+            else
+                shopOpen.open = false;
+        }
+
         if(spaceShip.shopUpgrades["boost"].level > 0){
             if(boostReady)
                 boost = e.shiftKey
@@ -982,6 +1005,8 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
     this.shield = null;
     this.landingPad = null;
 
+    var healthBarWidth = 100;
+
     this.draw = function(){
         c.beginPath();
         c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
@@ -1001,11 +1026,11 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         this.draw();
         this.updateStructures();
 
-        if(this.shield == null){
-            healthBarWidth = 100;
-            if(this.health != this.maxHealth)
-                displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, healthBarWidth, 20, this.health / this.maxHealth, "green");
-        }
+
+        healthBarWidth = 200;
+
+        if(this.health != this.maxHealth)
+        displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, healthBarWidth, 20, this.health / this.maxHealth, "green");
 
         if(planetEditMode && currentPlanet == this){
             var rad = Math.atan2(mouse.y - this.y, mouse.x - this.x) * -57.2958;
@@ -1574,9 +1599,16 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
             this.turret.coordX = pos.x;
             this.turret.coordY = pos.y;
 
+            if(this.alpha < 1)
+            {
+                this.turret.shootCounter = 0;
+                
+            }
+
             c.globalAlpha = this.alpha;
             this.turret.update();
             c.globalAlpha = 1;
+                
         }  
     }
 
@@ -1640,7 +1672,10 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, ra
             this.turret.rotation = (this.rotation * -180 /  Math.PI) + 90;
             this.turret.coordX = this.coordX;
             this.turret.coordY = this.coordY;
+
+            c.globalAlpha = this.alpha;
             this.turret.update();
+            c.globalAlpha = 1;
         }  
     }
 }
@@ -1754,11 +1789,6 @@ function animate() {
 
             spaceShip.speed = 10;
 
-            currentPlanet.structures.forEach(structure => {
-                if(!structureUpgradeables.contains(structure.id))
-                    structureUpgradeables.push(structure.id);
-            });
-
             mousePullx = 0;
             mousePully = 0;
 
@@ -1779,7 +1809,6 @@ function animate() {
             }
         }
         else if(!shopOpen.open) {
-            
             targetScale = 50 / spaceShip.radius;
             structureUpgradeables = [];
 
@@ -2490,6 +2519,15 @@ var expandedUpgrades = [];
 var canClickArrow = true;
 
 function showUpgrades(){
+
+    if(currentPlanet)
+    {
+        currentPlanet.structures.forEach(structure => {
+            if(!structureUpgradeables.contains(structure.id))
+                structureUpgradeables.push(structure.id);
+        });
+    }
+
     numberOfUpgrades = upgradeableObjects().length;
     size = windowHeight / 10;
     padding = windowHeight / 10;
@@ -2827,13 +2865,23 @@ function displayResources(){
     size = 50;
     padding = 25;
 
-    c.fillStyle = "white";
-
+    
     for (var item in playerItems) {
         if (playerItems.hasOwnProperty(item)) {
             if(getImage(item)){
                 c.drawImage(getImage(item), pos.x, pos.y, size, size);
+
+                //Shadow
+                var shadowX = 3;
+                var shadowY = 3
+                c.fillStyle = "black";
+                c.globalAlpha = .5;
+                c.fillText(playerItems[item].toString(), pos.x + size + padding + shadowX, pos.y + size / 1.3 + shadowY);
+
+                c.fillStyle = "white";
+                c.globalAlpha = 1;
                 c.fillText(playerItems[item].toString(), pos.x + size + padding, pos.y + size / 1.3);
+                
             }
         }
         pos.y += size + padding;
