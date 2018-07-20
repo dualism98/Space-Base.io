@@ -499,6 +499,7 @@ function respawn(){
     spaceShip = null;
     upgradeables = [];
     structureUpgradeables = [];
+    ownedPlanets = [];
     shopOpen = {shopRef: null, type: null, open: false};
 
     allWorldObjects = getAllWorldObjects();
@@ -629,7 +630,7 @@ function shopUpgrade(data){
 
         player.turret.level = data.level - 1;
         player.turret.shootInterval = Math.round(1000 / data.value);
-        player.turret.projectileSpeed = Math.round(data.value);
+        player.turret.projectileSpeed = Math.round(data.value * 10);
         player.turret.projectileSize = player.radius / 4;
     }
 
@@ -1113,9 +1114,10 @@ function Shield(planet, radius, level, id){
 
         healthBarWidth = 300;
 
-        var hittableObj = findObjectWithId(hittableObjects, this.id).object;
+        var hittableObj = findObjectWithId(hittableObjects, this.id);
 
-        displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, 300, 20, hittableObj.health / hittableObj.maxHealth, "blue");
+        if(hittableObj)
+            displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, 300, 20, hittableObj.object.health / hittableObj.object.maxHealth, "blue");
     }
     this.update = function(){
 
@@ -1319,7 +1321,7 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
 
             player = allPlayers[i];
             
-            if(player.id == ownerId)
+            if(player.id == ownerId || player.alpha < 1)
                 continue;
 
             var playerPos = cordsToScreenPos(player.coordX, player.coordY);
