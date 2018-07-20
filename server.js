@@ -24,14 +24,14 @@ var gridSize = 15000;
 var gridBoxScale = 200;
 var spawnTries = 5;
 
-var numOfasteroids = 0;
-var numOfPlanets = 3;
-var numOfMoons = 0;
-var numOfSuns = 0;
-var numOfCrystals = 0;
-var gridSize = 2000;
-var gridBoxScale = 10;
-var spawnTries = 5;
+// var numOfasteroids = 0;
+// var numOfPlanets = 3;
+// var numOfMoons = 0;
+// var numOfSuns = 0;
+// var numOfCrystals = 0;
+// var gridSize = 2000;
+// var gridBoxScale = 10;
+// var spawnTries = 5;
 
 var edgeSpawnPadding = 2000;
 var precentItemKillBoost = .5;
@@ -267,7 +267,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
+    this.drops = {};//{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
 
     this.shipTurret;
 
