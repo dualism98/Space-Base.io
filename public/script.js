@@ -151,7 +151,7 @@ var playerItems = {};
 
 var images = {};
 
-var images = ["asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "S", "shield0", "shield1", "shield2", "shield3", "shield4", "shield5", "shield6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "shop", "spaceShip0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "water"];
+var imageArray = ["NF", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "S", "shield0", "shield1", "shield2", "shield3", "shield4", "shield5", "shield6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "shop", "spaceship0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "water"];
 
 function getImage(item){
     for (var image in images) {
@@ -163,8 +163,12 @@ function getImage(item){
 
     //No saved image
     var img = new Image();
-    img.src = item + '.png';
-    
+    img.src = 'images/' + item + '.png';
+
+    img.onerror = function(){ 
+        img.src = "images/NF.png";
+    };
+
     images[item] = img;
     return img;
 }
@@ -224,9 +228,9 @@ var boostReady = false;
 var landed = false;
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
+    socket = io.connect('http://localhost:8080');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
-    socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
+    //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -496,6 +500,9 @@ function respawn(){
     upgradeables = [];
     structureUpgradeables = [];
     shopOpen = {shopRef: null, type: null, open: false};
+
+    allWorldObjects = getAllWorldObjects();
+    allStructures = getAllStructures();
 
     $("#preGameContent").fadeIn();
     $("canvas").css("filter", "blur(5px)");
@@ -815,7 +822,7 @@ $("#backHelp").click(function(){
 
 $(document).ready(function() {
 
-    images.forEach(image => {
+    imageArray.forEach(image => {
         getImage(image);
     });
 
@@ -920,12 +927,12 @@ $(document).on('keydown', function(e){
 
         if(shopOpen)
         {
-            if(e.keyCode == 27){ //Escape
+            if(e.keyCode == 27){ // Escape
                 shopOpen.open = false;
             }
         }
 
-        if(e.keyCode == 83){ //S
+        if(e.keyCode == 83 && !currentPlanet){ // S
 
             if(!shopOpen.open){
                 var shopInRange = false;
@@ -1948,7 +1955,6 @@ function animate() {
     if(spaceShip){
         var playerPos = new Vector(-gridPos.x, -gridPos.y);
         sendPlayerPosition(playerPos, spaceShip.rotation);
-        spaceShip.update();
     }
 
     for(var i = projectiles.length - 1; i >= 0; i--){
@@ -2642,7 +2648,7 @@ function showUpgrades(){
                 }
             } 
             else{
-                var arrowSize = size / 4;
+                var arrowSize = size / 8;
                 var arrowX = drawx + size / 2;
                 var arrowY = drawy - arrowSize - costPadding * 3;
 
@@ -2769,21 +2775,20 @@ function showUpgrades(){
                 }
                 
                 var arrowRotation = Math.PI * 1.25;
+                arrowY = drawy - arrowSize - costPadding * 3;
 
                 if(expandedUpgrades.contains(upgrade.identifier))
                 {
                     arrowRotation = Math.PI / 4;
+                    arrowY = drawy - arrowSize * 3.5 - costPadding * 3;
                 }
 
                 if (mouseY > arrowbuttonY && mouseY < arrowbuttonY + arrowButtonSize && mouseX > arrowbuttonX && mouseX < arrowbuttonX + arrowButtonSize) {
 
                     var arrowIncreasedSize = arrowSize * 1.2;
 
-                    c.translate(arrowX, arrowY);
-                    c.rotate(arrowRotation);
-                    c.drawImage(getImage('downArrow'), -arrowIncreasedSize / 2, -arrowIncreasedSize / 2, arrowIncreasedSize, arrowIncreasedSize);
-                    c.rotate(-arrowRotation);
-                    c.translate(-arrowX, -arrowY);
+                    c.globalAlpha = 1;
+                    drawArrow(arrowX, arrowY + arrowIncreasedSize, arrowRotation, "white", arrowIncreasedSize);
 
                     if(mouse.clicked && canClickArrow){
                         canClickArrow = false;
@@ -2807,11 +2812,8 @@ function showUpgrades(){
                 }
                 else
                 {
-                    c.translate(arrowX, arrowY);
-                    c.rotate(arrowRotation);
-                    c.drawImage(getImage('downArrow'), -arrowSize / 2, -arrowSize / 2, arrowSize, arrowSize);
-                    c.rotate(-arrowRotation);
-                    c.translate(-arrowX, -arrowY);
+                    c.globalAlpha = 1;
+                    drawArrow(arrowX, arrowY + arrowSize, arrowRotation, "white", arrowSize);
                 }
             }
 
