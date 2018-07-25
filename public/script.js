@@ -227,10 +227,12 @@ var boostReady = false;
 
 var landed = false;
 
+var username = "unnamed";
+
 function setup(){
     //socket = io.connect('http://localhost:8080');
-    //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
-    socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
+    socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
+    //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -249,6 +251,7 @@ function setup(){
     socket.on("planetOccupancy", updatePlanetOccupier);
     socket.on("mineProduce", mineProduce);
     socket.on("respawn", respawn);
+    socket.on("respawnPlanet", respawnPlanet);
     socket.on("newWorldObjectSync", newWorldObjectSync);
     socket.on("syncItem", syncItem);
     socket.on('shopUpgrade', shopUpgrade);
@@ -481,20 +484,93 @@ function showWorld(){
     animate();
 }
 function startLocalPlayer(data){
-    gridPos = new Vector(data.x + gridSize / -2, data.y + gridSize / -2);
+
+    var player = data.player;
+
     upgradeables.push(clientId);
     friendlyObjectIds = [clientId];
 
     //Spawn client player
-    spaceShip = new SpaceShip(centerX, centerY, data.maxHealth, data.health, data.level, data.radius, data.speed, data.turningSpeed, data.fireRate, clientId);
+    spaceShip = new SpaceShip(centerX, centerY, player.maxHealth, player.health, player.level, player.radius, player.speed, player.turningSpeed, player.fireRate, clientId);
     playerItems = {};
     allWorldObjects = getAllWorldObjects();
+
+    if(data.planet)
+    {
+        var localPlanet = findObjectWithId(worldObjects.planets, data.planet);
+
+        if(localPlanet)
+        {
+            currentPlanet = localPlanet.object;
+            closestAvailablePlanet = null;
+            landed = false;
+            gridPos = new Vector(currentPlanet.coordX * -1, currentPlanet.coordY * -1);
+            
+            var newOwnedPlanets = [];
+
+            ownedPlanets.forEach(planet => {
+                planetObject = findObjectWithId(worldObjects.planets, planet.id);
+                if(planetObject){
+                    newOwnedPlanets.push(planetObject.object);
+                    friendlyObjectIds.push(planetObject.object.id);
+
+                    if(planetObject.object.shield)
+                        friendlyObjectIds.push(planetObject.object.shield.id);
+                }
+            });
+
+            
+            ownedPlanets = newOwnedPlanets;
+
+        }
+    }
+    else{
+        gridPos = new Vector(player.x + gridSize / -2, player.y + gridSize / -2);
+    }
+
 }
 function newPlayer(data){
     otherPlayers.push(new NetworkSpaceShip(data.x, data.y, data.maxHealth, data.health, data.rotation, data.level, data.radius, data.username, data.id));
 }
-function respawn(){
 
+var respawnCounter = 0;
+var respawnInterval;
+
+function respawnPlanet(){
+    scale = 1;
+    spaceShip = null;
+    shopOpen = {shopRef: null, type: null, open: false};
+    upgradeables = [];
+
+    allWorldObjects = getAllWorldObjects();
+    allStructures = getAllStructures();
+
+    $("#respawnPlanetWait").fadeIn();
+    $("canvas").css("filter", "blur(5px)");
+
+    respawnCounter = 10;
+    respawnTimer();
+    respawnInterval = setInterval(respawnTimer, 1000);
+}
+
+function respawnTimer(){
+    if(respawnCounter > 0)
+    {
+        $("#respawnTimer").text("Respawning in "+ respawnCounter + " on base");
+        respawnCounter--;
+    }
+    else
+    {
+        $("#respawnPlanetWait").fadeOut();
+        $("canvas").css("filter", "none");
+
+        socket.emit("playerStartGame", {username: username, worldId: worldId});
+        clearInterval(respawnInterval);
+    }
+        
+}
+
+function respawn(){
     scale = 1;
     spaceShip = null;
     upgradeables = [];
@@ -663,6 +739,7 @@ function onAquiredItems(data){
         }
     } 
 }
+
 function cloak(data){
     var player = findObjectWithId(otherPlayers.concat(spaceShip), data.playerId);
     var hittablePlayer = findObjectWithId(hittableObjects, data.playerId);
@@ -705,22 +782,24 @@ function playerExited(data){
         if(otherPlayerHittableObj)
             hittableObjects.splice(otherPlayerHittableObj.index, 1);
 
-        hittableObjects.splice()
 
-        var structureObejcts = [];
+        if(data.forGood)
+        {
+            var structureObejcts = [];
     
-        allStructures.forEach(structure => {
-            data.structureIds.forEach(id => {
-                if(id == structure.id){
-                    planet = findObjectWithId(worldObjects.planets, structure.planet.id);
-                    planet.object.owner = null;
-                    planetStructureIndex = findObjectWithId(planet.object.structures, structure.id).index;
-                    planet.object.structures.splice(planetStructureIndex, 1);
-                }
+            allStructures.forEach(structure => {
+                data.structureIds.forEach(id => {
+                    if(id == structure.id){
+                        planet = findObjectWithId(worldObjects.planets, structure.planet.id);
+                        planet.object.owner = null;
+                        planetStructureIndex = findObjectWithId(planet.object.structures, structure.id).index;
+                        planet.object.structures.splice(planetStructureIndex, 1);
+                    }
+                });
             });
-        });
-
-        allStructures = getAllStructures();
+    
+            allStructures = getAllStructures();
+        }
     }
 }
 function forceDisconnect(data){
@@ -795,9 +874,6 @@ window.addEventListener('resize',
 });
 
 $("#startGame").click(function(){
-
-    var username = "unnamed"
-
     if($("#playerNameInput").val() != ""){
         username = $("#playerNameInput").val().toString();
         username = username.slice(0, 15);
@@ -830,6 +906,8 @@ $(document).ready(function() {
     $("#mainContent").fadeIn(0);
     $("#helpContent").fadeOut(0);
     $("#helpContent").css('display', '');
+    $("#respawnPlanetWait").fadeOut(0);
+    $("#respawnPlanetWait").css('display', '');
 });
 
 $(document).keypress(function(e){
@@ -1078,7 +1156,7 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
             var landingPad = new LandingPad(planet, this.radius - 100, id);
             this.landingPad = landingPad
             this.structures.push(landingPad);
-            this.owner = this.occupiedBy;
+            this.owner = ownerId;
             
             if(!isFacade){
                 friendlyObjectIds.push(planet.id);
@@ -1230,7 +1308,8 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
 
     this.shootRotation;
     this.headDistanceFromBase = 10;
-    this.range = 1000;
+    this.bulletRange = 10;
+    this.range;
     this.target;
 
     this.level = level;
@@ -1292,6 +1371,8 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
         var pos = cordsToScreenPos(this.coordX, this.coordY);
         this.x = pos.x;
         this.y = pos.y;
+
+        this.range = this.bulletRange * 100;
 
         this.updateTarget();
 
@@ -1925,10 +2006,15 @@ function animate() {
     allMatter.forEach(function(matter){
 
         var pos = cordsToScreenPos(matter.coordX, matter.coordY);
-        var size = matter.radius;
+        var size = matter.radius + 50;
 
         if(matter.type == "sun"){
             size += 500;
+        }
+
+        if(matter.shield)
+        {
+            size += matter.shield.radius;
         }
 
         var isClosestAvaiblePlanet = (closestAvailablePlanet != null && (matter.id  == closestAvailablePlanet.id));
@@ -1946,11 +2032,14 @@ function animate() {
         if(obj.radius && statsView && obj.active){
             var pos = cordsToScreenPos(obj.x, obj.y);
 
-            c.beginPath();
-            c.arc(pos.x, pos.y, obj.radius, 0, Math.PI * 2, false);
-            c.lineWidth = 2;
-            c.strokeStyle = "#f44242";
-            c.stroke();
+            //Out of screen Right                           || Left             || Up               || Down
+            if(!(pos.x - size > (windowWidth + centerX) / scale || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > (windowHeight + centerY) / scale) || isClosestAvaiblePlanet || isOwnedPlanet != null){
+                c.beginPath();
+                c.arc(pos.x, pos.y, obj.radius, 0, Math.PI * 2, false);
+                c.lineWidth = 2;
+                c.strokeStyle = "#f44242";
+                c.stroke();
+            }
         }
     });
 
@@ -2264,6 +2353,10 @@ function animate() {
             });
         }
         
+        var miniMapSize = windowHeight / 8;
+        var minimapPadding = windowHeight / 60;
+
+        minimap(miniMapSize, windowWidth - miniMapSize - minimapPadding, windowHeight - miniMapSize - minimapPadding);
     
         if(statsView){
             c.font = "20px Arial";
@@ -2861,6 +2954,39 @@ function showUpgrades(){
             canClickArrow = true;
     }
     
+}
+
+function minimap(size, x, y){
+
+    c.globalAlpha = 0.25;
+    c.fillStyle = "#bcbcbc";
+    c.fillRect(x, y, size, size);
+
+    worldObjects.shops.forEach(shop => {
+        
+        c.globalAlpha = 0.75;
+        c.beginPath();
+        c.arc(x + shop.coordX / gridSize * size, y + shop.coordY / gridSize * size, size / 50, 0, Math.PI * 2, false);
+        c.fillStyle = "#7fb0ff";
+        c.fill();
+
+    });
+
+    ownedPlanets.forEach(planet => {
+        
+        c.globalAlpha = 0.75;
+        c.beginPath();
+        c.arc(x + planet.coordX / gridSize * size, y + planet.coordY / gridSize * size, size / 40, 0, Math.PI * 2, false);
+        c.fillStyle = "#5fd867";
+        c.fill();
+
+    });
+
+    c.globalAlpha = 0.75;
+    c.beginPath();
+    c.arc(x + spaceShip.coordX / gridSize * size, y + spaceShip.coordY / gridSize * size, size / 30, 0, Math.PI * 2, false);
+    c.fillStyle = "white";
+    c.fill();    
 }
 
 function displayResources(){
