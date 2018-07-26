@@ -143,14 +143,12 @@ var healthBarColor = "#36a52c";
 
 var currentPlanet;
 var closestAvailablePlanet;
-var planetEditMode = false;
 
 var healthDict = {};
-
+var dropDict = {};
 var playerItems = {};
 
 var images = {};
-
 var imageArray = ["NF", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "S", "shield0", "shield1", "shield2", "shield3", "shield4", "shield5", "shield6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "shop", "spaceship0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "water"];
 
 function getImage(item){
@@ -227,12 +225,29 @@ var boostReady = false;
 
 var landed = false;
 
+var propertiesTimer = {};
+var propertiesHoldTime = 100;
 var username = "unnamed";
 
+var timers = {
+    shoot: {
+        spaceCounter: 0,
+        spaceHitLimit: 8,
+        time: 0,
+        triggerTime: 200,
+        message: "Press and hold space to shoot"
+    },
+    upgrades:{
+        time: 0,
+        triggerTime: 1000,
+        message: "Press and hold F to open upgrades menu"
+    }
+};
+
 function setup(){
-    //socket = io.connect('http://localhost:8080');
+    socket = io.connect('http://localhost:8080');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
-    socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
+    //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -259,8 +274,6 @@ function setup(){
 
     centerX = (canvas.width / 2 / scale);
     centerY = (canvas.height / 2 / scale);
-
-    planetEditMode = false;
 }
 
 //Receive Data Functions
@@ -320,6 +333,7 @@ function setupLocalWorld(data){
 
         var asteroidObject = new SpaceMatter(asteroid.x, asteroid.y, asteroid.radius, asteroid.color, asteroid.maxHealth, asteroid.health, asteroid.type, asteroid.id);
         worldObjects.asteroids.push(asteroidObject);
+        dropDict[asteroid.id] = asteroid.drops;
     }
 
     //Planets
@@ -341,6 +355,7 @@ function setupLocalWorld(data){
         }
 
         worldObjects.planets.push(planetObject);
+        dropDict[planetObject.id] = planet.drops;
     }
 
     allWorldObjects = getAllWorldObjects();
@@ -492,6 +507,8 @@ function startLocalPlayer(data){
 
     //Spawn client player
     spaceShip = new SpaceShip(centerX, centerY, player.maxHealth, player.health, player.level, player.radius, player.speed, player.turningSpeed, player.fireRate, clientId);
+    spaceShip.shopUpgrades = player.shopUpgrades;
+    
     playerItems = {};
     allWorldObjects = getAllWorldObjects();
 
@@ -717,7 +734,7 @@ function mineProduce(data){
         localMine = findObjectWithId(producingMines, mine.id);
 
         if(localMine)
-            localMine.object.productionEffect(mine.amount);
+            localMine.object.productionEffect(mine.item);
     
         if(playerItems[mine.item])
             playerItems[mine.item] += mine.amount;
@@ -729,6 +746,7 @@ function mineProduce(data){
     });
     
 }
+
 function onAquiredItems(data){
     for (var drop in data.drops) {
         if (data.drops.hasOwnProperty(drop)) {
@@ -910,6 +928,14 @@ $(document).ready(function() {
     $("#respawnPlanetWait").css('display', '');
 });
 
+$(document).keyup(function(e){
+
+    if(e.keyCode == 32){ //SPACE
+        if(timers.shoot)
+            timers.shoot.spaceCounter++;
+    }
+});
+
 $(document).keypress(function(e){
 
     if(currentPlanet && spaceShip){
@@ -921,19 +947,14 @@ $(document).keypress(function(e){
                 socket.emit("heal", {id: clientId, worldId: worldId});
         }
 
-        if(planetEditMode){
-            if(e.keyCode == 108) // L
-                requestStructureSpawn(currentPlanet, currentPlanet.x, currentPlanet.y, 0, "landingPad", false, clientId);
-            if(e.keyCode == 115) // S
-                requestStructureSpawn(currentPlanet, currentPlanet.x, currentPlanet.y, 0, "shield", false, clientId);
-            if(e.keyCode == 109) // M
-                requestStructureSpawn(currentPlanet, structureSpawnPosition.x, structureSpawnPosition.y, structureSpawnRotation, "mine", false, clientId);
-            if(e.keyCode == 116) // T
-                requestStructureSpawn(currentPlanet, structureSpawnPosition.x, structureSpawnPosition.y, structureSpawnRotation, "turret", false, clientId);
-        }
-        
-        if(e.keyCode == 101) // E
-            planetEditMode = !planetEditMode;
+        if(e.keyCode == 108) // L
+            requestStructureSpawn(currentPlanet, currentPlanet.x, currentPlanet.y, 0, "landingPad", false, clientId);
+        if(e.keyCode == 115) // S
+            requestStructureSpawn(currentPlanet, currentPlanet.x, currentPlanet.y, 0, "shield", false, clientId);
+        if(e.keyCode == 109) // M
+            requestStructureSpawn(currentPlanet, structureSpawnPosition.x, structureSpawnPosition.y, structureSpawnRotation, "mine", false, clientId);
+        if(e.keyCode == 116) // T
+            requestStructureSpawn(currentPlanet, structureSpawnPosition.x, structureSpawnPosition.y, structureSpawnRotation, "turret", false, clientId);
 
         if(e.keyCode == 32){ //SPACE
             socket.emit('planetOccupancy', {planetId: currentPlanet.id, playerId: null, worldId: worldId})
@@ -942,7 +963,6 @@ $(document).keypress(function(e){
                 
             landed = false;
             currentPlanet = null;
-            planetEditMode = false;
         }
     }
     else if(spaceShip){
@@ -971,6 +991,7 @@ $(document).keypress(function(e){
             socket.emit("heal", {id: clientId, worldId: worldId});
 
         if(e.keyCode == 32){ //SPACE
+
             if(playerReloadTimer <= 0){
                 shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, PROJECTIILE_SPEED, spaceShip.radius / 4, spaceShip.shopUpgrades.bulletPenetration.value + 1, "#f45c42", clientId);
                 playerReloadTimer = 1000;
@@ -1118,7 +1139,7 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         if(this.health != this.maxHealth)
         displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, healthBarWidth, 20, this.health / this.maxHealth, "green");
 
-        if(planetEditMode && currentPlanet == this){
+        if(currentPlanet == this){
             var rad = Math.atan2(mouse.y - this.y, mouse.x - this.x) * -57.2958;
             structureSpawnRotation = rad;
             drawPointAroundCircle(this.x, this.y, radius + 20, rad, 1);
@@ -1259,10 +1280,6 @@ function Mine(planet, x, y, rotation, level, ownerId, id){
     this.coordX = x;
     this.coordY = y;
 
-    this.color = "#a0a7b2";
-
-    var test = false;
-
     this.level = level;
 
     this.draw = function(){
@@ -1280,13 +1297,8 @@ function Mine(planet, x, y, rotation, level, ownerId, id){
 
         this.draw();
     }
-    this.productionEffect = function(){
-        if(test)
-            this.color = "#a0a7b2";
-        else
-            this.color = "#71767f";
-
-        test = !test;
+    this.productionEffect = function(cost){
+        //console.log(cost);
     }
 }
 function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
@@ -1634,6 +1646,7 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     this.speed = speed;
     this.fireRate = fireRate;
     this.turningSpeed = turningSpeed;
+    this.level = level;
     this.id = id;
 
     this.alpha = 1;
@@ -1793,12 +1806,32 @@ function Shop(coordX, coordY, radius, upgradeType){
         c.drawImage(getImage("shop"), this.x - this.radius / 2, this.y - this.radius / 2, this.radius, this.radius); 
 
         if(this.isInRange){
-            var size = windowHeight / scale / 8;
-            var padding = windowHeight / scale / 40;
+
+            var size = windowHeight / scale / 20;
+
+            if(!shopOpen.open)
+            {
+                c.font = size + "px Arial";
+                c.fillStyle = "white";
+                c.globalAlpha = .2;
+                c.textAlign="center"; 
+                c.fillText("Press S to open shop", centerX, (windowHeight - 80) / scale);
+                c.textAlign="left"; 
+                c.globalAlpha = 1;
+            }
+            else{
+                c.font = size + "px Arial";
+                c.fillStyle = "white";
+                c.globalAlpha = .2;
+                c.textAlign="center"; 
+                c.fillText("Press S to close shop", centerX, (windowHeight - 80) / scale);
+                c.textAlign="left"; 
+                c.globalAlpha = 1;
+            }
+
             
-            c.globalAlpha = .5;
-            c.drawImage(getImage("S"), padding, windowHeight / scale - size - padding, size, size); 
-            c.globalAlpha = 1;
+            
+            
         }
     }
 
@@ -1871,12 +1904,71 @@ function animate() {
     centerY = (canvas.height / 2 / scale);    
 
     if(spaceShip){
+        for (var timer in timers) {
+            if (timers.hasOwnProperty(timer)) {
+
+                if(timer == "upgrades")
+                {
+                    if(spaceShip.level > 0)
+                    {
+                        delete timers[timer];
+                        continue;
+                    }
+
+                    var costsForNextLvl = playerUpgrades[1].costs;
+                    var hasResourceCounter = 0;
+                    var neededResources = 0; 
+        
+                    for (var cost in costsForNextLvl) {
+                        if (costsForNextLvl.hasOwnProperty(cost)) {
+                            if(playerItems[cost] && costsForNextLvl[cost] <= playerItems[cost]){
+                                hasResourceCounter++;
+                            }
+                            neededResources++;
+                        }
+                    }
+
+                    if(neededResources == hasResourceCounter)
+                    {
+                        timers[timer].time++;
+                        //console.log(timers[timer].time);
+                    }
+
+                    if(timers[timer].time >= timers[timer].triggerTime)
+                    {
+                        displayMessage(timers[timer].message, 50, 1);
+                        delete timers[timer];
+                    }
+
+                }
+                else if(timer == "shoot" && timers[timer].spaceCounter > 0)
+                {
+                    timers[timer].time++;
+
+                    if(timers[timer].time <= timers[timer].triggerTime)
+                    {
+                        if(timers[timer].spaceCounter > timers[timer].spaceHitLimit)
+                        {
+                            displayMessage(timers[timer].message, 50, 1);
+                            timers[timer].time = 0;
+                            timers[timer].spaceCounter = 0;
+                        }
+                    }
+                    else{
+                        timers[timer].time = 0;
+                        timers[timer].spaceCounter = 0;
+                    }
+
+                    //console.log(timers[timer].spaceCounter + " / " + timers[timer].spaceHitLimit + " Time: " + timers[timer].time + " / " + timers[timer].triggerTime)
+                    
+                }
+            }
+        }
 
         var mousePullxTarget = 0;
         var mousePullyTarget = 0;
 
         if(currentPlanet){
-
             spaceShip.speed = 10;
 
             mousePullx = 0;
@@ -1962,6 +2054,7 @@ function animate() {
         spaceShip.coordY = spaceShipCoords.y; //gridPos.y + gridSize / 2;
     
         //Screen Bounds
+
         //Left 
         if(spaceShip.coordX <= 0 && spaceshipVelocity.x < 0){
             spaceshipVelocity.x = 0;
@@ -1985,10 +2078,11 @@ function animate() {
         for(var i = 0; i < allStructures.length; i++){
             allStructures[i].health = healthDict[allStructures[i].id];
         }
-    
-    
+
         if(!currentPlanet)
             closestAvailablePlanet = findClosestUnoccupiedPlanet();
+
+    
     }
     else{
         targetScale = startScale;
@@ -2021,18 +2115,75 @@ function animate() {
         var isOwnedPlanet = findObjectWithId(ownedPlanets, matter.id)
 
         //Out of screen Right                           || Left             || Up               || Down
-        if(!(pos.x - size > (windowWidth + centerX) / scale || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > (windowHeight + centerY) / scale) || isClosestAvaiblePlanet || isOwnedPlanet != null){
+        if(isOnScreen(pos.x, pos.y, size) || isClosestAvaiblePlanet || isOwnedPlanet != null){
             matter.health = healthDict[matter.id];
             matter.update();
+
+            var shop = findObjectWithId(worldObjects.shops, matter.id);
+
+            if(!shop)
+            {
+                var distanceToMouse = Math.sqrt(Math.pow(pos.x - mouse.x, 2) + Math.pow(pos.y - mouse.y, 2));
+
+                if(distanceToMouse <= matter.radius)
+                {
+                    if(propertiesTimer[matter.id])
+                    {
+                        if(propertiesTimer[matter.id].time < propertiesHoldTime)
+                        {
+                            propertiesTimer[matter.id].time++;
+                        }
+                    }
+                    else
+                        propertiesTimer[matter.id] = {time: 0, fill: 0};
+    
+                    
+                }
+                else{
+                    propertiesTimer[matter.id] = {time: 0, fill: 0};
+                }
+            }
+        }
+        else{
+            propertiesTimer[matter.id] = {time: 0, fill: 0};
         }
 
     });
+
+    if(spaceShip)
+    {
+        for (var timer in propertiesTimer) {
+            if (propertiesTimer.hasOwnProperty(timer)) {
+    
+                if(propertiesTimer[clientId] && timer != clientId && propertiesTimer[clientId].time >= propertiesHoldTime)
+                    continue;
+    
+                if(propertiesTimer[timer].time >= propertiesHoldTime){
+                    if(propertiesTimer[timer].fill < 1)
+                    {
+                        propertiesTimer[timer].fill += .05;
+                    }
+    
+                    var matter = findObjectWithId(allMatter, timer);
+    
+                    if(!matter)
+                        delete propertiesTimer[timer];
+                    else{
+                        propertiesOverview(matter.object, propertiesTimer[timer].fill);
+                    }
+                    
+                }
+    
+    
+            }
+        }
+    }
 
     hittableObjects.forEach(function(obj){
         if(obj.radius && statsView && obj.active){
             var pos = cordsToScreenPos(obj.x, obj.y);
 
-            //Out of screen Right                           || Left             || Up               || Down
+            //Out of screen Right                               || Left             || Up               || Down
             if(!(pos.x - size > (windowWidth + centerX) / scale || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > (windowHeight + centerY) / scale) || isClosestAvaiblePlanet || isOwnedPlanet != null){
                 c.beginPath();
                 c.arc(pos.x, pos.y, obj.radius, 0, Math.PI * 2, false);
@@ -2068,30 +2219,6 @@ function animate() {
         proj.update();
     }
     
-    if(closestAvailablePlanet && !currentPlanet && spaceShip){
-        var size = Math.round(50 / scale);
-
-        c.font = size + "px Arial";
-        c.fillStyle = "white";
-        c.globalAlpha = .2;
-        c.textAlign="center"; 
-        c.fillText("Press J to land", centerX, (canvas.height - 80) / scale);
-        c.textAlign="left"; 
-
-        c.globalAlpha = .5;
-
-        c.beginPath();
-        c.setLineDash([5, 15]);
-        c.moveTo(centerX, centerY);
-        c.strokeStyle = "gray";
-        c.lineWidth = 5;
-        c.lineTo(closestAvailablePlanet.x, closestAvailablePlanet.y);
-        c.stroke();
-
-        c.setLineDash([]);
-        c.globalAlpha = 1;
-    }
-
     if(spaceShip && ownedPlanets.length > 0){
 
         //Draw arrows pointing to owned planets
@@ -2203,8 +2330,52 @@ function animate() {
     }
 
     var isInSun = false;
-
+    
     c.scale(1 / scale, 1 / scale);
+
+    if(spaceShip){
+
+        if(currentPlanet){
+            c.font = "60px Arial";
+            c.fillStyle = "white";
+            c.globalAlpha = .2;
+            c.textAlign="center"; 
+            c.fillText("Press Space to take off", windowWidth / 2, (windowHeight - 80));
+            c.textAlign="left"; 
+            c.globalAlpha = 1;
+        }
+        else if(!currentPlanet && closestAvailablePlanet){
+
+            var shopInRange = false;
+
+            worldObjects.shops.forEach(shop => {
+                if(shop.isInRange)
+                    shopInRange = true;
+            });
+
+            if(!shopInRange)
+            {
+                c.font =  "60px Arial";
+                c.fillStyle = "white";
+                c.globalAlpha = .2;
+                c.textAlign="center"; 
+                c.fillText("Press J to land", windowWidth / 2, (windowHeight - 80));
+                c.textAlign="left"; 
+    
+                c.globalAlpha = .5;
+                c.beginPath();
+                c.setLineDash([10, 30]);
+                c.moveTo(windowWidth / 2, windowHeight / 2);
+                c.strokeStyle = "gray";
+                c.lineWidth = 10;  
+                c.lineTo(closestAvailablePlanet.x * scale, closestAvailablePlanet.y * scale);
+                c.stroke();
+        
+                c.setLineDash([]);
+                c.globalAlpha = 1;
+            }
+        }
+    }
 
     worldObjects.asteroids.forEach(spaceMatter => {
         
@@ -2223,7 +2394,6 @@ function animate() {
             }
 
         }
-        
     });    
         
     if(isInSun){
@@ -2255,7 +2425,6 @@ function animate() {
 
     //Display Stats
     if(spaceShip){
-
         if(spaceShip.health > 0){
 
             var xPadding = 10;
@@ -2290,16 +2459,8 @@ function animate() {
             c.globalAlpha = 1;
             c.textAlign = "left";
         }
-    
-        if(currentPlanet && !planetEditMode){
-            var size = windowHeight / 8;
-            var padding = 20;
-            c.globalAlpha = .5;
-            c.drawImage(getImage("E"), padding, windowHeight - size - padding, size, size); 
-            c.globalAlpha = 1;
-        }
 
-        if(planetEditMode){
+        if(currentPlanet){
     
             //Draw the structures aviable for placement on a planet w/ their costs
             var imageSizes = canvas.height / 7.5;
@@ -2335,7 +2496,6 @@ function animate() {
             structureCosts.forEach(costs => {
                 
                 var costX = 5;
-                
 
                 for (var cost in costs) {
                     if (costs.hasOwnProperty(cost)) {
@@ -2436,6 +2596,7 @@ function animate() {
         }
 
     }
+
 
 }
 
@@ -2601,9 +2762,14 @@ function drawShopPanel(type){
         if(upgradeCosts){
             for (var cost in upgradeCosts) {
                 if (upgradeCosts.hasOwnProperty(cost)) {
+
+                    var color = "white";
+                    if(!playerItems[cost] || playerItems[cost] < upgradeCosts[cost])
+                        color = "#ff9696";
+
                     c.drawImage(getImage(cost), costX, costY, costSize, costSize);
                     c.font = costSize / 1.5 + "px Helvetica";
-                    c.fillStyle = "white";
+                    c.fillStyle = color;
                     c.fillText(upgradeCosts[cost], costX + costSize + costPadding, costY + costSize / 1.3);
     
                     costY += costSize + costPadding;
@@ -2725,9 +2891,14 @@ function showUpgrades(){
 
                     for (var cost in upgradeCosts) {
                         if (upgradeCosts.hasOwnProperty(cost)) {
+
+                            var color = "white";
+                            if(!playerItems[cost] || playerItems[cost] < upgradeCosts[cost])
+                                color = "#ff9696";
+
                             c.drawImage(getImage(cost), drawx + costX, drawy + costY, costSize, costSize);
                             c.font = size / 4 + "px Helvetica";
-                            c.fillStyle = "white";
+                            c.fillStyle = color;
                             c.fillText(upgradeCosts[cost], drawx + costX + costSize * 1.2, drawy + costY + costSize / 1.3);
             
                             costY += costSize + costPadding;
@@ -2767,9 +2938,14 @@ function showUpgrades(){
 
                         for (var cost in upgradeInGroup.costs) {
                             if (upgradeInGroup.costs.hasOwnProperty(cost)) {
+
+                                var color = "white";
+                                if(!playerItems[cost] || playerItems[cost] < upgradeInGroup.costs[cost])
+                                    color = "#ff9696";
+
                                 c.drawImage(getImage(cost), drawx + costX, groupCostY, costSize, costSize);
                                 c.font = size / 4 + "px Helvetica";
-                                c.fillStyle = "white";
+                                c.fillStyle = color;
                                 c.fillText(upgradeInGroup.costs[cost], drawx + costX + costSize * 1.2, groupCostY + costSize / 1.3);
                 
                                 groupCostY += costSize + costPadding;
@@ -2845,9 +3021,14 @@ function showUpgrades(){
 
                         for (var cost in upgradeCosts) {
                             if (upgradeCosts.hasOwnProperty(cost)) {
+
+                                var color = "white";
+                                if(!playerItems[cost] || playerItems[cost] < upgradeCosts[cost])
+                                    color = "#ff9696";
+
                                 c.drawImage(getImage(cost), drawx + costX, drawy + costY, costSize, costSize);
                                 c.font = size / 4 + "px Helvetica";
-                                c.fillStyle = "white";
+                                c.fillStyle = color;
                                 c.fillText(upgradeCosts[cost], drawx + costX + costSize * 1.2, drawy + costY + costSize / 1.3);
                 
                                 costY += costSize + costPadding;
@@ -2982,11 +3163,98 @@ function minimap(size, x, y){
 
     });
 
-    c.globalAlpha = 0.75;
+    c.globalAlpha = 0.75; 
     c.beginPath();
     c.arc(x + spaceShip.coordX / gridSize * size, y + spaceShip.coordY / gridSize * size, size / 30, 0, Math.PI * 2, false);
     c.fillStyle = "white";
     c.fill();    
+}
+
+function propertiesOverview(object, fill){
+
+    var size = 100 / scale;
+    var dropSize = size / 3;
+    var dropPadding = size / 10;
+    var pos = cordsToScreenPos(object.coordX, object.coordY);
+    var flipX = 1;
+
+    if(pos.x - 10 > centerX && object.id != clientId)
+    {
+        flipX = -1;
+    }
+
+    if(!isOnScreen(pos.x, pos.y, -20))
+    {
+        pos = {x: mouse.x, y: mouse.y};
+    }
+
+    var drops = dropDict[object.id];
+    var dropX = 0;
+
+    c.globalAlpha = fill;
+
+    var imageOfset = 0;
+
+    if(flipX > 0)
+    {
+        imageOfset = -dropSize;
+    }
+
+    if(drops)
+    {
+        for (var drop in drops) {
+            if (drops.hasOwnProperty(drop)) {
+                c.drawImage(getImage(drop), pos.x + (size / 1.2 + dropX + imageOfset) * flipX, pos.y - size / 2 + size / 20 + dropPadding, dropSize, dropSize);
+                dropX += dropSize + dropPadding;
+            }
+        }
+    }
+
+    if(object.level >= 0)
+    {
+        c.font = size / 5 + "px Arial";
+        c.fillStyle = "white";
+        c.fillText("Level: " + (object.level + 1), pos.x + (size / 1.8) * flipX, pos.y - size / 2 - size / 20);
+
+        dropX += size * .8;
+    }
+    else if(object.owner)
+    {
+        var name = "";
+
+        if(object.owner == clientId)
+            name = username;
+        else{
+            otherPlayers.forEach(player => {
+                if(player.id == object.owner)
+                    name = player.username;
+            });
+        }
+
+        c.font = size / 5 + "px Arial";
+        c.fillStyle = "white";
+        c.fillText("Owner: " + (name), pos.x + (size / 1.8) * flipX, pos.y - size / 2 - size / 20);
+
+        dropX += size * .8;
+    }
+
+    var filFirst = fill * 2;
+
+    if(filFirst > 1)
+        filFirst = 1;
+
+    c.globalAlpha = 0.5;
+    c.beginPath();
+    c.moveTo(pos.x, pos.y);
+    c.lineTo(pos.x + (size / 2) * flipX * filFirst, pos.y - size / 2 * filFirst);
+    if(fill >= .5)
+        c.lineTo((pos.x + (size / 2) * flipX * filFirst) + (size + dropX * 1.2) * flipX * (fill - .5), pos.y - (size / 2));
+
+    c.strokeStyle = "white";
+    c.lineWidth = size / 20;
+    c.stroke();
+
+    c.globalAlpha = 1;
 }
 
 function displayResources(){
@@ -2995,7 +3263,6 @@ function displayResources(){
     size = 50;
     padding = 25;
 
-    
     for (var item in playerItems) {
         if (playerItems.hasOwnProperty(item)) {
             if(getImage(item)){
@@ -3204,6 +3471,10 @@ function drawPointAroundCircle(startx, starty, radius, angle, distance){
     c.fillStyle = "#42aaf4";
     c.fillRect(-rectWidth/2+20,-rectHeight/2,rectWidth,rectHeight);
     c.restore();
+}
+
+function isOnScreen(x, y, size){
+    return (!(x - size > (windowWidth + centerX) / scale || x + size < 0 || y + size < 0 || y - size > (windowHeight + centerY) / scale));
 }
 
 function getRndInteger(min, max) {

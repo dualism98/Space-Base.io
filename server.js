@@ -4,8 +4,8 @@ var DoublyList = require('./doublyLinkedList');
 
 var app = express();
 
-var server = app.listen(process.env.PORT, "0.0.0.0");
-//var server = app.listen(8080, "0.0.0.0");
+//var server = app.listen(process.env.PORT, "0.0.0.0");
+var server = app.listen(8080, "0.0.0.0");
 app.use(express.static('public'));
 var io = require('socket.io').listen(server);   //socket(server);
 
@@ -24,14 +24,14 @@ var gridSize = 15000;
 var gridBoxScale = 200;
 var spawnTries = 5;
 
-// var numOfasteroids = 0;
-// var numOfPlanets = 3;
-// var numOfMoons = 0;
-// var numOfSuns = 0;
-// var numOfCrystals = 0;
-// var gridSize = 2000;
-// var gridBoxScale = 10;
-// var spawnTries = 5;
+var numOfasteroids = 100;
+var numOfPlanets = 3;
+var numOfMoons = 0;
+var numOfSuns = 0;
+var numOfCrystals = 0;
+var gridSize = 2000;
+var gridBoxScale = 10;
+var spawnTries = 5;
 
 var edgeSpawnPadding = 2000;
 var precentItemKillBoost = .5;
@@ -267,7 +267,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {};//{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
+    this.drops = {gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
 
     this.shipTurret;
 
@@ -850,11 +850,15 @@ function newConnetcion(socket){
         var level = 0;
         var position = {x: 0, y: 0};
         var structures = [];
+        var playerShopUpgrades = false;
 
         if(lobbyClient){
             position.x = lobbyClient.object.x;
             position.y = lobbyClient.object.y;
 
+            if(lobbyClient.object.shopUpgrades)
+                playerShopUpgrades = lobbyClient.object.shopUpgrades;
+            
             if(lobbyClient.object.level)
                 level = lobbyClient.object.level;
 
@@ -872,6 +876,9 @@ function newConnetcion(socket){
         player = new Player(position.x, position.y, 0, level, socket.id, data.worldId); 
         worldsData[data.worldId].clients.push(player);
         player.structures = structures;
+
+        if(playerShopUpgrades)
+            player.shopUpgrades = playerShopUpgrades;
 
         player.username = data.username;
         worldsData[data.worldId].hittableObjects.push(player);
@@ -1049,15 +1056,20 @@ function newConnetcion(socket){
                 return;
             }
         }
-        else{
+
+        if(planet.hasMaxStructure(data.type, maxPlanetObjects[data.type]))
+        {
+            io.sockets.connected[data.ownerId].emit("returnMsg", "Planet aready has max " + data.type + 's');
+            return;
+        }
+
+        if(data.type == "landingPad"){
             var numberOwnedPlanets = 0;
 
             worldsData[data.worldId].worldObjects.planets.forEach(planet => {
                 if(planet.owner == data.ownerId)
                     numberOwnedPlanets++
             });
-
-            console.log(numberOwnedPlanets);
 
             if(numberOwnedPlanets >= maxNumberOwnedPlanets)
             {
@@ -1069,13 +1081,6 @@ function newConnetcion(socket){
                 io.sockets.connected[data.ownerId].emit("returnMsg", "Can only own " + maxNumberOwnedPlanets + " planet" + s);
                 return;
             }
-        }
-
-
-        if(planet.hasMaxStructure(data.type, maxPlanetObjects[data.type]))
-        {
-            io.sockets.connected[data.ownerId].emit("returnMsg", "Planet aready has max " + data.type + 's');
-            return;
         }
 
         if(structureUpgrades[data.type]){
@@ -1538,7 +1543,7 @@ function disconnectPlayer(id, socket, worldId){
                 io.sockets.connected[id].emit("respawn");
             }
 
-            playerObject = {id: id, worldId: worldId, x: playerPosition.x, y: playerPosition.y, level: level, planet: respawnPlanet.id, structures: client.object.structures};
+            playerObject = {id: id, worldId: worldId, x: playerPosition.x, y: playerPosition.y, level: level, planet: respawnPlanet.id, structures: client.object.structures, shopUpgrades: client.object.shopUpgrades};
             worldsData[worldId].lobbyClients.push(playerObject);
 
         } 
