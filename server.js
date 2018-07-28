@@ -4,8 +4,8 @@ var DoublyList = require('./doublyLinkedList');
 
 var app = express();
 
-var server = app.listen(process.env.PORT, "0.0.0.0");
-//var server = app.listen(8080, "0.0.0.0");
+//var server = app.listen(process.env.PORT, "0.0.0.0");
+var server = app.listen(8080, "0.0.0.0");
 app.use(express.static('public'));
 var io = require('socket.io').listen(server);   //socket(server);
 
@@ -47,7 +47,7 @@ var planetColors = ["#CB7C43", "#433F53", "#8C8070", "#94A6BF", "#9DC183", "#CC4
 var crystalColors = ["#5b94ef", "#d957ed", "#f9f454", "#85f954"];
 var moonColors = ["#929aa8", "#758196", "#758196", "#2d3c56"];
 
-var clientsPerWorld = 100;
+var clientsPerWorld = 30;
 var numberOfWorlds = 0;
 
 var levelsLostOnDeath = 2;
@@ -371,7 +371,7 @@ var playerUpgrades = [
             damage: 1,
             radius: 10,
             turningSpeed: .1,
-            bulletRange: 3,
+            bulletRange: 1,
             identifier: "spaceship"
         },
         {   
@@ -382,7 +382,7 @@ var playerUpgrades = [
             damage: 2,
             radius: 15,
             turningSpeed: .1,
-            bulletRange: 4,
+            bulletRange: 1,
             identifier: "spaceship"
         },
         {   
@@ -393,7 +393,7 @@ var playerUpgrades = [
             damage: 3,
             radius: 20,
             turningSpeed: .1,
-            bulletRange: 5,
+            bulletRange: 2,
             identifier: "spaceship"
         },
         {   
@@ -404,7 +404,7 @@ var playerUpgrades = [
             damage: 5,
             radius: 25,
             turningSpeed: .09,
-            bulletRange: 6,
+            bulletRange: 2,
             identifier: "spaceship"
         },
         {   
@@ -415,7 +415,7 @@ var playerUpgrades = [
             damage: 8,
             radius: 30,
             turningSpeed: .085,
-            bulletRange: 7,
+            bulletRange: 3,
             identifier: "spaceship"
         },
         {   
@@ -426,7 +426,7 @@ var playerUpgrades = [
             damage: 13,
             radius: 35,
             turningSpeed: .08,
-            bulletRange: 8,
+            bulletRange: 3,
             identifier: "spaceship"
         },
         {   
@@ -437,7 +437,7 @@ var playerUpgrades = [
             damage: 21,
             radius: 40,
             turningSpeed: .075,
-            bulletRange: 9,
+            bulletRange: 4,
             identifier: "spaceship"
         },
         {   
@@ -448,7 +448,7 @@ var playerUpgrades = [
             damage: 34,
             radius: 45,
             turningSpeed: .07,
-            bulletRange: 10,
+            bulletRange: 4,
             identifier: "spaceship"
         },
         {   
@@ -459,7 +459,7 @@ var playerUpgrades = [
             damage: 55,
             radius: 50,
             turningSpeed: .065,
-            bulletRange: 11,
+            bulletRange: 5,
             identifier: "spaceship"
         },
         {   
@@ -470,7 +470,7 @@ var playerUpgrades = [
             damage: 89,
             radius: 55,
             turningSpeed: .06,
-            bulletRange: 12,
+            bulletRange: 5,
             identifier: "spaceship"
         },
         {   
@@ -481,7 +481,7 @@ var playerUpgrades = [
             damage: 144,
             radius: 60,
             turningSpeed: .055,
-            bulletRange: 13,
+            bulletRange: 6,
             identifier: "spaceship"
         },
         {   
@@ -492,7 +492,7 @@ var playerUpgrades = [
             damage: 233,
             radius: 65,
             turningSpeed: .05,
-            bulletRange: 14,
+            bulletRange: 6,
             identifier: "spaceship"
         },
         {   
@@ -503,7 +503,7 @@ var playerUpgrades = [
             damage: 300,
             radius: 70,
             turningSpeed: .045,
-            bulletRange: 15,
+            bulletRange: 7,
             identifier: "spaceship"
         },
         {   
@@ -514,7 +514,7 @@ var playerUpgrades = [
             damage: 400,
             radius: 75,
             turningSpeed: .04,
-            bulletRange: 16,
+            bulletRange: 7,
             identifier: "spaceship"
         },
         {   
@@ -525,7 +525,7 @@ var playerUpgrades = [
             damage: 500,
             radius: 80,
             turningSpeed: .035,
-            bulletRange: 17,
+            bulletRange: 8,
             identifier: "spaceship"
         }
         
@@ -541,7 +541,7 @@ var structureUpgrades = {
     turret: [
     {
         costs: {iron: 20},
-        bulletRange: 20,
+        bulletRange: 14,
         projectileSpeed: 12,
         shootInterval: 100,
         damage: 5,
@@ -550,7 +550,7 @@ var structureUpgrades = {
     },
     {
         costs: {iron: 40},
-        bulletRange: 20,
+        bulletRange: 14,
         projectileSpeed: 14,
         shootInterval: 95,
         damage: 10,
@@ -559,7 +559,7 @@ var structureUpgrades = {
     },
     {
         costs: {iron: 100},
-        bulletRange: 20,
+        bulletRange: 14,
         projectileSpeed: 16,
         shootInterval: 90,
         damage: 15,
@@ -568,7 +568,7 @@ var structureUpgrades = {
     },
     {
         costs: {iron: 500},
-        bulletRange: 20,
+        bulletRange: 14,
         projectileSpeed: 18,
         shootInterval: 85,
         damage: 20,
@@ -577,7 +577,7 @@ var structureUpgrades = {
     },
     {
         costs: {iron: 1000},
-        bulletRange: 20,
+        bulletRange: 14,
         projectileSpeed: 20,
         shootInterval: 80,
         damage: 30,
@@ -586,7 +586,7 @@ var structureUpgrades = {
     },
     {
         costs: {iron: 5000, crystal: 5},
-        bulletRange: 20,
+        bulletRange: 14,
         projectileSpeed: 22,
         shootInterval: 75,
         damage: 45,
@@ -595,7 +595,7 @@ var structureUpgrades = {
     },
     {
         costs: {iron: 10000, crystal: 20},
-        bulletRange: 20,
+        bulletRange: 14,
         projectileSpeed: 24,
         shootInterval: 70,
         damage: 65,
@@ -604,7 +604,7 @@ var structureUpgrades = {
     },
     {
         costs: {iron: 20000, crystal: 50, gem: 1},
-        bulletRange: 20,
+        bulletRange: 14,
         projectileSpeed: 26,
         shootInterval: 65,
         damage: 80,
@@ -851,13 +851,20 @@ function newConnetcion(socket){
         var position = {x: 0, y: 0};
         var structures = [];
         var playerShopUpgrades = false;
+        var shipTurret = false;
 
         if(lobbyClient){
             position.x = lobbyClient.object.x;
             position.y = lobbyClient.object.y;
 
-            if(lobbyClient.object.shopUpgrades)
-                playerShopUpgrades = lobbyClient.object.shopUpgrades;
+            if(lobbyClient.object.shopUpgrades){
+                playerShopUpgrades = lobbyClient.object.shopUpgrades;     
+                
+                if(lobbyClient.object.shipTurret){
+                    shipTurret = lobbyClient.object.shipTurret;                
+                }
+            }
+                
             
             if(lobbyClient.object.level)
                 level = lobbyClient.object.level;
@@ -876,6 +883,7 @@ function newConnetcion(socket){
         player = new Player(position.x, position.y, 0, level, socket.id, data.worldId); 
         worldsData[data.worldId].clients.push(player);
         player.structures = structures;
+        player.shipTurret = shipTurret;
 
         if(playerShopUpgrades)
             player.shopUpgrades = playerShopUpgrades;
@@ -887,6 +895,21 @@ function newConnetcion(socket){
 
         socket.broadcast.to(data.worldId).emit('newPlayer', player);
         socket.emit("newPlayerStart", {player: player, planet: lobbyClient.object.planet});
+
+        if(shipTurret)
+        {
+            var shipTurretData = {
+                playerId: socket.id,
+                level: playerShopUpgrades.shipTurret.level,
+                type: "shipTurret",
+                value: playerShopUpgrades.shipTurret.value,
+                costs: {},
+                turretId: shipTurret.id
+            }
+
+            io.to(data.worldId).emit('shopUpgrade', shipTurretData);
+            
+        }
 
         syncDamage(data.worldId);
     });
@@ -911,7 +934,7 @@ function newConnetcion(socket){
 
         var damageDealt = projectile.object.damage;
 
-        damageObject(data.worldId, data.id, data.senderId, damageDealt);
+        damageObject(data.worldId, data.id, socket.id, damageDealt);
 
         if(projectile.object.hitObjects)
             projectile.object.hitObjects.push(data.id);
@@ -1256,9 +1279,7 @@ function newConnetcion(socket){
 
                     for (var turretUpgrade in upgrades) {
                         if (upgrades.hasOwnProperty(turretUpgrade)) {
-                            
                             shipTurret[turretUpgrade] = upgrades[turretUpgrade];
-
                         }
                     }
 
@@ -1286,7 +1307,7 @@ function newConnetcion(socket){
     socket.on('upgradeRequest', function(data){
         var allUpgradeableObjects = allWorldObjects(data.worldId).concat(allStructures(data.worldId).concat(worldsData[data.worldId].clients));
 
-        var playerUpgrading = findObjectWithId(worldsData[data.worldId].clients, data.senderId).object;
+        var playerUpgrading = findObjectWithId(worldsData[data.worldId].clients, socket.id).object;
 
         var upgradee = findObjectWithId(allUpgradeableObjects, data.id).object;
         var upgrades;
@@ -1319,7 +1340,7 @@ function newConnetcion(socket){
             syncDamage(data.worldId, [data.id]);
         }
         else{
-            io.sockets.connected[data.senderId].emit("returnMsg", "Not enough resources");
+            io.sockets.connected[socket.id].emit("returnMsg", "Not enough resources");
         }
         
     });
@@ -1403,7 +1424,7 @@ function newConnetcion(socket){
             
         }
         else{
-            io.sockets.connected[data.senderId].emit("returnMsg", "Purchase cloak ability at shop first.");
+            io.sockets.connected[socket.id].emit("returnMsg", "Purchase cloak ability at shop first.");
         }
 
 
@@ -1543,7 +1564,7 @@ function disconnectPlayer(id, socket, worldId){
                 io.sockets.connected[id].emit("respawn");
             }
 
-            playerObject = {id: id, worldId: worldId, x: playerPosition.x, y: playerPosition.y, level: level, planet: respawnPlanet.id, structures: client.object.structures, shopUpgrades: client.object.shopUpgrades};
+            playerObject = {id: id, worldId: worldId, x: playerPosition.x, y: playerPosition.y, level: level, planet: respawnPlanet.id, structures: client.object.structures, shopUpgrades: client.object.shopUpgrades, shipTurret: client.object.shipTurret};
             worldsData[worldId].lobbyClients.push(playerObject);
 
         } 
@@ -1874,6 +1895,11 @@ function itemDropped(drops, playerRecivingId, worldId, precent){
 }
 
 function syncDamage(worldId, changedIds){
+
+    if(!worldIds.contains(worldId)){
+        console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "world Id not accounted for on server. most likely old session. worldID: " + worldId);
+        return;
+    }
 
     var healthData = {hittableObjects: [], deadObjects:[]};
     var worldHittableObjects = worldsData[worldId].hittableObjects;

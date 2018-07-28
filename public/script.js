@@ -229,6 +229,11 @@ var propertiesTimer = {};
 var propertiesHoldTime = 100;
 var username = "unnamed";
 
+var colorChangedHitObjects = {};
+
+var aquiredItems = {};
+var aquireItemsFadeTime = 50;
+
 var timers = {
     shoot: {
         spaceCounter: 0,
@@ -246,8 +251,9 @@ var timers = {
 
 function setup(){
     //socket = io.connect('http://localhost:8080');
+    socket = io.connect('http://178.128.13.37');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
-    socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
+    //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -601,7 +607,8 @@ function respawn(){
 
     $("#preGameContent").fadeIn();
     $("canvas").css("filter", "blur(5px)");
-
+    $('#playerNameInput').removeAttr("disabled");
+    
 }
 function updatePlayerPosition(data){
     otherPlayer = findObjectWithId(otherPlayers, data.id);
@@ -723,14 +730,16 @@ function shopUpgrade(data){
         }
 
         player.turret.level = data.level - 1;
-        player.turret.shootInterval = Math.round(1000 / data.value);
-        player.turret.projectileSpeed = Math.round(data.value * 10);
-        player.turret.projectileSize = player.radius / 4;
+        player.turret.shootInterval = Math.round(75 / Math.sqrt(data.value));
+        player.turret.projectileSpeed = Math.round(Math.sqrt(data.value) * 4);
+        player.turret.projectileSize = Math.round(Math.sqrt(player.radius) * 2);
     }
 
     allStructures = getAllStructures();
 }
 function mineProduce(data){
+    var added = {};
+
     data.forEach(mine => {
         localMine = findObjectWithId(producingMines, mine.id);
 
@@ -744,8 +753,22 @@ function mineProduce(data){
             playerItems[mine.item] = mine.amount;
         }
 
+        if(added[mine.item])
+            added[mine.item] += mine.amount;
+        else 
+        {
+            added[mine.item] = mine.amount;
+        }
+
     });
     
+    for (var item in added) {
+        if (added.hasOwnProperty(item)) {
+
+            aquiredItems[item] = {amount: added[item], time: aquireItemsFadeTime};
+
+        }
+    }
 }
 
 function onAquiredItems(data){
@@ -755,6 +778,8 @@ function onAquiredItems(data){
                 playerItems[drop] += data.drops[drop];
             else
                 playerItems[drop] = data.drops[drop];
+
+            aquiredItems[drop] = {amount: data.drops[drop], time: aquireItemsFadeTime};
         }
     } 
 }
@@ -828,9 +853,9 @@ function forceDisconnect(data){
 //Send Data Functions
 function sendPlayerPosition(pos, rotation){
     var data = {
-        x: pos.x, 
-        y: pos.y,
-        rot: rotation,
+        x: Math.round(pos.x * 10) / 10, 
+        y: Math.round(pos.y * 10) / 10,
+        rot: Math.round(rotation * 100) / 100,
         worldId: worldId
     }
 
@@ -844,7 +869,6 @@ function sendProjectile(x, y, vel, size, color, id, shooterId){
         size: size,
         color: color,
         id: id,
-        senderId: clientId,
         shooterId: shooterId,
         worldId: worldId
     }
@@ -854,7 +878,6 @@ function sendProjectile(x, y, vel, size, color, id, shooterId){
 function sendProjectileHit(projectileId, subjectId){
     var data = {
         id: subjectId,
-        senderId: clientId,
         projectileId: projectileId,
         worldId: worldId
     }
@@ -892,7 +915,20 @@ window.addEventListener('resize',
     centerY = (canvas.height / 2 / scale);
 });
 
+$('#playerNameInput').on('keypress', function (e) {
+    if(e.which == 13){
+
+        startGame();
+       //Disable textbox to prevent multiple submit
+       $(this).attr("disabled", "disabled");
+    }
+});
+
 $("#startGame").click(function(){
+    startGame();
+});
+
+function startGame(){
     if($("#playerNameInput").val() != ""){
         username = $("#playerNameInput").val().toString();
         username = username.slice(0, 15);
@@ -902,7 +938,7 @@ $("#startGame").click(function(){
 
     $("#preGameContent").fadeOut();
     $("canvas").css("filter", "none");
-});
+}
 
 $("#help").click(function(){
     $("#mainContent").fadeOut(250);
@@ -1498,7 +1534,25 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
             var hitObject = {x: pos.x, y: pos.y, radius: hittableObjects[i].radius} 
 
             if(isCollidingCircles(this, hitObject)){
-                    sendProjectileHit(this.id, hittableObjects[i].id);
+                sendProjectileHit(this.id, hittableObjects[i].id);
+
+                var hitWorldObject = findObjectWithId(allWorldObjects, hittableObjects[i].id);
+
+                if(hitWorldObject)
+                {
+
+                    var colorRef = colorChangedHitObjects[hittableObjects[i].id];
+
+                    if(colorRef) //color is currently changing
+                    {
+                        colorRef.time = 20;
+                    }
+                    else{
+                        colorChangedHitObjects[hittableObjects[i].id] = {color: hitWorldObject.object.color, time: 20};
+                        hitWorldObject.object.color = shadeColorHex(hitWorldObject.object.color, 20);
+                    }
+                    
+                }
 
                 this.hitObjects.push(hittableObjects[i].id);
                 return true;
@@ -2337,7 +2391,7 @@ function animate() {
     if(spaceShip){
 
         if(currentPlanet){
-            c.font = "60px Arial";
+            c.font = windowHeight / 15 + "px Arial";
             c.fillStyle = "white";
             c.globalAlpha = .2;
             c.textAlign="center"; 
@@ -2356,7 +2410,7 @@ function animate() {
 
             if(!shopInRange)
             {
-                c.font =  "60px Arial";
+                c.font =  windowHeight / 15 + "px Arial";
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
@@ -2463,27 +2517,50 @@ function animate() {
 
         if(currentPlanet){
     
+            
             //Draw the structures aviable for placement on a planet w/ their costs
-            var imageSizes = canvas.height / 7.5;
-            var padding = canvas.height / 20;
+            var imageSizes = canvas.height / 12;
+            var padding = canvas.height / 25;
 
-            var xValue = canvas.width - imageSizes - padding;
-    
-            c.drawImage(getImage('turret0'), xValue, padding, imageSizes, imageSizes); 
-            c.drawImage(getImage('mine0'), xValue, padding * 2 + imageSizes, imageSizes, imageSizes);
-            c.drawImage(getImage('shield0'), xValue, padding * 3 + imageSizes * 2, imageSizes, imageSizes);     
-            c.drawImage(getImage('landingPad0'), xValue, padding * 4 + imageSizes * 3, imageSizes, imageSizes);  
+            var yValue = canvas.height / 2.3;
+            var xValue = padding;
+
+            c.globalAlpha = .8;
+            c.fillStyle = "white";
+            c.font = windowHeight / 40 + "px Helvetica";
+            c.fillText("Structures", xValue - padding / 2, yValue + padding);
+
+            c.globalAlpha = .2;
+            c.fillRect(xValue - padding / 2, yValue + padding * 1.2, imageSizes + padding, (imageSizes + padding) * 4);
+            c.globalAlpha = .85;
+
+            c.drawImage(getImage('turret0'), xValue, padding + yValue, imageSizes, imageSizes); 
+            c.drawImage(getImage('mine0'), xValue, padding * 2 + imageSizes + yValue, imageSizes, imageSizes);
+            c.drawImage(getImage('shield0'), xValue, padding * 3 + imageSizes * 2 + yValue, imageSizes, imageSizes);     
+            c.drawImage(getImage('landingPad0'), xValue, padding * 4 + imageSizes * 3 + yValue, imageSizes, imageSizes);  
     
             //Display HotKeys
             var keyX = xValue + imageSizes / 2;
 
+            var shadowX = 4;
+            var shadowY = 4;
+
+            c.fillStyle = "black";
+            c.globalAlpha = .5;
             c.textAlign = "center"; 
+            c.font = windowHeight / 20 + "px Helvetica";
+
+            c.fillText("T", keyX + shadowX, padding + imageSizes * .85 + yValue + shadowY);
+            c.fillText("M", keyX + shadowX, padding * 2 + imageSizes * 1.75 + yValue + shadowY);
+            c.fillText("S", keyX + shadowX, padding * 3 + imageSizes * 2.75 + yValue + shadowY);
+            c.fillText("L", keyX + shadowX, padding * 4 + imageSizes * 3.75 + yValue + shadowY);
+            
+            c.globalAlpha = .85;
             c.fillStyle = "white";
-            c.font = windowHeight / 15 + "px Helvetica";
-            c.fillText("T", keyX, padding + imageSizes * .75);
-            c.fillText("M", keyX, padding * 2 + imageSizes * 1.75);
-            c.fillText("S", keyX, padding * 3 + imageSizes * 2.75);
-            c.fillText("L", keyX, padding * 4 + imageSizes * 3.75);
+            c.fillText("T", keyX, padding + imageSizes * .85 + yValue);
+            c.fillText("M", keyX, padding * 2 + imageSizes * 1.75 + yValue);
+            c.fillText("S", keyX, padding * 3 + imageSizes * 2.75 + yValue);
+            c.fillText("L", keyX, padding * 4 + imageSizes * 3.75 + yValue);
 
             c.textAlign = "left"; 
 
@@ -2500,10 +2577,15 @@ function animate() {
 
                 for (var cost in costs) {
                     if (costs.hasOwnProperty(cost)) {
-                        c.drawImage(getImage(cost), xValue + costX, costY, costSize, costSize);
+
+                        var color = "white";
+                        if(!playerItems[cost] || playerItems[cost] < costs[cost])
+                            color = "#ff9696";
+
+                        c.drawImage(getImage(cost), xValue + costX, costY + yValue, costSize, costSize);
                         c.font = windowHeight / 50 + "px Helvetica";
-                        c.fillStyle = "white";
-                        c.fillText(costs[cost], xValue + costX + costSize * 1.2, costY + costSize / 1.3);
+                        c.fillStyle = color;
+                        c.fillText(costs[cost], xValue + costX + costSize * 1.2, costY + costSize / 1.3 + yValue);
         
                         costX += costSize + costPadding * 3;
                     }
@@ -2512,6 +2594,8 @@ function animate() {
                 costY += padding + imageSizes;
             
             });
+
+            c.globalAlpha = 1;
         }
         
         var miniMapSize = windowHeight / 8;
@@ -2597,7 +2681,27 @@ function animate() {
         }
 
     }
+    
+    for (var changed in colorChangedHitObjects) {
+        if (colorChangedHitObjects.hasOwnProperty(changed)) {
+           
+            var worldObject = findObjectWithId(allWorldObjects, changed);
 
+            if(worldObject)
+            {
+                if(colorChangedHitObjects[changed].time > 0)
+                {
+                    worldObject.object.color = shadeColorHex(colorChangedHitObjects[changed].color, colorChangedHitObjects[changed].time);
+                    colorChangedHitObjects[changed].time--;
+                }
+                else
+                {
+                    delete colorChangedHitObjects[changed];
+                }
+            }
+
+        }
+    }
 
 }
 
@@ -3119,7 +3223,7 @@ function showUpgrades(){
                         }
 
                         if(mouse.clicked){
-                            var data = {id: upgradeId, senderId: clientId, worldId: worldId}
+                            var data = {id: upgradeId, worldId: worldId}
                             socket.emit('upgradeRequest', data);
                             clickedUpgrade = true;
                         }
@@ -3259,14 +3363,15 @@ function propertiesOverview(object, fill){
 }
 
 function displayResources(){
-    c.font = "30px Arial";
     pos = new Vector(10, 70);
-    size = 50;
-    padding = 25;
+    size = windowHeight / 25;
+    padding = windowHeight / 55;
 
     for (var item in playerItems) {
         if (playerItems.hasOwnProperty(item)) {
             if(getImage(item)){
+                c.font = windowHeight / 40 + "px Arial";
+
                 c.drawImage(getImage(item), pos.x, pos.y, size, size);
 
                 //Shadow
@@ -3279,6 +3384,25 @@ function displayResources(){
                 c.fillStyle = "white";
                 c.globalAlpha = 1;
                 c.fillText(playerItems[item].toString(), pos.x + size + padding, pos.y + size / 1.3);
+
+                if(aquiredItems[item])
+                {
+                    if(aquiredItems[item].time > 0)
+                    {
+                        c.globalAlpha = aquiredItems[item].time / aquireItemsFadeTime;
+                        c.fillStyle = "white";
+                        c.font = windowHeight / 50 + "px Arial";
+                        c.fillText("+ " + aquiredItems[item].amount.toString(), pos.x + size + padding + 50 + 20 * playerItems[item].toString().length, pos.y + size / 1.3);
+    
+                        aquiredItems[item].time--;
+                    }
+                    else
+                        delete aquiredItems[item];
+                    
+                    c.globalAlpha = 1;
+                }
+                
+
                 
             }
         }
