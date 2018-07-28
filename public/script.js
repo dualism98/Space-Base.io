@@ -498,11 +498,14 @@ function damagedOwnPlanet(attackOnShield, health, id){
 
 function showWorld(){
 
-    //cancelAnimationFrame(requestAnimationFrameId);
+    imageArray.forEach(image => {
+        getImage(image);
+    });
 
     if(requestAnimationFrameId){
         location.reload();
     }
+    
     animate();
 }
 function startLocalPlayer(data){
@@ -953,11 +956,6 @@ $("#backHelp").click(function(){
 });
 
 $(document).ready(function() {
-
-    imageArray.forEach(image => {
-        getImage(image);
-    });
-
     $("#mainContent").fadeIn(0);
     $("#helpContent").fadeOut(0);
     $("#helpContent").css('display', '');
