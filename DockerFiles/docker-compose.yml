@@ -1,0 +1,13 @@
+version: '3.3'
+services:
+  web:
+    build: 
+      context: .
+      dockerfile: ./Dockerfile
+    command: npm start
+    volumes:
+      - .:/usr/app/
+      - /usr/app/node_modules
+
+    ports:
+      - "3000:8080"
