@@ -8,6 +8,5 @@ services:
     volumes:
       - .:/usr/app/
       - /usr/app/node_modules
-
     ports:
       - "3000:8080"
