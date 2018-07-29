@@ -2,8 +2,8 @@ version: '3.3'
 services:
   web:
     build: 
-      context: .
-      dockerfile: ./Dockerfile
+      context: ../
+      dockerfile: ./DockerFiles/Dockerfile
     command: npm start
     volumes:
       - .:/usr/app/
