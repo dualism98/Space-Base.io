@@ -251,7 +251,7 @@ var timers = {
 
 function setup(){
     //socket = io.connect('http://localhost:8080');
-    socket = io.connect('http://0.0.0.0/');
+    socket = io.connect('http://54.193.23.23/');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
     //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
