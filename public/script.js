@@ -135,6 +135,9 @@ var mousePully = 0;
 var spaceshipVelocity = new Vector();
 
 var playerReloadTimer = 0;
+var shootCooldownTimer = 0;
+var shootCooldownTime = 10;
+var isHoldingShoot = false;
 
 var projectiles = [];
 var otherProjectiles = [];
@@ -226,7 +229,7 @@ var boostReady = false;
 var landed = false;
 
 var propertiesTimer = {};
-var propertiesHoldTime = 100;
+var propertiesHoldTime = 80;
 var username = "unnamed";
 
 var colorChangedHitObjects = {};
@@ -234,20 +237,34 @@ var colorChangedHitObjects = {};
 var aquiredItems = {};
 var aquireItemsFadeTime = 50;
 
-var timers = {
-    shoot: {
-        spaceCounter: 0,
-        spaceHitLimit: 8,
-        time: 0,
-        triggerTime: 200,
-        message: "Press and hold space to shoot"
+var checklist = {
+    fly:{
+        message: "Press and hold the left mouse button to fly.",
+        isActive: true
     },
-    upgrades:{
-        time: 0,
-        triggerTime: 1000,
-        message: "Press and hold F to open upgrades menu"
+    shoot:{
+        message: "Press and hold space to shoot.",
+        isActive: true
+    },
+    upgrade:{
+        message: "Press and hold F to open the upgrades menu.",
+        isActive: false
+    },
+    upgradeClick:{
+        message: "Click on the spaceship icon above to upgrade.",
+        isActive: false
+    },
+    landingPad:{
+        message: "Press L to place a landing pad and claim this planet.",
+        isActive: false
+    },
+    structures:{
+        message: "Press T, M, or S to build a Turret, Mine, or Shield on your planet.",
+        isActive: false
     }
-};
+}
+
+checklistFadeTime = 20;
 
 function setup(){
     //socket = io.connect('http://localhost:8080');
@@ -864,17 +881,20 @@ function sendPlayerPosition(pos, rotation){
 
     socket.emit('playerPos', data);
 }
-function sendProjectile(x, y, vel, size, color, id, shooterId){
+function sendProjectile(x, y, vel, size, color, id, shooterId, damagePercent){
     var data = {
-        x: x, 
-        y: y,
+        x: Math.round(x * 10) / 10, 
+        y: Math.round(y * 10) / 10,
         vel: vel,
         size: size,
         color: color,
         id: id,
         shooterId: shooterId,
+        percentDamage: Math.round(damagePercent * 100) / 100,
         worldId: worldId
     }
+
+    console.log(Math.round(damagePercent * 100) / 100);
 
     socket.emit('spawnProj', data);
 }
@@ -898,6 +918,9 @@ window.addEventListener('mousemove',
 window.addEventListener('mousedown', 
     function(event){
         mouse.clicked = true;
+
+        if(spaceShip)
+            checklist.fly.done = true;
 })
 
 window.addEventListener('mouseup', 
@@ -966,8 +989,7 @@ $(document).ready(function() {
 $(document).keyup(function(e){
 
     if(e.keyCode == 32){ //SPACE
-        if(timers.shoot)
-            timers.shoot.spaceCounter++;
+        isHoldingShoot = false;
     }
 });
 
@@ -998,6 +1020,10 @@ $(document).keypress(function(e){
                 
             landed = false;
             currentPlanet = null;
+
+            checklist.landingPad.isActive = false;
+            checklist.structures.isActive = false;
+
         }
     }
     else if(spaceShip){
@@ -1026,11 +1052,33 @@ $(document).keypress(function(e){
             socket.emit("heal", {id: clientId, worldId: worldId});
 
         if(e.keyCode == 32){ //SPACE
+            
+            checklist.shoot.done = true;
 
-            if(playerReloadTimer <= 0){
-                shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, PROJECTIILE_SPEED, spaceShip.radius / 4, spaceShip.shopUpgrades.bulletPenetration.value + 1, "#f45c42", clientId);
-                playerReloadTimer = 1000;
+            if(shootCooldownTimer >= shootCooldownTime){
+
+                var shootBullet = false;
+
+                if(isHoldingShoot)
+                {
+                    if(playerReloadTimer <=0)
+                        shootBullet = true;
+                }
+                else {
+                    shootBullet = true;
+                }
+
+                if(shootBullet)
+                {
+                    shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, PROJECTIILE_SPEED, spaceShip.radius / 4, spaceShip.shopUpgrades.bulletPenetration.value + 1, "#f45c42", clientId, 1 - playerReloadTimer / 1000);
+                    shootCooldownTimer = 0;
+                    playerReloadTimer = 1000;
+                }
             }
+            
+
+            isHoldingShoot = true;
+            
         } 
         if(e.keyCode == 106 && closestAvailablePlanet != null){ // J
 
@@ -1039,12 +1087,25 @@ $(document).keypress(function(e){
             currentPlanet = closestAvailablePlanet;
             currentPlanet.occupiedBy = clientId;
             closestAvailablePlanet = null;
+
+            if(playerHasResources(structureUpgrades["landingPad"][0].costs) && !ownedPlanets.contains(currentPlanet.id) && !checklist.landingPad.done)
+            {
+                checklist.landingPad.isActive = true;
+            }
+
         } 
     }
 
     
     if(!showUpgradesPannel && !clickedUpgrade)
         showUpgradesPannel = e.keyCode == 102; //F
+
+    if(showUpgradesPannel && spaceShip && checklist.upgrade.isActive)
+    {
+        checklist.upgrade.done = true;
+        checklist.upgradeClick.isActive = true;
+    }
+
 
     if(e.keyCode == 59) // ;
         statsView = !statsView; 
@@ -1053,6 +1114,13 @@ $(document).keypress(function(e){
 }).keyup(function(e){
 
     showUpgradesPannel = false;
+
+    if(spaceShip && checklist.upgrade.done && !checklist.upgradeClick.done) {
+        checklist.upgrade.isActive = true;
+        checklist.upgrade.done = false;
+        checklist.upgradeClick.isActive = false;
+    }
+
     clickedUpgrade = false;
 });
 
@@ -1189,6 +1257,17 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
 
     this.addStructure = function (planet, x, y, rotation, type, level, isFacade, ownerId, id){
         var shieldRadius = this.radius + 100;
+
+        if(!isFacade)
+        {
+            if(checklist.landingPad.isActive && !checklist.landingPad.done)
+            {
+                checklist.landingPad.done = true;
+                checklist.structures.isActive = true;
+            }
+            else
+                checklist.structures.done = true;
+        }
 
         if(type === "mine"){
             var mine = new Mine(planet, x, y, rotation, level, ownerId, id);
@@ -1956,67 +2035,7 @@ function animate() {
     centerX = (canvas.width / 2 / scale);
     centerY = (canvas.height / 2 / scale);    
 
-    if(spaceShip){
-        for (var timer in timers) {
-            if (timers.hasOwnProperty(timer)) {
-
-                if(timer == "upgrades")
-                {
-                    if(spaceShip.level > 0)
-                    {
-                        delete timers[timer];
-                        continue;
-                    }
-
-                    var costsForNextLvl = playerUpgrades[1].costs;
-                    var hasResourceCounter = 0;
-                    var neededResources = 0; 
-        
-                    for (var cost in costsForNextLvl) {
-                        if (costsForNextLvl.hasOwnProperty(cost)) {
-                            if(playerItems[cost] && costsForNextLvl[cost] <= playerItems[cost]){
-                                hasResourceCounter++;
-                            }
-                            neededResources++;
-                        }
-                    }
-
-                    if(neededResources == hasResourceCounter)
-                    {
-                        timers[timer].time++;
-                        //console.log(timers[timer].time);
-                    }
-
-                    if(timers[timer].time >= timers[timer].triggerTime)
-                    {
-                        displayMessage(timers[timer].message, 50, 1);
-                        delete timers[timer];
-                    }
-
-                }
-                else if(timer == "shoot" && timers[timer].spaceCounter > 0)
-                {
-                    timers[timer].time++;
-
-                    if(timers[timer].time <= timers[timer].triggerTime)
-                    {
-                        if(timers[timer].spaceCounter > timers[timer].spaceHitLimit)
-                        {
-                            displayMessage(timers[timer].message, 50, 1);
-                            timers[timer].time = 0;
-                            timers[timer].spaceCounter = 0;
-                        }
-                    }
-                    else{
-                        timers[timer].time = 0;
-                        timers[timer].spaceCounter = 0;
-                    }
-
-                    //console.log(timers[timer].spaceCounter + " / " + timers[timer].spaceHitLimit + " Time: " + timers[timer].time + " / " + timers[timer].triggerTime)
-                    
-                }
-            }
-        }
+    if(spaceShip){        
 
         var mousePullxTarget = 0;
         var mousePullyTarget = 0;
@@ -2478,6 +2497,115 @@ function animate() {
 
     //Display Stats
     if(spaceShip){
+
+        var checkItemY = windowHeight * .7;
+        var checkPadding = windowHeight * .02;
+
+        var width = windowHeight * .3;
+        var height = width * .25;
+
+        var yPositions = {};
+        var i = 0;
+
+
+        if(spaceShip.level == 0 && !checklist.upgrade.isActive)
+        {
+            if(playerHasResources(playerUpgrades[1].costs))
+            {
+                checklist.upgrade.isActive = true;
+            }
+        }
+        
+
+        function getCardYPos(index)
+        {
+            return checkItemY + (checkPadding + height) * index;
+        }
+
+        for (var check in checklist) {
+
+            c.globalAlpha = 1;
+
+            if (checklist.hasOwnProperty(check)) {
+
+                var checkItem = checklist[check];
+
+                if(checkItem.isActive)
+                {
+
+                    if(!checkItem.yPos)
+                    checkItem.yPos = getCardYPos(i);
+                else if(checkItem.yPos != getCardYPos(i)){
+                    if(checkItem.lerp == undefined)
+                        checkItem.lerp = 0;
+                    else if(checkItem.lerp < 1){
+                        checkItem.yPos = checkItem.yPos + (getCardYPos(i) - checkItem.yPos) * checkItem.lerp;
+                        checkItem.lerp += .01;
+                    }
+                    else if(checkItem.lerp >= 1) { 
+                        checkItem.yPos = getCardYPos(i);
+                        checkItem.lerp = 0;
+                    }
+                }
+
+                if(!checkItem.lerp)
+                    checkItem.lerp = 0;
+
+                if(!checkItem.alpha)
+                    checkItem.alpha = 1 / (i + 1);
+                else if(checkItem.alpha != 1 / (i + 1))
+                {
+                    checkItem.alpha = checkItem.alpha + (1 / (i + 1) - checkItem.alpha) * checkItem.lerp;
+                }
+
+                if(!checkItem.size)
+                    checkItem.size = 1 / (i * .2 + 1);
+                else if(checkItem.size != 1 / (i + 1))
+                {
+                    checkItem.size = checkItem.size + (1 / (i * .2 + 1) - checkItem.size) * checkItem.lerp;
+                }
+
+                //var size = 1 / (i * .2 + 1) * 1 - (getCardYPos(i) - checkItem.yPos) * checkItem.lerp / 10;
+
+                var fontsize = width / 20;
+
+                if(checkItem.done)
+                {
+                    if(!checkItem.fade)
+                        checkItem.fade = 0;
+
+                    if(checkItem.fade < checklistFadeTime)
+                    {
+                        c.globalAlpha = (checklistFadeTime - checkItem.fade) / checklistFadeTime * checkItem.alpha;
+                        c.drawImage(getImage("checklist_checked"), windowWidth / 2 - width * checkItem.size / 2, checkItem.yPos, width * checkItem.size, height * checkItem.size);
+                        checkItem.fade++;
+                    }
+                    else
+                        checkItem.isActive = false
+                }
+                else{
+                    c.globalAlpha = checkItem.alpha;
+                    c.drawImage(getImage("checklist"), windowWidth / 2 - width * checkItem.size / 2, checkItem.yPos , width * checkItem.size, height * checkItem.size);
+                }
+
+
+                if(checkItem.isActive)
+                {
+                    c.fillStyle = "white";
+                    c.font = fontsize + "px Helvetica";
+    
+                    wrapText(c, checkItem.message, windowWidth / 2 - width * checkItem.size / 4, checkItem.yPos + fontsize * 2, width * .6, fontsize);
+                }
+               
+
+                if(!checkItem.done)
+                    i++
+                }
+            }
+        }
+        c.globalAlpha = 1;
+
+        
         if(spaceShip.health > 0){
 
             var xPadding = 10;
@@ -2665,6 +2793,10 @@ function animate() {
             displayBar(centerX * scale - width / 2, boostBarY, width, 20, boostAmount / boostRechargeLegnth, "#937f2a");
         }
 
+
+        if(shootCooldownTimer < shootCooldownTime){
+            shootCooldownTimer++;
+        }
 
         if(playerReloadTimer > 0){
             if(playerReloadTimer - spaceShip.fireRate > 0)
@@ -3219,8 +3351,10 @@ function showUpgrades(){
                             c.arc(circleX, circleY, 10,0,2*Math.PI);
                             c.stroke();
                         }
-
                         if(mouse.clicked){
+
+                            checklist.upgradeClick.done = true;
+
                             var data = {id: upgradeId, worldId: worldId}
                             socket.emit('upgradeRequest', data);
                             clickedUpgrade = true;
@@ -3238,6 +3372,24 @@ function showUpgrades(){
             canClickArrow = true;
     }
     
+}
+
+function playerHasResources(costs)
+{
+    var costCounter = 0;
+    var neededCosts = 0;
+
+    for (var cost in costs) {
+        if (costs.hasOwnProperty(cost)) {
+            if(playerItems[cost] >= costs[cost])
+            {
+                costCounter++;
+            }
+            neededCosts++;
+        }
+    }
+
+    return costCounter >= neededCosts;
 }
 
 function minimap(size, x, y){
@@ -3419,7 +3571,7 @@ function displayBar(x, y, width, height, fillPrecentage, color) {
     c.globalAlpha = 1.0;
 }
 
-function shoot(x, y, rotation, speed, size, bulletPenetration, color, shooterId){
+function shoot(x, y, rotation, speed, size, bulletPenetration, color, shooterId, damagePercent = 1){
     velocity = new Vector();
     velocity.setMagnitude(speed);
     velocity.setDirection(rotation - 1.5708);
@@ -3427,7 +3579,7 @@ function shoot(x, y, rotation, speed, size, bulletPenetration, color, shooterId)
     
     projectile = new Projectile(x, y, velocity, size, color, bulletPenetration, false, projId);
     projectiles.push(projectile);
-    sendProjectile(x, y, velocity, size, color, projId, shooterId);
+    sendProjectile(x, y, velocity, size, color, projId, shooterId, damagePercent);
 }
 
 function findClosestUnoccupiedPlanet() {
@@ -3458,7 +3610,7 @@ function findClosestUnoccupiedPlanet() {
     }
     return closestPlanet;
 }
-
+ 
 function wrapText (context, text, x, y, maxWidth, lineHeight) {
     var words = text.split(' '),
         line = '',

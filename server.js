@@ -366,7 +366,7 @@ function Structure(planetId, x, y, rotation, type, ownerId, level, worldId, id){
 var playerUpgrades = [
         {   
             speed: 50,
-            fireRate: 10,
+            fireRate: 15,
             maxHealth: 10,
             damage: 1,
             radius: 10,
@@ -377,7 +377,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 5},
             speed: 48,
-            fireRate: 11,
+            fireRate: 16,
             maxHealth: 20,
             damage: 2,
             radius: 15,
@@ -388,7 +388,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 20},
             speed: 46,
-            fireRate: 12,
+            fireRate: 17,
             maxHealth: 30,
             damage: 3,
             radius: 20,
@@ -399,7 +399,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 50},
             speed: 44,
-            fireRate: 13,
+            fireRate: 18,
             maxHealth: 50,
             damage: 5,
             radius: 25,
@@ -410,7 +410,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 100, iron: 5},
             speed: 42,
-            fireRate: 15,
+            fireRate: 19,
             maxHealth: 80,
             damage: 8,
             radius: 30,
@@ -421,7 +421,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 300, iron: 10},
             speed: 40,
-            fireRate: 18,
+            fireRate: 20,
             maxHealth: 130,
             damage: 13,
             radius: 35,
@@ -1045,8 +1045,18 @@ function newConnetcion(socket){
             return;
         }
 
+        if(data.percentDamage && data.percentDamage > 1)
+        {
+            data.percentDamage = 1;
+        }
+        else if(data.percentDamage < 0)
+        {
+            data.percentDamage = 0;
+        }
+
+
         socket.broadcast.to(data.worldId).emit('spawnProj', data);
-        worldsData[data.worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, shooter.object.damage, shooter.object.bulletRange, bulletPenetration, data.worldId, data.id));
+        worldsData[data.worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, shooter.object.damage * data.percentDamage, shooter.object.bulletRange, bulletPenetration, data.worldId, data.id));
 
         //console.log('\x1b[33m%s\x1b[0m', "spawned projectile with id: ", data.id, " total: ", worldsData[data.worldId].projectiles.length);
     });
