@@ -11,20 +11,20 @@
     background-size: 100%;
     color: #707070;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-size: 1.5em;
+    font-size: 2vh;
     border: none;
 
-    width: 288px;
-    height: 72px;
+    width: 23.04vh;
+    height: 5.76vh;
 
-    margin-top: 20px;
+    margin-top: 2vh;
     margin-left: auto;
     margin-right: auto;
 
-    padding-top: 20px;
-    padding-bottom: 20px;
-    padding-left: 15px;
-    padding-right: 15px;
+    padding-top: 1.5vh;
+    padding-bottom: 1.5vh;
+    padding-left: 1.5vh;
+    padding-right: 1.5vh;
 
 }
 
@@ -37,12 +37,43 @@ li {
     display: table-row;
     vertical-align: middle;
 
-    width: 700px;
+    width: 70vh;
 
     border: none;
     margin-left: auto;
     margin-right: auto;
 }
+
+#followButtons{
+
+    border:0;
+    text-decoration: none;
+    margin-left: 10px;
+    margin-right: 10px;
+
+    width: 5vh;
+    height: 5vh;
+
+    border-radius: 50px;
+
+    filter: brightness(80%);
+    -webkit-transition: all .15s ease;
+    -moz-transition: all .15s ease;
+    -o-transition: all .15s ease;
+    -ms-transition: all .15s ease;
+    transition: all .15s ease;
+}
+
+#followButtons:hover {
+    
+    border-radius: 50px;
+    -webkit-box-shadow: 2px 2px 15px 0px rgba(0, 0, 0, 1);
+    -moz-box-shadow: 2px 2px 15px 0px rgba(0, 0, 0, 1);
+    box-shadow: 2px 2px 15px 0px rgba(0, 0, 0, 1);
+
+    filter: brightness(110%);
+}
+
 
 #startGame{
     display: table-row;
@@ -55,13 +86,11 @@ li {
     cursor: pointer;
 
     border: none;
-    width: 288px;
-    height: 72px;
-    margin-top: 10px;
+    width: 23.04vh;
+    height: 5.76vh;
+    margin-top: 1vh;
     margin-left: auto;
     margin-right: auto;
-
-    padding: 5px;
 }
 
 #startGame:hover {
@@ -147,13 +176,13 @@ li {
     vertical-align: middle;
 
     border: none;
-    width: 286px;
-    height: 414px;
+    width: 22.88vh;
+    height: 33.12vh;
 
     display: "inline-block";
 
     border: none;
-    margin-top: 10px;
+    margin-top: 1vh;
     margin-left: auto;
     margin-right: auto;
     
@@ -194,9 +223,9 @@ li {
     cursor: pointer;
 
     border: none;
-    width: 60px;
-    height: 60px;
-    margin-top: 10px;
+    width: 6vh;
+    height: 6vh;
+    margin-top: 1vh;
     margin-left: auto;
     margin-right: auto;
 
