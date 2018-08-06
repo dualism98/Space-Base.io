@@ -2642,8 +2642,6 @@ function animate() {
         }
 
         if(currentPlanet){
-    
-            
             //Draw the structures aviable for placement on a planet w/ their costs
             var imageSizes = canvas.height / 12;
             var padding = canvas.height / 25;
@@ -2811,6 +2809,9 @@ function animate() {
         }
 
     }
+
+    if(spaceShip)
+        drawLeaderBoard();
     
     for (var changed in colorChangedHitObjects) {
         if (colorChangedHitObjects.hasOwnProperty(changed)) {
@@ -2841,6 +2842,117 @@ function displayMessage(text, timeToFade, fadeSpeed){
     playerMessageFadeSpeed = fadeSpeed;
     playerMessageTimer = timeToFade;
 }
+
+function drawLeaderBoard(){
+
+    var width = windowHeight * .22;
+    var height = windowHeight / 4;
+    var padding = windowHeight / 50;
+
+    var PLAYERS_ON_BOARD = 5;
+
+    c.globalAlpha = .75;
+
+    c.textAlign = "center";
+    c.font = height / 10 + "px Helvetica";
+    c.fillStyle = "white";
+    c.fillText("Leaderboard", windowWidth - width / 2 - padding, padding * 2.5);
+    c.textAlign = "left";
+
+    c.globalAlpha = .25;
+    c.fillStyle = "#898989";
+    c.fillRect(windowWidth - width - padding, padding, width, height);
+
+    var playerY = padding * 4.5;
+
+    c.font = height / 15 + "px Helvetica";
+    c.globalAlpha = .75;
+
+    var IMAGE_SIZE = padding * 2;
+
+    var topPlayers = otherPlayers.concat(spaceShip);
+
+    topPlayers.sort(function (player1, player2) {
+        if (player1.level > player2.level) return -1;
+	    if (player1.level < player2.level) return 1;
+    });
+
+    var num = 0;
+
+    var playerOnBoard = false;
+
+    var placement = {};
+
+    topPlayers.forEach(player => {
+
+        if(num < PLAYERS_ON_BOARD)
+        {
+            var name;
+            if(player == spaceShip)
+            {
+                playerOnBoard = true;
+                name = username;
+            }
+            else
+                name = player.username;
+
+                
+            c.drawImage(getImage("spaceship" + player.level), windowWidth - width - IMAGE_SIZE / 2.2 + padding, playerY - IMAGE_SIZE / 1.5, IMAGE_SIZE, IMAGE_SIZE);
+            
+            if(player == spaceShip)
+                c.globalAlpha = 1;
+            else 
+                c.globalAlpha = .5;
+
+            
+            c.fillStyle = "#e0ecff";
+            c.fillText(num + 1 + ")", windowWidth - width - padding / 1.3, playerY);
+            c.fillText(name, windowWidth - width + padding * 2.2, playerY);
+            c.globalAlpha = 1;
+            playerY += IMAGE_SIZE;
+        }
+
+        placement[player.id] = num;
+
+        num++;
+    });
+
+    if(!playerOnBoard)
+    {
+
+        playerY = height + padding * 3.5;
+
+        c.globalAlpha = .25;
+        c.fillStyle = "#898989";
+        c.fillRect(windowWidth - width - padding, height + padding * 2, width, height / 5);
+
+        c.globalAlpha = 1;
+        c.drawImage(getImage("spaceship" + spaceShip.level), windowWidth - width - IMAGE_SIZE / 2.2 + padding, playerY - IMAGE_SIZE / 1.5, IMAGE_SIZE, IMAGE_SIZE);
+        c.globalAlpha = .5;
+        c.fillStyle = "white";
+        c.fillText(placement[clientId] + 1 + ")", windowWidth - width - padding / 1.3, playerY);
+        c.fillText(username, windowWidth - width + padding * 2.1, playerY);
+
+        playerY += IMAGE_SIZE;
+
+    }
+
+    c.globalAlpha = 1;
+}
+
+function sortArrayByProp(arr, prop){
+    var len = arr.length;
+    for (var i = len-1; i>=0; i--){
+      for(var j = 1; j<=i; j++){
+        if(arr[j-1][prop]>arr[j][prop]){
+            var temp = arr[j-1][prop];
+            arr[j-1][prop] = arr[j][prop];
+            arr[j][prop] = temp;
+         }
+      }
+    }
+    return arr;
+ }
 
 function drawShopPanel(type){
 
