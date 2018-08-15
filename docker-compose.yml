@@ -4,7 +4,7 @@ services:
     build: 
       context: ../
       dockerfile: ./DockerFiles/Dockerfile
-    command: npm start
+    command: pm2-runtime server.js
     volumes:
       - .:/usr/app/
       - /usr/app/node_modules

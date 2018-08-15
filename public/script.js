@@ -1626,7 +1626,6 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
                     }
                     else{
                         colorChangedHitObjects[hittableObjects[i].id] = {color: hitWorldObject.object.color, time: 20};
-                        hitWorldObject.object.color = shadeColorHex(hitWorldObject.object.color, 20);
                     }
                     
                 }
@@ -2827,6 +2826,7 @@ function animate() {
                 }
                 else
                 {
+                    worldObject.object.color = colorChangedHitObjects[changed].color;
                     delete colorChangedHitObjects[changed];
                 }
             }

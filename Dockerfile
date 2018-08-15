@@ -18,8 +18,8 @@ RUN npm install pm2 -g
 # Bundle app source
 COPY . .
 
-RUN pm2 link hidden 8q1avft2guza8y6
+#RUN pm2 link hidden 8q1avft2guza8y6
 
-EXPOSE 8080 43554
-CMD ["pm2-runtime", "--public", "d6ssou4xm41fu42", "--secret", "ycq6ns3d9gyehak", "server.js"]
-# CMD ["pm2-runtime", "server.js"]
+EXPOSE 8080
+#CMD ["pm2-runtime", "--public", "d6ssou4xm41fu42", "--secret", "ycq6ns3d9gyehak", "server.js"]
+CMD ["pm2-runtime", "server.js"]
