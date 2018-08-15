@@ -267,7 +267,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {};//{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
+    this.drops = {gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
 
     this.shipTurret;
 
@@ -539,78 +539,78 @@ var structureUpgrades = {
     }
     ],
     turret: [
-    {
-        costs: {iron: 20},
-        bulletRange: 14,
-        projectileSpeed: 12,
-        shootInterval: 100,
-        damage: 5,
-        bulletPenetration: 1,
-        identifier: "turret"
-    },
-    {
-        costs: {iron: 40},
-        bulletRange: 14,
-        projectileSpeed: 14,
-        shootInterval: 95,
-        damage: 10,
-        bulletPenetration: 1,
-        identifier: "turret"
-    },
-    {
-        costs: {iron: 100},
-        bulletRange: 14,
-        projectileSpeed: 16,
-        shootInterval: 90,
-        damage: 15,
-        bulletPenetration: 1,
-        identifier: "turret"
-    },
-    {
-        costs: {iron: 500},
-        bulletRange: 14,
-        projectileSpeed: 18,
-        shootInterval: 85,
-        damage: 20,
-        bulletPenetration: 1,
-        identifier: "turret"
-    },
-    {
-        costs: {iron: 1000},
-        bulletRange: 14,
-        projectileSpeed: 20,
-        shootInterval: 80,
-        damage: 30,
-        bulletPenetration: 1,
-        identifier: "turret"
-    },
-    {
-        costs: {iron: 5000, crystal: 5},
-        bulletRange: 14,
-        projectileSpeed: 22,
-        shootInterval: 75,
-        damage: 45,
-        bulletPenetration: 1,
-        identifier: "turret"
-    },
-    {
-        costs: {iron: 10000, crystal: 20},
-        bulletRange: 14,
-        projectileSpeed: 24,
-        shootInterval: 70,
-        damage: 65,
-        bulletPenetration: 1,
-        identifier: "turret"
-    },
-    {
-        costs: {iron: 20000, crystal: 50, gem: 1},
-        bulletRange: 14,
-        projectileSpeed: 26,
-        shootInterval: 65,
-        damage: 80,
-        bulletPenetration: 1,
-        identifier: "turret"
-    }
+        {
+            costs: {iron: 20},
+            bulletRange: 14,
+            projectileSpeed: 12,
+            shootInterval: 100,
+            damage: 5,
+            bulletpenetration: 0,
+            identifier: "turret"
+        },
+        {
+            costs: {iron: 40},
+            bulletRange: 14,
+            projectileSpeed: 14,
+            shootInterval: 95,
+            damage: 10,
+            bulletpenetration: 0,
+            identifier: "turret"
+        },
+        {
+            costs: {iron: 100},
+            bulletRange: 14,
+            projectileSpeed: 16,
+            shootInterval: 90,
+            damage: 15,
+            bulletpenetration: 0,
+            identifier: "turret"
+        },
+        {
+            costs: {iron: 500},
+            bulletRange: 14,
+            projectileSpeed: 18,
+            shootInterval: 85,
+            damage: 20,
+            bulletpenetration: 0,
+            identifier: "turret"
+        },
+        {
+            costs: {iron: 1000},
+            bulletRange: 14,
+            projectileSpeed: 20,
+            shootInterval: 80,
+            damage: 30,
+            bulletpenetration: 0,
+            identifier: "turret"
+        },
+        {
+            costs: {iron: 5000, crystal: 5},
+            bulletRange: 14,
+            projectileSpeed: 22,
+            shootInterval: 75,
+            damage: 45,
+            bulletpenetration: 0,
+            identifier: "turret"
+        },
+        {
+            costs: {iron: 10000, crystal: 20},
+            bulletRange: 14,
+            projectileSpeed: 24,
+            shootInterval: 70,
+            damage: 65,
+            bulletpenetration: 0,
+            identifier: "turret"
+        },
+        {
+            costs: {iron: 20000, crystal: 50, gem: 1},
+            bulletRange: 14,
+            projectileSpeed: 26,
+            shootInterval: 65,
+            damage: 80,
+            bulletpenetration: 0,
+            identifier: "turret"
+        }
     ],
     mine: [
         {
@@ -670,48 +670,48 @@ var structureUpgrades = {
         } 
     ],
     shield: [
-    {
-        costs: {water: 20},
-        maxHealth: 100,
-        drops: {crystal: 10, iron: 50, water: 20},
-        identifier: "shield"
-    },
-    {
-        costs: {water: 50},
-        maxHealth: 250,
-        drops: {crystal: 20, iron: 60, water: 30},
-        identifier: "shield"
-    },
-    {
-        costs: {water: 100},
-        maxHealth: 750,
-        drops: {crystal: 30, iron: 70, water: 40},
-        identifier: "shield"
-    },
-    {
-        costs: {water: 5000},
-        maxHealth: 2500,
-        drops: {crystal: 40, iron: 80, water: 50},
-        identifier: "shield"
-    },
-    {
-        costs: {water: 1000, crystal: 5},
-        maxHealth: 5000,
-        drops: {crystal: 50, iron: 90, water: 60},
-        identifier: "shield"
-    },
-    {
-        costs: {water: 2500, crystal: 20},
-        maxHealth: 10000,
-        drops: {crystal: 60, iron: 100, water: 70},
-        identifier: "shield"
-    },
-    {
-        costs: {water: 5000, crystal: 50},
-        maxHealth: 25000,
-        drops: {crystal: 70, iron: 110, water: 80},
-        identifier: "shield"
-    },
+        {
+            costs: {water: 20},
+            maxHealth: 100,
+            drops: {crystal: 10, iron: 50, water: 20},
+            identifier: "shield"
+        },
+        {
+            costs: {water: 50},
+            maxHealth: 250,
+            drops: {crystal: 20, iron: 60, water: 30},
+            identifier: "shield"
+        },
+        {
+            costs: {water: 100},
+            maxHealth: 750,
+            drops: {crystal: 30, iron: 70, water: 40},
+            identifier: "shield"
+        },
+        {
+            costs: {water: 5000},
+            maxHealth: 2500,
+            drops: {crystal: 40, iron: 80, water: 50},
+            identifier: "shield"
+        },
+        {
+            costs: {water: 1000, crystal: 5},
+            maxHealth: 5000,
+            drops: {crystal: 50, iron: 90, water: 60},
+            identifier: "shield"
+        },
+        {
+            costs: {water: 2500, crystal: 20},
+            maxHealth: 10000,
+            drops: {crystal: 60, iron: 100, water: 70},
+            identifier: "shield"
+        },
+        {
+            costs: {water: 5000, crystal: 50},
+            maxHealth: 25000,
+            drops: {crystal: 70, iron: 110, water: 80},
+            identifier: "shield"
+        },
     ]
 }
 
@@ -987,8 +987,7 @@ function newConnetcion(socket){
         var healCost = addamount;
 
         if(!healed.worldId) //Thing being healed is not a player (planet)
-        { 
-            console.log("planet");
+        {
             healCost = Math.round(healCost / 5);
         }
 
@@ -1053,7 +1052,6 @@ function newConnetcion(socket){
         {
             data.percentDamage = 0;
         }
-
 
         socket.broadcast.to(data.worldId).emit('spawnProj', data);
         worldsData[data.worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, shooter.object.damage * data.percentDamage, shooter.object.bulletRange, bulletPenetration, data.worldId, data.id));
@@ -1421,8 +1419,6 @@ function newConnetcion(socket){
                 playerId: socket.id,
                 cloaked: true
             }
-    
-            console.log(player.object.shopUpgrades["cloakTime"].value);
 
             socket.broadcast.to(data.worldId).emit('cloak', rtrnData);
 
@@ -1553,8 +1549,6 @@ function disconnectPlayer(id, socket, worldId){
             var respawnPlanet = false;
 
             worldsData[worldId].worldObjects.planets.forEach(planet => {
-                console.log(planet);
-
                 if(planet.owner == client.object.id)
                 {
                     respawnPlanet = planet;
@@ -2112,6 +2106,8 @@ function playerSpawnPoint(xMin, xMax, yMin, yMax, worldId){
     var y;
     var reptitions = 0;
     
+    return {x: 0, y: 0};
+
     do {
         var x = getRndInteger(xMin, xMax);
         var y = getRndInteger(yMin, yMax);

@@ -267,8 +267,8 @@ var checklist = {
 checklistFadeTime = 20;
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
-    socket = io.connect('http://space-base.io/');
+    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://space-base.io/');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
     //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
@@ -322,7 +322,10 @@ function setupLocalWorld(data){
         if(client.id != clientId){
             var player = new NetworkSpaceShip(client.x, client.y, client.maxHealth, client.health, 0, client.level, client.radius, client.username, client.id)
             if(client.shipTurret){
-                player.turret = new Turret(player, client.x, client.y, 0, client.shipTurret.level - 1, true, player.id, client.shipTurret.id);
+
+                var isFacade = player.id != clientId;
+
+                player.turret = new Turret(player, client.x, client.y, 0, client.shipTurret.level - 1, isFacade, player.id, client.shipTurret.id);
                 player.turret.distanceFromPlanet = 0;
                 player.turret.headDistanceFromBase = 0;
                 player.turret.type = "shipTurretBase";
@@ -374,7 +377,8 @@ function setupLocalWorld(data){
         //Add all existing structures
         for (let i = 0; i < planet.structures.length; i++) {
             const structure = planet.structures[i];
-            planetObject.addStructure(planetObject, structure.x, structure.y, structure.rotation, structure.type, structure.level, true, structure.ownerId, structure.id);
+            var isFacade = structure.ownerId != clientId;
+            planetObject.addStructure(planetObject, structure.x, structure.y, structure.rotation, structure.type, structure.level, isFacade, structure.ownerId, structure.id);
         }
 
         worldObjects.planets.push(planetObject);
@@ -890,7 +894,7 @@ function sendProjectile(x, y, vel, size, color, id, shooterId, damagePercent){
         color: color,
         id: id,
         shooterId: shooterId,
-        percentDamage: Math.round(damagePercent * 100) / 100,
+        percentDamage: Math.round(Math.floor(damagePercent * 10) / 10 * 100) / 100,
         worldId: worldId
     }
 
@@ -3563,10 +3567,9 @@ function propertiesOverview(object, fill){
     var imageOfset = 0;
 
     if(flipX > 0)
-    {
         imageOfset = -dropSize;
-    }
 
+    
     if(drops)
     {
         for (var drop in drops) {
@@ -3579,9 +3582,17 @@ function propertiesOverview(object, fill){
 
     if(object.level >= 0)
     {
-        c.font = size / 5 + "px Arial";
+        var fontSize =  size / 5;
+
+        c.font = fontSize + "px Arial";
         c.fillStyle = "white";
-        c.fillText("Level: " + (object.level + 1), pos.x + (size / 1.8) * flipX, pos.y - size / 2 - size / 20);
+        var edgePadding = size / 20;
+        var x = pos.x + (size / 1.8) * flipX;
+
+        if(flipX < 0)
+            x = (pos.x + (size / 2) * flipX) + (size + dropX * 1.2) * flipX + edgePadding;
+    
+        c.fillText("Level: " + (object.level + 1), x, pos.y - size / 2 - edgePadding);
 
         dropX += size * .8;
     }
