@@ -267,7 +267,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = //{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
+    this.drops = {};//{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
 
     this.shipTurret;
 
@@ -2105,8 +2105,6 @@ function playerSpawnPoint(xMin, xMax, yMin, yMax, worldId){
     var x;
     var y;
     var reptitions = 0;
-    
-    return {x: 0, y: 0};
 
     do {
         var x = getRndInteger(xMin, xMax);
