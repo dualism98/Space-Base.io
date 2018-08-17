@@ -975,17 +975,28 @@ $("#help").click(function(){
     $("#helpContent").fadeIn(250);
 });
 
-$("#backHelp").click(function(){
+$("#aboutButton").click(function(){
+    $("#mainContent").fadeOut(250);
+    $("#aboutContent").fadeIn(250);
+});
 
+$("#backHelp").click(function(){
     $("#mainContent").fadeIn(250);
     $("#helpContent").fadeOut(250);
+});
 
+
+$("#backAbout").click(function(){
+    $("#mainContent").fadeIn(250);
+    $("#aboutContent").fadeOut(250);
 });
 
 $(document).ready(function() {
     $("#mainContent").fadeIn(0);
     $("#helpContent").fadeOut(0);
+    $("#aboutContent").fadeOut(0);
     $("#helpContent").css('display', '');
+    $("#aboutContent").css('display', '');
     $("#respawnPlanetWait").fadeOut(0);
     $("#respawnPlanetWait").css('display', '');
 });

@@ -44,6 +44,45 @@ li {
     margin-right: auto;
 }
 
+#spacebaseAbout {
+    vertical-align: middle;
+
+    width: 80vw;
+
+    border: none;
+    margin-left: 0;
+}
+
+#aboutContent{
+    display: none;
+    position: absolute;
+    top: 10%;
+
+    table-layout: fixed;
+    margin-left: auto;
+    margin-right: auto;
+    left:10%;
+    right:10%;
+    width: 80%;
+    height: 50%;
+}
+
+#aboutButton{
+    opacity: 0.2;
+    margin: 10vh;
+    padding: 2px;
+
+    color: #707070;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 1.5vh;
+    text-decoration: underline;
+}
+
+#aboutButton:hover{
+    cursor:pointer;
+    color: #464646;
+}
+
 #followButtons{
     border:0;
     text-decoration: none;
@@ -126,9 +165,6 @@ li {
 
 #howTo{
     position: absolute;
-
-    
-
     margin-left: auto;
     margin-right: auto;
 
@@ -138,6 +174,35 @@ li {
     left:0;
     right:0;
     width: 85%;
+}
+
+a{
+    color: #d9bcff;
+}
+a:hover{
+    color: #be85ff;
+}
+
+#about {
+    color: #ffffff;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 1.5vw;
+    text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.5)
+}
+
+#backAbout {
+    position: absolute;
+    background: url(images/backX.png) no-repeat;
+    background-size: 100%;
+    cursor:pointer;
+
+    cursor: pointer;
+
+    border: none;
+
+    top: 28vw;
+    width: 4vw;
+    height: 4vw;
 }
 
 #backHelp {
