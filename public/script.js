@@ -239,27 +239,21 @@ var aquireItemsFadeTime = 50;
 
 var checklist = {
     fly:{
-        message: "Press and hold the left mouse button to fly.",
         isActive: true
     },
     shoot:{
-        message: "Press and hold space to shoot.",
         isActive: true
     },
     upgrade:{
-        message: "Press and hold F to open the upgrades menu.",
         isActive: false
     },
     upgradeClick:{
-        message: "Click on the spaceship icon above to upgrade.",
         isActive: false
     },
     landingPad:{
-        message: "Press L to place a landing pad and claim this planet.",
         isActive: false
     },
     structures:{
-        message: "Press T, M, or S to build a Turret, Mine, or Shield on your planet.",
         isActive: false
     }
 }
@@ -1961,7 +1955,7 @@ function Shop(coordX, coordY, radius, upgradeType){
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText("Press S to open shop", centerX, (windowHeight - 80) / scale);
+                c.fillText($('input#openShop').val(), centerX, (windowHeight - 80) / scale);
                 c.textAlign="left"; 
                 c.globalAlpha = 1;
             }
@@ -1970,7 +1964,7 @@ function Shop(coordX, coordY, radius, upgradeType){
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText("Press S to close shop", centerX, (windowHeight - 80) / scale);
+                c.fillText($('input#closeShop').val(), centerX, (windowHeight - 80) / scale);
                 c.textAlign="left"; 
                 c.globalAlpha = 1;
             }
@@ -2426,7 +2420,7 @@ function animate() {
             c.fillStyle = "white";
             c.globalAlpha = .2;
             c.textAlign="center"; 
-            c.fillText("Press Space to take off", windowWidth / 2, (windowHeight - 80));
+            c.fillText($('input#takeOff').val(), windowWidth / 2, (windowHeight - 80));
             c.textAlign="left"; 
             c.globalAlpha = 1;
         }
@@ -2445,7 +2439,7 @@ function animate() {
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText("Press J to land", windowWidth / 2, (windowHeight - 80));
+                c.fillText($('input#land').val(), windowWidth / 2, (windowHeight - 80));
                 c.textAlign="left"; 
     
                 c.globalAlpha = .5;
@@ -2608,7 +2602,7 @@ function animate() {
                     c.fillStyle = "white";
                     c.font = fontsize + "px Helvetica";
     
-                    wrapText(c, checkItem.message, windowWidth / 2 - width * checkItem.size / 4, checkItem.yPos + fontsize * 2, width * .6, fontsize);
+                    wrapText(c, $('input#' + check).val(), windowWidth / 2 - width * checkItem.size / 4, checkItem.yPos + fontsize * 2, width * .6, fontsize);
                 }
                
 
@@ -2871,7 +2865,7 @@ function drawLeaderBoard(){
     c.textAlign = "center";
     c.font = height / 10 + "px Helvetica";
     c.fillStyle = "white";
-    c.fillText("Leaderboard", windowWidth - width / 2 - padding, padding * 2.5);
+    c.fillText($('input#leaderboard').val(), windowWidth - width / 2 - padding, padding * 2.5);
     c.textAlign = "left";
 
     c.globalAlpha = .25;
@@ -3000,20 +2994,20 @@ function drawShopPanel(type){
 
     switch (type) {
         case "bulletPenetration":
-            name = "Bullet Penetration"
-            description = "Bullets go through multiple objects, damaging each one.";
+            name = $('input#bulletPenetration').val();
+            description = $('input#bulletPenetrationDescription').val();
         break;
         case "boost":
-            name = "Speed Boost"
-            description = "Press and hold Shift to get a temoporaty speed boost.";
+            name = $('input#boost').val();
+            description = $('input#boostDescription').val();
         break;
         case "cloakTime":
-            name = "Invisibility"
-            description = "Press C to get temporaty invisibility";
+            name = $('input#cloakTime').val();
+            description = $('input#cloakTimeDescription').val();
         break;
         case "shipTurret":
-            name = "Ship Turret"
-            description = "Mounts an auto firing and aiming turret onto your ship."
+            name = $('input#shipTurret').val();
+            description = $('input#shipTurretDescription').val();
         break;
     }
 
