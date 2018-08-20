@@ -888,7 +888,7 @@ function sendProjectile(x, y, vel, size, color, id, shooterId, damagePercent){
         color: color,
         id: id,
         shooterId: shooterId,
-        percentDamage: Math.round(Math.floor(damagePercent * 10) * 100) / 100,
+        percentDamage: Math.round(Math.floor(damagePercent * 10) * 100) / 1000,
         worldId: worldId
     }
 
