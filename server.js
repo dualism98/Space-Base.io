@@ -185,7 +185,7 @@ function generateWorld(){
         var size = getRndInteger(500, 700);
         var health = size / 4;
 
-        var drops = {stardust: 20};
+        var drops = {stardust: 25};
         generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
         
     }
@@ -372,6 +372,7 @@ var playerUpgrades = [
             radius: 10,
             turningSpeed: .1,
             bulletRange: 1,
+            projectileSpeed: 20,
             identifier: "spaceship"
         },
         {   
@@ -383,6 +384,7 @@ var playerUpgrades = [
             radius: 15,
             turningSpeed: .1,
             bulletRange: 1,
+            projectileSpeed: 20,
             identifier: "spaceship"
         },
         {   
@@ -394,6 +396,7 @@ var playerUpgrades = [
             radius: 20,
             turningSpeed: .1,
             bulletRange: 2,
+            projectileSpeed: 19,
             identifier: "spaceship"
         },
         {   
@@ -405,6 +408,7 @@ var playerUpgrades = [
             radius: 25,
             turningSpeed: .09,
             bulletRange: 2,
+            projectileSpeed: 19,
             identifier: "spaceship"
         },
         {   
@@ -416,6 +420,7 @@ var playerUpgrades = [
             radius: 30,
             turningSpeed: .085,
             bulletRange: 3,
+            projectileSpeed: 18,
             identifier: "spaceship"
         },
         {   
@@ -426,7 +431,8 @@ var playerUpgrades = [
             damage: 13,
             radius: 35,
             turningSpeed: .08,
-            bulletRange: 3,
+            bulletRange: 4,
+            projectileSpeed: 18,
             identifier: "spaceship"
         },
         {   
@@ -437,7 +443,8 @@ var playerUpgrades = [
             damage: 21,
             radius: 40,
             turningSpeed: .075,
-            bulletRange: 4,
+            bulletRange: 5,
+            projectileSpeed: 17,
             identifier: "spaceship"
         },
         {   
@@ -448,7 +455,8 @@ var playerUpgrades = [
             damage: 34,
             radius: 45,
             turningSpeed: .07,
-            bulletRange: 4,
+            bulletRange: 6,
+            projectileSpeed: 17,
             identifier: "spaceship"
         },
         {   
@@ -459,7 +467,8 @@ var playerUpgrades = [
             damage: 55,
             radius: 50,
             turningSpeed: .065,
-            bulletRange: 5,
+            bulletRange: 7,
+            projectileSpeed: 16,
             identifier: "spaceship"
         },
         {   
@@ -470,7 +479,8 @@ var playerUpgrades = [
             damage: 89,
             radius: 55,
             turningSpeed: .06,
-            bulletRange: 5,
+            bulletRange: 8,
+            projectileSpeed: 16,
             identifier: "spaceship"
         },
         {   
@@ -481,7 +491,8 @@ var playerUpgrades = [
             damage: 144,
             radius: 60,
             turningSpeed: .055,
-            bulletRange: 6,
+            bulletRange: 9,
+            projectileSpeed: 15,
             identifier: "spaceship"
         },
         {   
@@ -492,7 +503,8 @@ var playerUpgrades = [
             damage: 233,
             radius: 65,
             turningSpeed: .05,
-            bulletRange: 6,
+            bulletRange: 10,
+            projectileSpeed: 15,
             identifier: "spaceship"
         },
         {   
@@ -503,7 +515,8 @@ var playerUpgrades = [
             damage: 300,
             radius: 70,
             turningSpeed: .045,
-            bulletRange: 7,
+            bulletRange: 11,
+            projectileSpeed: 14,
             identifier: "spaceship"
         },
         {   
@@ -514,7 +527,8 @@ var playerUpgrades = [
             damage: 400,
             radius: 75,
             turningSpeed: .04,
-            bulletRange: 7,
+            bulletRange: 12,
+            projectileSpeed: 14,
             identifier: "spaceship"
         },
         {   
@@ -525,7 +539,8 @@ var playerUpgrades = [
             damage: 500,
             radius: 80,
             turningSpeed: .035,
-            bulletRange: 8,
+            bulletRange: 13,
+            projectileSpeed: 13,
             identifier: "spaceship"
         }
         
@@ -673,43 +688,61 @@ var structureUpgrades = {
         {
             costs: {water: 20},
             maxHealth: 100,
-            drops: {crystal: 10, iron: 50, water: 20},
+            drops: {crystal: 10, iron: 10, water: 10},
             identifier: "shield"
         },
         {
             costs: {water: 50},
             maxHealth: 250,
-            drops: {crystal: 20, iron: 60, water: 30},
+            drops: {crystal: 25, iron: 25, water: 25},
             identifier: "shield"
         },
         {
             costs: {water: 100},
             maxHealth: 750,
-            drops: {crystal: 30, iron: 70, water: 40},
+            drops: {crystal: 75, iron: 75, water: 75},
             identifier: "shield"
         },
         {
-            costs: {water: 5000},
+            costs: {water: 200},
+            maxHealth: 1250,
+            drops: {crystal: 125, iron: 125, water: 125},
+            identifier: "shield"
+        },
+        {
+            costs: {water: 500, crystal: 1},
             maxHealth: 2500,
-            drops: {crystal: 40, iron: 80, water: 50},
+            drops: {crystal: 250, iron: 250, water: 250},
             identifier: "shield"
         },
         {
             costs: {water: 1000, crystal: 5},
-            maxHealth: 5000,
-            drops: {crystal: 50, iron: 90, water: 60},
+            maxHealth: 4000,
+            drops: {crystal: 400, iron: 400, water: 400},
             identifier: "shield"
         },
         {
-            costs: {water: 2500, crystal: 20},
+            costs: {water: 2000, crystal: 20},
+            maxHealth: 7500,
+            drops: {crystal: 750, iron: 750, water: 750},
+            identifier: "shield"
+        },
+        {
+            costs: {water: 3000, crystal: 50},
             maxHealth: 10000,
-            drops: {crystal: 60, iron: 100, water: 70},
+            drops: {crystal: 1000, iron: 1000, water: 1000},
             identifier: "shield"
         },
         {
-            costs: {water: 5000, crystal: 50},
+            costs: {water: 5000, crystal: 75},
+            maxHealth: 15000,
+            drops: {crystal: 1500, iron: 1500, water: 1500},
+            identifier: "shield"
+        },
+        {
+            costs: {water: 10000, crystal: 100},
             maxHealth: 25000,
-            drops: {crystal: 70, iron: 110, water: 80},
+            drops: {crystal: 2500, iron: 2500, water: 2500},
             identifier: "shield"
         },
     ]

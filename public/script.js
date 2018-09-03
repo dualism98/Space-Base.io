@@ -127,7 +127,6 @@ var planetDist;
 
 var LANDING_DISTANCE = 200;
 var SPACESHIP_DECELERATION_TIME = 20;
-var PROJECTIILE_SPEED = 20;
 
 var mousePullx = 0;
 var mousePully = 0;
@@ -1079,7 +1078,7 @@ $(document).keypress(function(e){
 
                 if(shootBullet)
                 {
-                    shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, PROJECTIILE_SPEED, spaceShip.radius / 4, spaceShip.shopUpgrades.bulletPenetration.value + 1, "#f45c42", clientId, 1 - playerReloadTimer / 1000);
+                    shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, spaceShip.projectileSpeed, spaceShip.radius / 4, spaceShip.shopUpgrades.bulletPenetration.value + 1, "#f45c42", clientId, 1 - playerReloadTimer / 1000);
                     shootCooldownTimer = 0;
                     playerReloadTimer = 1000;
                 }
