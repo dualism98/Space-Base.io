@@ -325,7 +325,7 @@ body{
     background: #1B1730;
     margin: 0;
     border-width: 0px;
-    /* overflow: hidden; */
+    overflow: hidden;
 }
 
 #content{

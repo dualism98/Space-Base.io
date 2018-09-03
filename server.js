@@ -20,7 +20,7 @@ var numOfPlanets = 50;
 var numOfMoons = 200;
 var numOfSuns = 10;
 var numOfCrystals = 150;
-var numOfBlackHoles = 5;
+var numOfBlackHoles = 8;
 var numOfWormHoles = 6;
 var gridSize = 15000;
 var gridBoxScale = 200;
@@ -966,12 +966,15 @@ function newConnetcion(socket){
 
     socket.on('blackHoleDeath', function(data){
 
-        // var player = findObjectWithId(worldsData[data.worldId].clients, socket.id);
+        if(!worldsData[data.worldId].clients)
+            return;
+
+        var player = findObjectWithId(worldsData[data.worldId].clients, socket.id);
         
-        // if(player)
-        // {
-        //     damageObject(data.worldId, socket.id, socket.id, player.object.health * 2);
-        // }
+        if(player)
+        {
+            damageObject(data.worldId, socket.id, socket.id, player.object.health * 2);
+        }
     });
 
     socket.on('projectileHit', function(data){

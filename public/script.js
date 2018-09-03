@@ -264,8 +264,8 @@ var checklist = {
 checklistFadeTime = 20;
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
-    socket = io.connect('http://space-base.io/');
+    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://space-base.io/');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
     //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
