@@ -20,15 +20,19 @@ var numOfPlanets = 50;
 var numOfMoons = 200;
 var numOfSuns = 10;
 var numOfCrystals = 150;
+var numOfBlackHoles = 5;
+var numOfWormHoles = 6;
 var gridSize = 15000;
 var gridBoxScale = 200;
 var spawnTries = 5;
 
-// var numOfasteroids = 100;
-// var numOfPlanets = 3;
+// var numOfasteroids = 0;
+// var numOfPlanets = 0;
 // var numOfMoons = 0;
 // var numOfSuns = 0;
 // var numOfCrystals = 0;
+// var numOfBlackHoles = 2;
+// var numOfWormHoles = 6;
 // var gridSize = 2000;
 // var gridBoxScale = 10;
 // var spawnTries = 5;
@@ -115,12 +119,12 @@ function generateSpaceMatter(size, color, health, drops, worldObjectsRef, hittab
 
     } while (!positonAviable(size, position.x, position.y, hittableObjectsRef));
 
-    var asteroid = new SpaceMatter(position.x, position.y, size, color, health, drops, type, id);
+    var spaceMatter = new SpaceMatter(position.x, position.y, size, color, health, drops, type, id);
     
-    hittableObjectsRef.push(asteroid);
-    worldObjectsRef.asteroids.push(asteroid);
+    hittableObjectsRef.push(spaceMatter);
+    worldObjectsRef.asteroids.push(spaceMatter);
 
-    return asteroid;
+    return spaceMatter;
 }
 
 function addWorld(){
@@ -243,6 +247,18 @@ function generateWorld(){
         
     }
 
+    for(var i = 0; i < numOfBlackHoles; i++){
+
+        var color = "black";
+        var type = "blackHole";
+        var size = getRndInteger(80, 100);
+        var health = size;
+        var drops = {};
+
+        generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
+        
+    }
+
     console.log('world generation complete: /n', generatedWorldObjects.asteroids.length, ' asteroids spawned /n', generatedWorldObjects.planets.length, ' planets spawned');
 
     return {worldObjects: generatedWorldObjects, hittableObjects: generatedHittableObjects};
@@ -267,7 +283,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {};//{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
+    this.drops = {}; //{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
 
     this.shipTurret;
 
@@ -948,6 +964,15 @@ function newConnetcion(socket){
         syncDamage(data.worldId);
     });
 
+    socket.on('blackHoleDeath', function(data){
+
+        // var player = findObjectWithId(worldsData[data.worldId].clients, socket.id);
+        
+        // if(player)
+        // {
+        //     damageObject(data.worldId, socket.id, socket.id, player.object.health * 2);
+        // }
+    });
 
     socket.on('projectileHit', function(data){
 
@@ -967,6 +992,11 @@ function newConnetcion(socket){
         }
 
         var damageDealt = projectile.object.damage;
+        var worldHittableObjects = worldsData[data.worldId].hittableObjects;
+        var target = findObjectWithId(worldHittableObjects, data.id);
+
+        if(target && target.type == "blackHole" || target.type == "wormHole")
+            return;
 
         damageObject(data.worldId, data.id, socket.id, damageDealt);
 
@@ -976,10 +1006,7 @@ function newConnetcion(socket){
             projectile.object.hitObjects = [data.id];
 
 
-        var worldHittableObjects = worldsData[data.worldId].hittableObjects;
-
-        var target = findObjectWithId(worldHittableObjects, data.id);
-
+        
         if(projectile.object.bulletPenetration > 0 && target && target.object.type && !target.object.structure && target.object.type != "planet"){
             projectile.object.bulletPenetration--;
         }
@@ -2171,6 +2198,12 @@ function getRandomGray(){
 }
 
 function findObjectWithId(array, id){
+
+    if(!array || !id)
+    {
+        return;
+    }
+
     for(var i = 0; i < array.length; i++){
         if(array[i].id == id){
             return {object: array[i],

@@ -55,8 +55,7 @@ Vector.prototype.random = function(min, max) {
 };
 
 Array.prototype.contains = function(thing){
-
-    for (let i = 0; i  < this.length; i++) {
+    for (var i = 0; i < this.length; i++) {
         if(this[i] == thing)
             return true;
     }
@@ -119,8 +118,8 @@ var spaceShip;
 var allWorldObjects = [];
 var allStructures = [];
 
-var PLANET_GRAVITY = 0;//.0025;
-var PLANET_GRAVITY_EXPONENT = 2.5;
+var BLCAKHOLE_GRAVITY = .01;
+var BLCAKHOLE_GRAVITY_EXPONENT = 2.5;
 
 var MAX_GRAVITATIONAL_DISTACNE = 600;
 var planetDist;
@@ -233,8 +232,13 @@ var username = "unnamed";
 
 var colorChangedHitObjects = {};
 
+var caughtInBlackHole = false;
+
 var aquiredItems = {};
 var aquireItemsFadeTime = 50;
+
+var DISPLAY_NEWS = true;
+var newsDisplayed = true;
 
 var checklist = {
     fly:{
@@ -347,7 +351,7 @@ function setupLocalWorld(data){
 
         var asteroid = data.worldObjects.asteroids[i];
 
-        if(asteroid.health <= 0)
+        if(!asteroid || asteroid.health <= 0)
             continue;
 
         var asteroidObject = new SpaceMatter(asteroid.x, asteroid.y, asteroid.radius, asteroid.color, asteroid.maxHealth, asteroid.health, asteroid.type, asteroid.id);
@@ -356,11 +360,11 @@ function setupLocalWorld(data){
     }
 
     //Planets
-    for(var i = 0; i < data.worldObjects.planets.length; i++){
+    for(let i = 0; i < data.worldObjects.planets.length; i++){
 
         var planet = data.worldObjects.planets[i];
 
-        if(planet.health <= 0)
+        if(!planet || planet.health <= 0)
             continue;
 
         var planetObject = new Planet(planet.x, planet.y, planet.radius, planet.color, planet.health, planet.maxHealth, planet.id);
@@ -368,8 +372,8 @@ function setupLocalWorld(data){
         planetObject.owner = planet.owner; 
 
         //Add all existing structures
-        for (let i = 0; i < planet.structures.length; i++) {
-            const structure = planet.structures[i];
+        for (var s = 0; s < planet.structures.length; s++) {
+            const structure = planet.structures[s];
             var isFacade = structure.ownerId != clientId;
             planetObject.addStructure(planetObject, structure.x, structure.y, structure.rotation, structure.type, structure.level, isFacade, structure.ownerId, structure.id);
         }
@@ -583,6 +587,8 @@ function respawnPlanet(){
     shopOpen = {shopRef: null, type: null, open: false};
     upgradeables = [];
 
+    caughtInBlackHole = false;
+
     allWorldObjects = getAllWorldObjects();
     allStructures = getAllStructures();
 
@@ -618,6 +624,8 @@ function respawn(){
     structureUpgradeables = [];
     ownedPlanets = [];
     shopOpen = {shopRef: null, type: null, open: false};
+
+    caughtInBlackHole = false;
 
     allWorldObjects = getAllWorldObjects();
     allStructures = getAllStructures();
@@ -916,6 +924,14 @@ window.addEventListener('mousedown',
     function(event){
         mouse.clicked = true;
 
+        if(newsDisplayed)
+        {
+            $("#mainContent").css("filter", "none");
+            $("#news").fadeOut(250);
+
+            newsDisplayed = false;
+        }
+
         if(spaceShip)
             checklist.fly.done = true;
 })
@@ -985,6 +1001,7 @@ $("#backAbout").click(function(){
 });
 
 $(document).ready(function() {
+
     $("#mainContent").fadeIn(0);
     $("#helpContent").fadeOut(0);
     $("#aboutContent").fadeOut(0);
@@ -992,6 +1009,17 @@ $(document).ready(function() {
     $("#aboutContent").css('display', '');
     $("#respawnPlanetWait").fadeOut(0);
     $("#respawnPlanetWait").css('display', '');
+
+    if(DISPLAY_NEWS)
+    {
+        $("#mainContent").css("filter", "blur(5px)");
+        $("#news").fadeIn(0);
+    }
+    else{
+        $("#news").fadeOut(0);
+    }
+
+    
 });
 
 $(document).keyup(function(e){
@@ -1103,7 +1131,6 @@ $(document).keypress(function(e){
 
         } 
     }
-
     
     if(!showUpgradesPannel && !clickedUpgrade)
         showUpgradesPannel = e.keyCode == 102; //F
@@ -1619,13 +1646,17 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
             var hitObject = {x: pos.x, y: pos.y, radius: hittableObjects[i].radius} 
 
             if(isCollidingCircles(this, hitObject)){
-                sendProjectileHit(this.id, hittableObjects[i].id);
 
                 var hitWorldObject = findObjectWithId(allWorldObjects, hittableObjects[i].id);
 
+                if(hitWorldObject && hitWorldObject.object.type == "blackHole")
+                    return;
+
+                sendProjectileHit(this.id, hittableObjects[i].id);
+
+
                 if(hitWorldObject)
                 {
-
                     var colorRef = colorChangedHitObjects[hittableObjects[i].id];
 
                     if(colorRef) //color is currently changing
@@ -1634,8 +1665,7 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
                     }
                     else{
                         colorChangedHitObjects[hittableObjects[i].id] = {color: hitWorldObject.object.color, time: 20};
-                    }
-                    
+                    }   
                 }
 
                 this.hitObjects.push(hittableObjects[i].id);
@@ -1759,6 +1789,29 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
                 c.beginPath();
                 polygon(c, this.x, this.y, this.radius - 15, 6, this.radius * Math.PI / 180, -Math.PI/2);
                 c.fillStyle = shadeColorHex(this.color, 10);
+                c.fill();
+            break;  
+            case "blackHole":
+
+
+                if(!this.orbs)
+                {
+                    this.orbs = [];
+                }
+
+                c.shadowBlur = 100 * scale;
+                c.shadowColor = "white";
+
+                c.fillStyle = "white";
+                c.beginPath();
+                c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+                c.fill();
+
+                c.shadowBlur = 0;
+
+                c.beginPath();
+                c.fillStyle = this.color;
+                c.arc(this.x, this.y, this.radius - 1, 0, Math.PI * 2, false);
                 c.fill();
             break;
         }
@@ -2110,21 +2163,55 @@ function animate() {
             ? new Vector()
             : new Vector(mousePullx, mousePully);
 
+        worldObjects.asteroids.forEach(function(spaceMatter){
 
-        worldObjects.planets.forEach(function(planet){
-            var x = planet.x - centerX;
-            var y = planet.y - centerY;
+            if(spaceMatter.type == "blackHole")
+            {
+                var pos = cordsToScreenPos(spaceMatter.coordX, spaceMatter.coordY);
 
-            planetDist = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2)); 
+                var x = pos.x - centerX;
+                var y = pos.y - centerY;
 
-            if(planetDist <= MAX_GRAVITATIONAL_DISTACNE){
-                var planetScaleFactor = (1 - planetDist / MAX_GRAVITATIONAL_DISTACNE) * PLANET_GRAVITY * planet.radius / 100; //Math.pow((1 - planetDist / MAX_GRAVITATIONAL_DISTACNE) * PLANET_GRAVITY, PLANET_GRAVITY_EXPONENT);
+                holeDist = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2)); 
 
-                if(planetScaleFactor > 0){
-                    spaceshipVelocity.x += x * planetScaleFactor;
-                    spaceshipVelocity.y += y * planetScaleFactor;
-                }
-            }   
+                if(holeDist <= MAX_GRAVITATIONAL_DISTACNE){
+                    var holeScaleFactor = Math.pow(Math.pow(holeDist / MAX_GRAVITATIONAL_DISTACNE, -2), 1.2) / 3000 * spaceShip.radius / 15; //(1 - holeDist / MAX_GRAVITATIONAL_DISTACNE) * BLCAKHOLE_GRAVITY * spaceMatter.radius / 100; //Math.pow((1 - holeDist / MAX_GRAVITATIONAL_DISTACNE) * BLCAKHOLE_GRAVITY, BLCAKHOLE_GRAVITY);
+
+                    if(holeScaleFactor > 1)
+                        holeScaleFactor = 1;
+
+                    if(!caughtInBlackHole)
+                    {
+                        if(holeScaleFactor > 0){
+                            spaceshipVelocity.x += x * holeScaleFactor;
+                            spaceshipVelocity.y += y * holeScaleFactor;
+                        }
+                    }
+                    else if(holeScaleFactor > 0)
+                    {
+                        spaceshipVelocity.x = x * holeScaleFactor;
+                        spaceshipVelocity.y = y * holeScaleFactor;
+                    }
+                    
+                    
+                    if(holeDist < 10)
+                    {
+                        caughtInBlackHole = true;
+                    }
+
+                    
+
+                    // c.beginPath();
+                    // c.strokeStyle = "white";
+                    // c.moveTo(windowWidth / 2, windowHeight / 2);
+                    // var tox = centerX * scale + x * holeScaleFactor * 100;
+                    // var toy = centerY * scale + y * holeScaleFactor * 100;
+                    // c.lineTo(tox, toy);
+                    // c.stroke();
+                }   
+            }
+                
+            
             
         });
 
@@ -2171,6 +2258,17 @@ function animate() {
         spaceshipVelocity.y = 0;
     }
     
+    if(caughtInBlackHole && spaceShip)
+    {
+        if(spaceShip.radius > 1)
+        {
+            spaceShip.radius -= 1;
+        }
+        else{
+            socket.emit("blackHoleDeath", {worldId: worldId});
+        }
+    }
+
     //Draw -----------------------------------------------------------------------------------------------------------
     c.scale(scale, scale);
 

@@ -241,7 +241,6 @@ a:hover{
 
     border: none;
     width: 22.88vh;
-    height: 33.12vh;
 
     display: "inline-block";
 
@@ -305,12 +304,28 @@ a:hover{
     filter: saturate(400%) brightness(30%);
 }
 
+#news{
+    position: absolute;
+    top: 20%;
+    width: 100%;
+    background-color: blue; 
+}
+
+#news img{
+    position: absolute;
+    display:inline-block;
+    margin: auto;
+    width: 30%;
+    left: 35%;
+}
+
+
 
 body{
     background: #1B1730;
     margin: 0;
     border-width: 0px;
-    overflow: hidden
+    /* overflow: hidden; */
 }
 
 #content{
