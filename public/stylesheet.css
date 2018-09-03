@@ -315,8 +315,8 @@ a:hover{
     position: absolute;
     display:inline-block;
     margin: auto;
-    width: 30%;
-    left: 35%;
+    width: 50vh;
+    left: calc((100vw - 50vh) / 2);
 }
 
 
