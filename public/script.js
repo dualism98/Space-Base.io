@@ -530,7 +530,7 @@ function startLocalPlayer(data){
     friendlyObjectIds = [clientId];
 
     //Spawn client player
-    spaceShip = new SpaceShip(centerX, centerY, player.maxHealth, player.health, player.level, player.radius, player.speed, player.turningSpeed, player.fireRate, clientId);
+    spaceShip = new SpaceShip(centerX, centerY, player.maxHealth, player.health, player.level, player.radius, player.speed, player.turningSpeed, player.fireRate, player.projectileSpeed, clientId);
     spaceShip.shopUpgrades = player.shopUpgrades;
     
     playerItems = {};
@@ -1775,7 +1775,7 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
         this.draw();
     }
 }
-function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, fireRate, id){
+function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, fireRate, projectileSpeed, id){
     this.coordX = x;
     this.coordY = y;
     this.rotation = 0;
@@ -1785,6 +1785,7 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     this.speed = speed;
     this.fireRate = fireRate;
     this.turningSpeed = turningSpeed;
+    this.projectileSpeed = projectileSpeed;
     this.level = level;
     this.id = id;
 
@@ -3699,7 +3700,7 @@ function displayBar(x, y, width, height, fillPrecentage, color) {
 }
 
 function shoot(x, y, rotation, speed, size, bulletPenetration, color, shooterId, damagePercent = 1){
-    velocity = new Vector();
+    velocity = new Vector(0, 0);
     velocity.setMagnitude(speed);
     velocity.setDirection(rotation - 1.5708);
     var projId = uniqueId();

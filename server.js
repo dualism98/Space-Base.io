@@ -300,7 +300,8 @@ function Player(x, y, rotation, level, id, worldId){
     this.health = playerUpgrades[level].maxHealth;
     this.speed = playerUpgrades[level].speed;
     this.fireRate = playerUpgrades[level].fireRate;
-
+    this.projectileSpeed = playerUpgrades[level].projectileSpeed;
+    
     this.structures = [];
 }
 
