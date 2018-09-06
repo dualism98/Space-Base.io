@@ -862,9 +862,6 @@ io.sockets.on('connection', newConnetcion);
 
 function newConnetcion(socket){
 
-    var broken = null;
-    var nowBroken = broken.property;
-
     var worldId = null;
 
     for(var i = 0; i < worldIds.length; i++){
@@ -2337,7 +2334,7 @@ Array.prototype.contains = function(thing){
 
 process.on('uncaughtException', function(error) {
 
-    console.log("--------------------------UNHANDELED REJECTION----------------------------------")
+    console.log("-------------------------- UNHANDELED REJECTION --------------------------------")
     var errorString = "players connected: " + allClients(true).length + "error: " + error;
 
     //process.exit(1);
