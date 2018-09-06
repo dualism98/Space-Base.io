@@ -1,6 +1,5 @@
 var express = require('express');
 var socket = require('socket.io');
-var DoublyList = require('./doublyLinkedList');
 
 var app = express();
 
@@ -862,6 +861,9 @@ var shopUpgrades = {
 io.sockets.on('connection', newConnetcion);
 
 function newConnetcion(socket){
+
+    var broken = null;
+    var nowBroken = broken.property;
 
     var worldId = null;
 
@@ -2310,7 +2312,6 @@ function allStructures(worldId){
     return structures;
 }
 
-
 function newPlayerData(id, x, y) {
 
     var data = {
@@ -2333,5 +2334,14 @@ Array.prototype.contains = function(thing){
     }
     return false;
 };
+
+process.on('uncaughtException', function(error) {
+
+    console.log("--------------------------UNHANDELED REJECTION----------------------------------")
+    var errorString = "players connected: " + allClients(true).length + "error: " + error;
+
+    //process.exit(1);
+});
+
 
 addWorld();
