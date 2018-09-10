@@ -898,8 +898,6 @@ function sendProjectile(x, y, vel, size, color, id, shooterId, damagePercent){
         worldId: worldId
     }
 
-    console.log(Math.round(damagePercent * 100) / 100);
-
     socket.emit('spawnProj', data);
 }
 function sendProjectileHit(projectileId, subjectId){
@@ -2181,8 +2179,15 @@ function animate() {
     centerY = (canvas.height / 2 / scale);    
 
     otherPlayers.forEach(player => {
-        hittableObjects[player.id].x = player.displayPos.x;
-        hittableObjects[player.id].y = player.displayPos.y;
+        if(player.displayPos)
+        { 
+            hittableObjects[player.id].x = player.displayPos.x;
+            hittableObjects[player.id].y = player.displayPos.y;
+        }
+        else if(player.coordX && player.coordY){
+            hittableObjects[player.id].x = player.coordX;
+            hittableObjects[player.id].y = player.coordY;
+        }
     });
     
     if(spaceShip){        
@@ -2467,7 +2472,6 @@ function animate() {
 
         if(positionSendTime >= POSITION_SEND_DELAY)
         {
-            console.log("sent");
             positionSendTime = 0;
             var playerPos = new Vector(-gridPos.x, -gridPos.y);
             sendPlayerPosition(playerPos, spaceShip.rotation);
