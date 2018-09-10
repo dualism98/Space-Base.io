@@ -38,6 +38,9 @@ Vector.prototype.setDirection = function(direction) {
   this.x = Math.cos(direction) * magnitude;
   this.y = Math.sin(direction) * magnitude;
 };
+Vector.prototype.addition = function(v1, v2) {
+    return new Vector(v1.x + v2.x, v1.y + v2.y);
+};
 Vector.prototype.subtract = function(v1, v2) {
     return new Vector(v1.x - v2.x, v1.y - v2.y);
 };
@@ -67,7 +70,7 @@ var socket;
 var clientId;
 var otherPlayers = [];
 var worldObjects = [];
-var hittableObjects = [];
+var hittableObjects = {};
 var gridSize;
 var gridBoxScale;
 var gridPos;
@@ -240,6 +243,9 @@ var aquireItemsFadeTime = 50;
 var DISPLAY_NEWS = true;
 var newsDisplayed = true;
 
+var POSITION_SEND_DELAY = 6;
+var positionSendTime = 0;
+
 var checklist = {
     fly:{
         isActive: true
@@ -264,8 +270,8 @@ var checklist = {
 checklistFadeTime = 20;
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
-    socket = io.connect('http://space-base.io/');
+    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://space-base.io/');
     //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
     //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
@@ -317,7 +323,7 @@ function setupLocalWorld(data){
         client = data.existingPlayers[i];
 
         if(client.id != clientId){
-            var player = new NetworkSpaceShip(client.x, client.y, client.maxHealth, client.health, 0, client.level, client.radius, client.username, client.id)
+            var player = new NetworkSpaceShip(client.x, client.y, client.maxHealth, client.health, 0, client.level, client.radius, client.username, client.id);
             if(client.shipTurret){
 
                 var isFacade = player.id != clientId;
@@ -408,10 +414,8 @@ function newWorldObjectSync(data){
 
         if(data.dead && changedPlanet){
 
-            var changedHitableObject = findObjectWithId(hittableObjects, data.id);
-
             worldObjects.planets.splice(changedPlanet.index, 1);
-            hittableObjects.splice(changedHitableObject.index, 1);
+            delete hittableObjects[data.id];
         }
         else{
             var planet = data.newObject;
@@ -431,10 +435,8 @@ function newWorldObjectSync(data){
 
         if(data.dead && changedSpaceMatter)
         {
-            var changedHitableObject = findObjectWithId(hittableObjects, data.id);
-
             worldObjects.asteroids.splice(changedSpaceMatter.index, 1);
-            hittableObjects.splice(changedHitableObject.index, 1);
+            delete hittableObjects[data.id];
         }
         else{
             var newSpaceMatter = new SpaceMatter(data.newObject.x, data.newObject.y, data.newObject.radius, data.newObject.color, data.newObject.maxHealth, data.newObject.health, data.newObject.type, data.id);
@@ -452,52 +454,56 @@ function newWorldObjectSync(data){
 function receiveDamageSync(data){
 
     for (let i = 0; i < data.deadObjects.length; i++) {
-        var localObj = findObjectWithId(hittableObjects, data.deadObjects[i]);
+        var localObj = hittableObjects[data.deadObjects[i]];
 
         if(localObj)
-            hittableObjects.splice(localObj.index);
+            delete hittableObjects[data.deadObjects[i]];
     }
 
-    for (let i = 0; i < data.hittableObjects.length; i++) {
-        const sentHittableObject = data.hittableObjects[i];
+    for (var id in data.hittableObjects) {
+        if (data.hittableObjects.hasOwnProperty(id)) {
         
-        if(sentHittableObject.health < healthDict[sentHittableObject.id]){            
-            var ownPlanetAttacked = false;
+            var hittableObject = data.hittableObjects[id];
 
-            ownedPlanets.forEach(ownedPlanet => {
-                if(ownedPlanet.shield && ownedPlanet.shield.id == sentHittableObject.id)
-                    damagedOwnPlanet(true, sentHittableObject.health, ownedPlanet.shield.id);
-                else if(ownedPlanet.id == sentHittableObject.id)
-                    damagedOwnPlanet(false, sentHittableObject.health, ownedPlanet.id);
-            });
-        }
-        
-        healthDict[sentHittableObject.id] = sentHittableObject.health;
-
-        if(clientId != sentHittableObject.id){
-            var localObj = findObjectWithId(hittableObjects, sentHittableObject.id);
-
-            if(localObj){
-                if(sentHittableObject.health > 0)
-                    hittableObjects[localObj.index] = sentHittableObject;
-                else
-                {
-                    hittableObjects.splice(localObj.index, 1);
-
-                    var isStructure = false;
-
-                    for (let i = 0; i < structureUpgradeables.length; i++) {
-                        if(structureUpgradeables[i] == sentHittableObject.id){
-                            structureUpgradeables.splice(i, 1);
-                            isStructure = true;
+            if(hittableObject.health < healthDict[hittableObject.id]){            
+                var ownPlanetAttacked = false;
+    
+                ownedPlanets.forEach(ownedPlanet => {
+                    if(ownedPlanet.shield && ownedPlanet.shield.id == hittableObject.id)
+                        damagedOwnPlanet(true, hittableObject.health, ownedPlanet.shield.id);
+                    else if(ownedPlanet.id == hittableObject.id)
+                        damagedOwnPlanet(false, hittableObject.health, ownedPlanet.id);
+                });
+            }
+            
+            healthDict[hittableObject.id] = hittableObject.health;
+    
+            if(clientId != hittableObject.id){
+                var localObj = hittableObjects[hittableObject.id];
+    
+                if(localObj){
+                    if(hittableObject.health > 0)
+                        hittableObjects[hittableObject.id] = hittableObject;
+                    else
+                    {
+                        delete hittableObjects[hittableObject.id];
+    
+                        var isStructure = false;
+    
+                        for (let i = 0; i < structureUpgradeables.length; i++) {
+                            if(structureUpgradeables[i] == hittableObject.id){
+                                structureUpgradeables.splice(i, 1);
+                                isStructure = true;
+                            }
                         }
                     }
                 }
+                else{
+                    if(hittableObject.health > 0)
+                        hittableObjects[hittableObject.id] = hittableObject;
+                }
             }
-            else{
-                if(sentHittableObject.health > 0)
-                    hittableObjects.push(sentHittableObject);
-            }
+
         }
     }
 }
@@ -643,14 +649,7 @@ function updatePlayerPosition(data){
 
         otherPlayerObj.coordX = data.x;
         otherPlayerObj.coordY = data.y;
-        otherPlayerObj.rotation = data.rot;
-
-        for(var i = 0; i < hittableObjects.length; i++){
-            if(hittableObjects[i].id == data.id){
-                hittableObjects[i].x = otherPlayerObj.coordX;
-                hittableObjects[i].y = otherPlayerObj.coordY;
-            }
-        }
+        otherPlayerObj.targetRotation = data.rot;
     }
 }
 function spawnNetworkedProjectile(data){
@@ -811,7 +810,7 @@ function onAquiredItems(data){
 
 function cloak(data){
     var player = findObjectWithId(otherPlayers.concat(spaceShip), data.playerId);
-    var hittablePlayer = findObjectWithId(hittableObjects, data.playerId);
+    var hittablePlayer = hittableObjects[data.playerId]
 
     if(player){
 
@@ -820,12 +819,12 @@ function cloak(data){
         if(data.cloaked)
         {
             if(clientId != player.id && hittablePlayer)
-                hittablePlayer.object.active = false;
+                hittablePlayer.active = false;
             player.alpha = 0;
         }
         else{
             if(clientId != player.id && hittablePlayer)
-                hittablePlayer.object.active = true;
+                hittablePlayer.active = true;
             player.alpha = 1;
             
             if(clientId == player.id)
@@ -846,10 +845,10 @@ function playerExited(data){
 
         otherPlayers.splice(otherPlayer.index, 1);
 
-        var otherPlayerHittableObj = findObjectWithId(hittableObjects, data.clientId);
+        var otherPlayerHittableObj = hittableObjects[data.clientId];
 
         if(otherPlayerHittableObj)
-            hittableObjects.splice(otherPlayerHittableObj.index, 1);
+            delete hittableObjects[data.clientId];
 
 
         if(data.forGood)
@@ -1362,7 +1361,7 @@ function Shield(planet, radius, level, id){
 
         healthBarWidth = 300;
 
-        var hittableObj = findObjectWithId(hittableObjects, this.id);
+        var hittableObj = hittableObjects[this.id];
 
         if(hittableObj)
             displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, 300, 20, hittableObj.object.health / hittableObj.object.maxHealth, "blue");
@@ -1637,39 +1636,43 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
     }
 
     this.checkForCollisions = function(){   //Check for collisions in Hittable Objects
-        for(var i = 0; i < hittableObjects.length; i++){
+        for (var id in hittableObjects) {
+            if (hittableObjects.hasOwnProperty(id)) {
 
-            if(this.isFriendly(hittableObjects[i].id) || this.hitObjects.contains(hittableObjects[i].id) || !hittableObjects[i].active)
-                continue;
+                var hittableObj = hittableObjects[id];
 
-            var pos = cordsToScreenPos(hittableObjects[i].x, hittableObjects[i].y);
-            var hitObject = {x: pos.x, y: pos.y, radius: hittableObjects[i].radius} 
+                if(this.isFriendly(hittableObj.id) || this.hitObjects.contains(hittableObj.id) || !hittableObj.active)
+                    continue;
 
-            if(isCollidingCircles(this, hitObject)){
+                var pos = cordsToScreenPos(hittableObj.x, hittableObj.y);
+                var hitObject = {x: pos.x, y: pos.y, radius: hittableObj.radius} 
 
-                var hitWorldObject = findObjectWithId(allWorldObjects, hittableObjects[i].id);
+                if(isCollidingCircles(this, hitObject)){
 
-                if(hitWorldObject && hitWorldObject.object.type == "blackHole")
-                    return;
+                    var hitWorldObject = findObjectWithId(allWorldObjects, id);
 
-                sendProjectileHit(this.id, hittableObjects[i].id);
+                    if(hitWorldObject && hitWorldObject.object.type == "blackHole")
+                        return;
+
+                    sendProjectileHit(this.id, id);
 
 
-                if(hitWorldObject)
-                {
-                    var colorRef = colorChangedHitObjects[hittableObjects[i].id];
-
-                    if(colorRef) //color is currently changing
+                    if(hitWorldObject)
                     {
-                        colorRef.time = 20;
-                    }
-                    else{
-                        colorChangedHitObjects[hittableObjects[i].id] = {color: hitWorldObject.object.color, time: 20};
-                    }   
-                }
+                        var colorRef = colorChangedHitObjects[id];
 
-                this.hitObjects.push(hittableObjects[i].id);
-                return true;
+                        if(colorRef) //color is currently changing
+                        {
+                            colorRef.time = 20;
+                        }
+                        else{
+                            colorChangedHitObjects[id] = {color: hitWorldObject.object.color, time: 20};
+                        }   
+                    }
+
+                    this.hitObjects.push(id);
+                    return true;
+                }
             }
         }
 
@@ -1764,7 +1767,7 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
                 c.fill();
             break;
             case "sun":
-                c.shadowBlur = 500;
+                c.shadowBlur = 200 * scale;
                 c.shadowColor = this.color;
 
                 c.fillStyle = this.color;
@@ -1792,13 +1795,6 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
                 c.fill();
             break;  
             case "blackHole":
-
-
-                if(!this.orbs)
-                {
-                    this.orbs = [];
-                }
-
                 c.shadowBlur = 100 * scale;
                 c.shadowColor = "white";
 
@@ -1909,12 +1905,13 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     }
 
 }
-function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, radius, username, id){
+
+function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, level, radius, username, id){
     this.x;
     this.y;
     this.maxHealth = maxHealth;
     this.health = health;
-    this.rotation = rotation;
+    this.targetRotation = targetRotation;
     this.radius = radius;
     this.username = username;
     this.id = id;
@@ -1924,11 +1921,44 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, ra
 
     this.coordX = coordX;
     this.coordY = coordY;
-    
+
+    this.coordChangeWatcher = new Vector();
+    this.rotWatcher = 0;
+
+    this.lastCoordX = 0;
+    this.lastCoordY = 0;
+
+    this.lastRot = 0;
+    this.rotation = 0;
+    this.rotLerpTime = 10;
+    this.rotLerpAmount = 0;
+
+    this.lerpAmount = 0;
+    this.lerpTime = 10;
+
+    this.displayPos = new Vector();
+
+    var jumpDistance = 100000;
+
     this.turret;
 
     this.draw = function(){
         var healthBarWidth = 50;
+
+        var testpos = cordsToScreenPos(this.lastCoordX, this.lastCoordY);
+        var testpostarget = cordsToScreenPos(this.coordX, this.coordY);
+
+        // c.strokeStyle = "red";
+        // c.lineWidth = 1;
+        // c.beginPath();
+        // c.arc(testpostarget.x, testpostarget.y, this.radius, 0, Math.PI * 2, false);
+        // c.stroke();
+
+        // c.strokeStyle = "blue";
+        // c.lineWidth = 1;
+        // c.beginPath();
+        // c.arc(testpos.x, testpos.y, this.radius, 0, Math.PI * 2, false);
+        // c.stroke();
 
         c.globalAlpha = this.alpha;
         c.translate(this.x, this.y);
@@ -1942,7 +1972,61 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, rotation, level, ra
 
     }
     this.update = function(){
-        var pos = cordsToScreenPos(this.coordX, this.coordY);
+        var coords = new Vector(this.coordX, this.coordY);
+        var lastCoords = new Vector(this.lastCoordX, this.lastCoordY);
+        this.displayPos = coords;
+
+        if(this.coordChangeWatcher.x != coords.x && this.coordChangeWatcher.y != coords.y)
+        {
+            this.lastCoordX = this.coordChangeWatcher.x;
+            this.lastCoordY = this.coordChangeWatcher.y;
+            lastCoords = new Vector(this.lastCoordX, this.lastCoordY);
+
+            this.lerpTime = this.lerpAmount;
+            this.lerpAmount = 0;
+            this.coordChangeWatcher = coords;
+        }
+
+        if(this.rotWatcher != this.targetRotation)
+        {
+            this.lastRot = this.rotWatcher;
+
+            this.rotLerpTime = this.rotLerpAmount;
+            this.rotLerpAmount = 0;
+
+            this.rotWatcher = this.targetRotation;
+        }
+
+        var distance = Math.abs(Math.pow(coords.x - lastCoords.x, 2) + Math.pow(coords.y - lastCoords.y, 2));
+
+        if(distance > jumpDistance)
+        {
+            this.lastCoordX = coords.x;
+            this.lastCoordY = coords.y
+            this.displayPos = coords;
+        }
+        else if (this.lerpAmount <= this.lerpTime) {
+            var t = Math.round(this.lerpAmount / this.lerpTime * 100) / 100;
+            var subCoord = Vector.prototype.subtract(coords, lastCoords);
+            this.displayPos = Vector.prototype.addition(lastCoords, new Vector(subCoord.x * t, subCoord.y * t));
+            this.lerpAmount++;
+        }
+        else if(this.lerpAmount > this.lerpTime){
+            this.lerpAmount++;
+        }
+
+        if(this.rotLerpAmount <= this.rotLerpTime){
+            this.rotLerpAmount++;
+            this.rotation = this.lastRot + (this.targetRotation - this.lastRot) * this.rotLerpAmount / this.rotLerpTime;
+        }
+        else{
+            this.rotation = this.targetRotation;
+        }
+        // else if (this.rotLerpAmount / this.rotLerpTime > 1)
+        // this.rotLerpAmount++;
+
+        var pos = cordsToScreenPos(this.displayPos.x, this.displayPos.y);
+
         this.x = pos.x;
         this.y = pos.y;
 
@@ -2096,6 +2180,11 @@ function animate() {
     centerX = (canvas.width / 2 / scale);
     centerY = (canvas.height / 2 / scale);    
 
+    otherPlayers.forEach(player => {
+        hittableObjects[player.id].x = player.displayPos.x;
+        hittableObjects[player.id].y = player.displayPos.y;
+    });
+    
     if(spaceShip){        
 
         var mousePullxTarget = 0;
@@ -2249,7 +2338,6 @@ function animate() {
         if(!currentPlanet)
             closestAvailablePlanet = findClosestUnoccupiedPlanet();
 
-    
     }
     else{
         targetScale = startScale;
@@ -2357,24 +2445,39 @@ function animate() {
         }
     }
 
-    hittableObjects.forEach(function(obj){
-        if(obj.radius && statsView && obj.active){
-            var pos = cordsToScreenPos(obj.x, obj.y);
+    for (var id in hittableObjects) {
+        if (hittableObjects.hasOwnProperty(id)) {
 
-            //Out of screen Right                               || Left             || Up               || Down
-            if(!(pos.x - size > (windowWidth + centerX) / scale || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > (windowHeight + centerY) / scale) || isClosestAvaiblePlanet || isOwnedPlanet != null){
-                c.beginPath();
-                c.arc(pos.x, pos.y, obj.radius, 0, Math.PI * 2, false);
-                c.lineWidth = 2;
-                c.strokeStyle = "#f44242";
-                c.stroke();
+            var obj = hittableObjects[id];
+
+            if(obj.radius && statsView && obj.active){
+                var pos = cordsToScreenPos(obj.x, obj.y);
+
+                //Out of screen Right                               || Left             || Up               || Down
+                if(!(pos.x - size > (windowWidth + centerX) / scale || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > (windowHeight + centerY) / scale) || isClosestAvaiblePlanet || isOwnedPlanet != null){
+                    c.beginPath();
+                    c.arc(pos.x, pos.y, obj.radius, 0, Math.PI * 2, false);
+                    c.lineWidth = 2;
+                    c.strokeStyle = "#f44242";
+                    c.stroke();
+                }
             }
         }
-    });
+    }
 
     if(spaceShip){
-        var playerPos = new Vector(-gridPos.x, -gridPos.y);
-        sendPlayerPosition(playerPos, spaceShip.rotation);
+
+        if(positionSendTime >= POSITION_SEND_DELAY)
+        {
+            console.log("sent");
+            positionSendTime = 0;
+            var playerPos = new Vector(-gridPos.x, -gridPos.y);
+            sendPlayerPosition(playerPos, spaceShip.rotation);
+        }
+        else{
+            positionSendTime++;
+        }
+        
     }
 
     for(var i = projectiles.length - 1; i >= 0; i--){
@@ -2640,72 +2743,72 @@ function animate() {
                 {
 
                     if(!checkItem.yPos)
-                    checkItem.yPos = getCardYPos(i);
-                else if(checkItem.yPos != getCardYPos(i)){
-                    if(checkItem.lerp == undefined)
-                        checkItem.lerp = 0;
-                    else if(checkItem.lerp < 1){
-                        checkItem.yPos = checkItem.yPos + (getCardYPos(i) - checkItem.yPos) * checkItem.lerp;
-                        checkItem.lerp += .01;
-                    }
-                    else if(checkItem.lerp >= 1) { 
                         checkItem.yPos = getCardYPos(i);
+                    else if(checkItem.yPos != getCardYPos(i)){
+                        if(checkItem.lerp == undefined)
+                            checkItem.lerp = 0;
+                        else if(checkItem.lerp < 1){
+                            checkItem.yPos = checkItem.yPos + (getCardYPos(i) - checkItem.yPos) * checkItem.lerp;
+                            checkItem.lerp += .01;
+                        }
+                        else if(checkItem.lerp >= 1) { 
+                            checkItem.yPos = getCardYPos(i);
+                            checkItem.lerp = 0;
+                        }
+                    }
+
+                    if(!checkItem.lerp)
                         checkItem.lerp = 0;
-                    }
-                }
 
-                if(!checkItem.lerp)
-                    checkItem.lerp = 0;
-
-                if(!checkItem.alpha)
-                    checkItem.alpha = 1 / (i + 1);
-                else if(checkItem.alpha != 1 / (i + 1))
-                {
-                    checkItem.alpha = checkItem.alpha + (1 / (i + 1) - checkItem.alpha) * checkItem.lerp;
-                }
-
-                if(!checkItem.size)
-                    checkItem.size = 1 / (i * .2 + 1);
-                else if(checkItem.size != 1 / (i + 1))
-                {
-                    checkItem.size = checkItem.size + (1 / (i * .2 + 1) - checkItem.size) * checkItem.lerp;
-                }
-
-                //var size = 1 / (i * .2 + 1) * 1 - (getCardYPos(i) - checkItem.yPos) * checkItem.lerp / 10;
-
-                var fontsize = width / 20;
-
-                if(checkItem.done)
-                {
-                    if(!checkItem.fade)
-                        checkItem.fade = 0;
-
-                    if(checkItem.fade < checklistFadeTime)
+                    if(!checkItem.alpha)
+                        checkItem.alpha = 1 / (i + 1);
+                    else if(checkItem.alpha != 1 / (i + 1))
                     {
-                        c.globalAlpha = (checklistFadeTime - checkItem.fade) / checklistFadeTime * checkItem.alpha;
-                        c.drawImage(getImage("checklist_checked"), windowWidth / 2 - width * checkItem.size / 2, checkItem.yPos, width * checkItem.size, height * checkItem.size);
-                        checkItem.fade++;
+                        checkItem.alpha = checkItem.alpha + (1 / (i + 1) - checkItem.alpha) * checkItem.lerp;
                     }
-                    else
-                        checkItem.isActive = false
-                }
-                else{
-                    c.globalAlpha = checkItem.alpha;
-                    c.drawImage(getImage("checklist"), windowWidth / 2 - width * checkItem.size / 2, checkItem.yPos , width * checkItem.size, height * checkItem.size);
-                }
+
+                    if(!checkItem.size)
+                        checkItem.size = 1 / (i * .2 + 1);
+                    else if(checkItem.size != 1 / (i + 1))
+                    {
+                        checkItem.size = checkItem.size + (1 / (i * .2 + 1) - checkItem.size) * checkItem.lerp;
+                    }
+
+                    //var size = 1 / (i * .2 + 1) * 1 - (getCardYPos(i) - checkItem.yPos) * checkItem.lerp / 10;
+
+                    var fontsize = width / 20;
+
+                    if(checkItem.done)
+                    {
+                        if(!checkItem.fade)
+                            checkItem.fade = 0;
+
+                        if(checkItem.fade < checklistFadeTime)
+                        {
+                            c.globalAlpha = (checklistFadeTime - checkItem.fade) / checklistFadeTime * checkItem.alpha;
+                            c.drawImage(getImage("checklist_checked"), windowWidth / 2 - width * checkItem.size / 2, checkItem.yPos, width * checkItem.size, height * checkItem.size);
+                            checkItem.fade++;
+                        }
+                        else
+                            checkItem.isActive = false
+                    }
+                    else{
+                        c.globalAlpha = checkItem.alpha;
+                        c.drawImage(getImage("checklist"), windowWidth / 2 - width * checkItem.size / 2, checkItem.yPos , width * checkItem.size, height * checkItem.size);
+                    }
 
 
-                if(checkItem.isActive)
-                {
-                    c.fillStyle = "white";
-                    c.font = fontsize + "px Helvetica";
-    
-                    wrapText(c, $('input#' + check).val(), windowWidth / 2 - width * checkItem.size / 4, checkItem.yPos + fontsize * 2, width * .6, fontsize);
-                }
-               
+                    if(checkItem.isActive)
+                    {
+                        c.fillStyle = "white";
+                        c.font = fontsize + "px Helvetica";
+        
+                        wrapText(c, $('input#' + check).val(), windowWidth / 2 - width * checkItem.size / 4, checkItem.yPos + fontsize * 2, width * .6, fontsize);
+                    }
+                
 
-                if(!checkItem.done)
-                    i++
+                    if(!checkItem.done)
+                        i++;
                 }
             }
         }

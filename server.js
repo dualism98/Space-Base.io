@@ -14,27 +14,27 @@ var worldIds = [];
 console.log("server started");
 
 //Server Config Options
-var numOfasteroids = 4000;
-var numOfPlanets = 50;
-var numOfMoons = 200;
-var numOfSuns = 10;
-var numOfCrystals = 150;
-var numOfBlackHoles = 8;
-var numOfWormHoles = 6;
-var gridSize = 15000;
-var gridBoxScale = 200;
-var spawnTries = 5;
-
-// var numOfasteroids = 0;
-// var numOfPlanets = 0;
-// var numOfMoons = 0;
-// var numOfSuns = 0;
-// var numOfCrystals = 0;
-// var numOfBlackHoles = 2;
+// var numOfasteroids = 4000;
+// var numOfPlanets = 50;
+// var numOfMoons = 200;
+// var numOfSuns = 10;
+// var numOfCrystals = 150;
+// var numOfBlackHoles = 8;
 // var numOfWormHoles = 6;
-// var gridSize = 2000;
-// var gridBoxScale = 10;
+// var gridSize = 15000;
+// var gridBoxScale = 200;
 // var spawnTries = 5;
+
+var numOfasteroids = 0;
+var numOfPlanets = 0;
+var numOfMoons = 0;
+var numOfSuns = 0;
+var numOfCrystals = 0;
+var numOfBlackHoles = 0;
+var numOfWormHoles = 6;
+var gridSize = 2000;
+var gridBoxScale = 10;
+var spawnTries = 5;
 
 var edgeSpawnPadding = 2000;
 var precentItemKillBoost = .5;
