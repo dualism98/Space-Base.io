@@ -305,8 +305,6 @@ function setup(){
 //Receive Data Functions
 function setupLocalWorld(data){
 
-    socket.emit('upgradeInfo');
-
     worldId = data.worldId;
     clientId = socket.io.engine.id;
 
@@ -390,6 +388,8 @@ function setupLocalWorld(data){
 
     allWorldObjects = getAllWorldObjects();
     allStructures = getAllStructures();
+
+    socket.emit('upgradeInfo');
 }
 function syncItem(data){
     playerItems[data.item] = data.amount;
@@ -969,6 +969,8 @@ function startGame(){
         username = $("#playerNameInput").val().toString();
         username = username.slice(0, 15);
     }
+
+    if(!worldId)
 
     socket.emit("playerStartGame", {username: username, worldId: worldId});
 

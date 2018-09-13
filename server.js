@@ -892,7 +892,12 @@ function newConnetcion(socket){
 
     socket.on("playerStartGame", function(data){
 
-        data.username = data.username .slice(0, 15);
+        data.username = data.username.slice(0, 15);
+
+        if(!worldIds.contains(data.worldId)){
+            console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "world Id not accounted for on server. most likely old session.");
+            return;
+        }
 
         var lobbyClient = findObjectWithId(worldsData[data.worldId].lobbyClients, socket.id);
 
@@ -997,7 +1002,7 @@ function newConnetcion(socket){
         var worldHittableObjects = worldsData[data.worldId].hittableObjects;
         var target = findObjectWithId(worldHittableObjects, data.id);
 
-        if(target && target.type == "blackHole" || target.type == "wormHole")
+        if(target != null && (target.type == "blackHole" || target.type == "wormHole"))
             return;
 
         damageObject(data.worldId, data.id, socket.id, damageDealt);
@@ -1378,8 +1383,17 @@ function newConnetcion(socket){
     socket.on('upgradeRequest', function(data){
         var allUpgradeableObjects = allWorldObjects(data.worldId).concat(allStructures(data.worldId).concat(worldsData[data.worldId].clients));
 
-        var playerUpgrading = findObjectWithId(worldsData[data.worldId].clients, socket.id).object;
+        var playerUpgrading = findObjectWithId(worldsData[data.worldId].clients, socket.id);
 
+        if(playerUpgrading)
+            playerUpgrading = playerUpgrading.object;
+        else
+        {
+            console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "playerUpgrading not found");
+            return;
+        }
+            
+            
         var upgradee = findObjectWithId(allUpgradeableObjects, data.id).object;
         var upgrades;
 
@@ -1700,7 +1714,7 @@ function damageObject(worldId, id, senderId, damage){
                         if(shield){
                             target = shield;
                             possibleClient = false;
-                            console.log("damaging Shield Instead of player");
+                            //console.log("damaging Shield Instead of player");
                         }
                     }
                     else{
@@ -1709,7 +1723,7 @@ function damageObject(worldId, id, senderId, damage){
                         if(planetHittableObject)
                             target = planetHittableObject;
 
-                        console.log("damaging Planet Instead of player");
+                        //console.log("damaging Planet Instead of player");
                     }
                 }
 
@@ -1887,6 +1901,13 @@ function damageObject(worldId, id, senderId, damage){
 
                         for(var i = unspawnedObjects.length - 1; i >= 0; i--){
                             var obj = unspawnedObjects[i];
+
+                            if(!worldsData[obj.worldId])
+                            {
+                                unspawnedObjects.splice(i, 1);
+                                continue;
+                            }
+                                
 
                             worldHittableObjects = worldsData[obj.worldId].hittableObjects;
                             worldWorldObjects = worldsData[obj.worldId].worldObjects;
