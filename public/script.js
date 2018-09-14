@@ -969,8 +969,17 @@ function startGame(){
         username = $("#playerNameInput").val().toString();
         username = username.slice(0, 15);
     }
-
-    if(!worldId)
+    else
+    {
+        var div = $('#playerNameInput');
+        $({alpha:1}).animate({alpha:0}, {
+            duration: 1000,
+            step: function(){
+                div.css('border-color','rgba(255,177,177,'+this.alpha+')');
+            }
+        });
+        return;
+    }
 
     socket.emit("playerStartGame", {username: username, worldId: worldId});
 

@@ -12,13 +12,13 @@
     color: #707070;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 2vh;
-    border: none;
-
+    border: 3px dashed rgba(255,177,177,0);
+    
     width: 23.04vh;
     height: 5.76vh;
 
     margin-top: 2vh;
-    margin-left: auto;
+    margin-left: -3px;
     margin-right: auto;
 
     padding-top: 1.5vh;
@@ -335,4 +335,8 @@ body{
 canvas{
     background-color: #1B1730;
     filter: blur(5px);
+}
+
+input:focus {
+    outline: none; 
 }
