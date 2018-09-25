@@ -34,14 +34,8 @@ li {
 }
 
 #spacebase {
-    display: table-row;
-    vertical-align: middle;
-
     width: 70vh;
-
     border: none;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 #spacebaseAbout {
@@ -229,9 +223,9 @@ a:hover{
     table-layout: fixed;
     margin-left: auto;
     margin-right: auto;
-    left:0;
+    left: -25%;
     right:0;
-    width: 50%;
+    width: 150%;
     height: 50%;
 }
 
@@ -328,8 +322,9 @@ a:hover{
     left: calc(50% - 40vh);
 }
 
-#leftAd * {
+.example_responsive_1 {
     width: 100%;
+    height: auto;
     object-fit: contain
 }
 
@@ -344,7 +339,8 @@ a:hover{
 
 #rightAd * {
     width: 100%;
-    object-fit: contain
+    height: auto;
+    object-fit: contain;
 }
 
 #bottomAd{
