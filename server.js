@@ -981,7 +981,7 @@ function newConnetcion(socket){
         }
     });
 
-    socket.on('projectileHit', function(data){
+    socket.on('projectileHit', function(data) {
 
         if(!worldIds.contains(data.worldId)){
             console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "world Id not accounted for on server. most likely old session.");

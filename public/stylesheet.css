@@ -231,7 +231,7 @@ a:hover{
     margin-right: auto;
     left:0;
     right:0;
-    width: 100%;
+    width: 50%;
     height: 50%;
 }
 
@@ -319,7 +319,23 @@ a:hover{
     left: calc((100vw - 50vh) / 2);
 }
 
+#leftAd {
+    position: absolute;
+    float: center;
+    height: 65%;
+    margin-top: 15vh;
+    left: calc(50% - 40vh * 2);
+    width: 25vh;
+}
 
+#rightAd {
+    position: absolute;
+    float: center;
+    height: 65%;
+    margin-top: 15vh;
+    left: calc(50% + 15vh);
+    width: 25vh;
+}
 
 body{
     background: #1B1730;
