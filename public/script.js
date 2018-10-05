@@ -1,8 +1,16 @@
 //Canvas
-var canvas = document.querySelector('canvas');
+var canvas = document.getElementById('mainCanvas');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 var c = canvas.getContext('2d');
+
+
+var compositeCanvas = document.getElementById('compositeCanvas');
+compositeCanvas.width = window.innerWidth;
+compositeCanvas.height = window.innerHeight;
+
+var cc = compositeCanvas.getContext("2d");
+cc.globalCompositeOperation = "destination-atop";
 
 var mouse = {
     x :undefined,
@@ -123,7 +131,6 @@ var allStructures = [];
 
 var BLCAKHOLE_GRAVITY = .01;
 var BLCAKHOLE_GRAVITY_EXPONENT = 2.5;
-
 var MAX_GRAVITATIONAL_DISTACNE = 600;
 var planetDist;
 
@@ -142,8 +149,6 @@ var isHoldingShoot = false;
 
 var projectiles = [];
 var otherProjectiles = [];
-
-var healthBarColor = "#36a52c";
 
 var currentPlanet;
 var closestAvailablePlanet;
@@ -246,6 +251,9 @@ var newsDisplayed = true;
 var POSITION_SEND_DELAY = 6;
 var positionSendTime = 0;
 
+var planetShopSelection = null;
+var selectedStructure = null;
+
 var checklist = {
     fly:{
         isActive: true
@@ -270,10 +278,8 @@ var checklist = {
 checklistFadeTime = 20;
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
-    socket = io.connect('http://space-base.io/');
-    //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
-    //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
+    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://space-base.io/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -1353,20 +1359,25 @@ function Shield(planet, radius, level, id){
     this.type = "shield";
     this.level = level;
 
-    this.draw = function(){
-        c.beginPath();
-        c.globalAlpha = 0.3;
-        c.lineWidth = 10;
-        c.arc(this.x, this.y, this.radius + c.lineWidth / 2, 0, Math.PI * 2, false);
-        c.strokeStyle = "blue";
-        c.stroke();
+    this.draw = function(context){
 
-        c.globalAlpha = 0.1;
-        c.beginPath();
-        c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-        c.fillStyle = this.color;
-        c.fill();
-        c.globalAlpha = 1;
+        var ctx = c;
+        if(context != null)
+            ctx = context;    
+
+        ctx.beginPath();
+        ctx.globalAlpha = 0.3;
+        ctx.lineWidth = 10;
+        ctx.arc(this.x, this.y, this.radius + c.lineWidth / 2, 0, Math.PI * 2, false);
+        ctx.strokeStyle = "blue";
+        ctx.stroke();
+
+        ctx.globalAlpha = 0.1;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.globalAlpha = 1;
 
         healthBarWidth = 300;
 
@@ -1401,19 +1412,24 @@ function LandingPad(planet, radius, id){
     this.type = "landingPad";
     this.level = 0;
 
-    this.draw = function(){
-        c.beginPath();
-        c.lineWidth = 10;
-        c.arc(this.x, this.y, this.radius + c.lineWidth / 2, 0, Math.PI * 2, false);
-        c.strokeStyle = "gray";
-        c.stroke();
+    this.draw = function(context){
 
-        c.lineWidth = 1;
+        var ctx = c;
+        if(context != null)
+            ctx = context;    
 
-        c.beginPath();
-        c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-        c.fillStyle = "darkGray";
-        c.fill();
+        ctx.beginPath();
+        ctx.lineWidth = 10;
+        ctx.arc(this.x, this.y, this.radius + c.lineWidth / 2, 0, Math.PI * 2, false);
+        ctx.strokeStyle = "gray";
+        ctx.stroke();
+
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+        ctx.fillStyle = "darkGray";
+        ctx.fill();
     }
     this.update = function(){
         
@@ -1439,12 +1455,17 @@ function Mine(planet, x, y, rotation, level, ownerId, id){
 
     this.level = level;
 
-    this.draw = function(){
-        c.save();
-        c.translate(this.x, this.y);
-        c.rotate((this.rotation - 90) / -57.2958);
-        c.drawImage(getImage('mine' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
-        c.restore();
+    this.draw = function(context){
+
+        var ctx = c;
+        if(context != null)
+            ctx = context;    
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((this.rotation - 90) / -57.2958);
+        ctx.drawImage(getImage('mine' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.restore();
     }
     this.update = function(){ 
         
@@ -1464,7 +1485,7 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
     this.y;
     this.rotation = rotation;
     this.headRotation = 0;
-    this.baseSize = 50;
+    this.size = 50;
     this.headLength = 40;
     this.headWidth = 10;
     this.type = "turret";
@@ -1490,13 +1511,19 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
 
     this.shootPoint = new Vector();
 
-    this.draw = function(){
+    this.draw = function(context){
+
+        var ctx = c;
+
+        if(context != null)
+            ctx = context;
+
         //Draw Base
-        c.save();
-        c.translate(this.x, this.y);
-        c.rotate((this.rotation - 90) / -57.2958);
-        c.drawImage(getImage(this.type + this.level), -this.baseSize / 2, -this.baseSize / 2, this.baseSize, this.baseSize);
-        c.restore();
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((this.rotation - 90) / -57.2958);
+        ctx.drawImage(getImage(this.type + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.restore();
 
         var l = this.x - this.planet.x;
         var h = this.y - this.planet.y;
@@ -1528,12 +1555,12 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
             this.headRotation = this.shootRotation * 180 / Math.PI;
         }
 
-        c.save();
-        c.translate(headX, headY);
-        c.rotate(this.shootRotation);
-        c.fillStyle = planetColors[1];
-        c.fillRect(-this.headLength / 2 + this.headLength / 4, -this.headWidth / 2, this.headLength, this.headWidth);
-        c.restore();
+        ctx.save();
+        ctx.translate(headX, headY);
+        ctx.rotate(this.shootRotation);
+        ctx.fillStyle = planetColors[1];
+        ctx.fillRect(-this.headLength / 2 + this.headLength / 4, -this.headWidth / 2, this.headLength, this.headWidth);
+        ctx.restore();
     }
     this.update = function(){
 
@@ -1892,7 +1919,7 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
 
         if(this.turret){
             var pos = screenPosToCords(centerX, centerY);
-            this.turret.baseSize = this.radius / 2;
+            this.turret.size = this.radius / 2;
             this.turret.headWidth =  this.radius / 6;
             this.turret.headLength =  this.radius / 2;
 
@@ -1956,18 +1983,6 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
 
         var testpos = cordsToScreenPos(this.lastCoordX, this.lastCoordY);
         var testpostarget = cordsToScreenPos(this.coordX, this.coordY);
-
-        // c.strokeStyle = "red";
-        // c.lineWidth = 1;
-        // c.beginPath();
-        // c.arc(testpostarget.x, testpostarget.y, this.radius, 0, Math.PI * 2, false);
-        // c.stroke();
-
-        // c.strokeStyle = "blue";
-        // c.lineWidth = 1;
-        // c.beginPath();
-        // c.arc(testpos.x, testpos.y, this.radius, 0, Math.PI * 2, false);
-        // c.stroke();
 
         c.globalAlpha = this.alpha;
         c.translate(this.x, this.y);
@@ -2054,7 +2069,7 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
         }
 
         if(this.turret){
-            this.turret.baseSize = this.radius / 2;
+            this.turret.size = this.radius / 2;
             this.turret.headWidth =  this.radius / 6;
             this.turret.headLength =  this.radius / 2;
 
@@ -2166,6 +2181,7 @@ function animate() {
 
     requestAnimationFrameId = requestAnimationFrame(animate);
     c.clearRect(0, 0, innerWidth, innerHeight);
+    cc.clearRect(0, 0, innerWidth, innerHeight);
 
     if(scale != targetScale) {
 
@@ -2270,7 +2286,7 @@ function animate() {
 
         worldObjects.asteroids.forEach(function(spaceMatter){
 
-            if(spaceMatter.type == "blackHole")
+            if(spaceMatter.type == "blackHole" && !currentPlanet)
             {
                 var pos = cordsToScreenPos(spaceMatter.coordX, spaceMatter.coordY);
 
@@ -2298,19 +2314,10 @@ function animate() {
                         spaceshipVelocity.y = y * holeScaleFactor;
                     }
                     
-                    
                     if(holeDist < 10)
                     {
                         caughtInBlackHole = true;
                     }
-
-                    // c.beginPath();
-                    // c.strokeStyle = "white";
-                    // c.moveTo(windowWidth / 2, windowHeight / 2);
-                    // var tox = centerX * scale + x * holeScaleFactor * 100;
-                    // var toy = centerY * scale + y * holeScaleFactor * 100;
-                    // c.lineTo(tox, toy);
-                    // c.stroke();
                 }   
             }
                 
@@ -2373,7 +2380,8 @@ function animate() {
 
     //Draw -----------------------------------------------------------------------------------------------------------
     c.scale(scale, scale);
-
+    cc.scale(scale, scale);
+    
     drawGrid(gridPos.x + centerX, gridPos.y +  centerY, gridSize, gridSize, gridBoxScale);
     
     var allMatter = allWorldObjects.concat(otherPlayers);
@@ -2630,7 +2638,7 @@ function animate() {
     if(spaceShip){
 
         if(currentPlanet){
-            c.font = windowHeight / 15 + "px Arial";
+            c.font = windowHeight / 17 + "px Arial";
             c.fillStyle = "white";
             c.globalAlpha = .2;
             c.textAlign="center"; 
@@ -2649,7 +2657,7 @@ function animate() {
 
             if(!shopInRange)
             {
-                c.font =  windowHeight / 15 + "px Arial";
+                c.font =  windowHeight / 17 + "px Arial";
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
@@ -2833,7 +2841,7 @@ function animate() {
             var xPadding = 10;
             var yPadding = 10;
 
-            displayBar(xPadding, yPadding, 200, 50, spaceShip.health / spaceShip.maxHealth, healthBarColor);
+            displayBar(xPadding, yPadding, 200, 50, spaceShip.health / spaceShip.maxHealth, "#36a52c");
             c.fillStyle = "white";
             displayResources();
             c.font = " 30px Helvetica";
@@ -2863,85 +2871,155 @@ function animate() {
             c.textAlign = "left";
         }
 
-        if(currentPlanet){
-            //Draw the structures aviable for placement on a planet w/ their costs
-            var imageSizes = canvas.height / 12;
-            var padding = canvas.height / 25;
 
-            var yValue = canvas.height / 2.3;
-            var xValue = padding;
-
-            c.globalAlpha = .8;
-            c.fillStyle = "white";
-            c.font = windowHeight / 40 + "px Helvetica";
-            c.fillText("Structures", xValue - padding / 2, yValue + padding);
-
-            c.globalAlpha = .2;
-            c.fillRect(xValue - padding / 2, yValue + padding * 1.2, imageSizes + padding, (imageSizes + padding) * 4);
-            c.globalAlpha = .85;
-
-            c.drawImage(getImage('turret0'), xValue, padding + yValue, imageSizes, imageSizes); 
-            c.drawImage(getImage('mine0'), xValue, padding * 2 + imageSizes + yValue, imageSizes, imageSizes);
-            c.drawImage(getImage('shield0'), xValue, padding * 3 + imageSizes * 2 + yValue, imageSizes, imageSizes);     
-            c.drawImage(getImage('landingPad0'), xValue, padding * 4 + imageSizes * 3 + yValue, imageSizes, imageSizes);  
-    
-            //Display HotKeys
-            var keyX = xValue + imageSizes / 2;
-
-            var shadowX = 4;
-            var shadowY = 4;
-
-            c.fillStyle = "black";
-            c.globalAlpha = .5;
-            c.textAlign = "center"; 
-            c.font = windowHeight / 20 + "px Helvetica";
-
-            c.fillText("T", keyX + shadowX, padding + imageSizes * .85 + yValue + shadowY);
-            c.fillText("M", keyX + shadowX, padding * 2 + imageSizes * 1.75 + yValue + shadowY);
-            c.fillText("S", keyX + shadowX, padding * 3 + imageSizes * 2.75 + yValue + shadowY);
-            c.fillText("L", keyX + shadowX, padding * 4 + imageSizes * 3.75 + yValue + shadowY);
-            
-            c.globalAlpha = .85;
-            c.fillStyle = "white";
-            c.fillText("T", keyX, padding + imageSizes * .85 + yValue);
-            c.fillText("M", keyX, padding * 2 + imageSizes * 1.75 + yValue);
-            c.fillText("S", keyX, padding * 3 + imageSizes * 2.75 + yValue);
-            c.fillText("L", keyX, padding * 4 + imageSizes * 3.75 + yValue);
-
-            c.textAlign = "left"; 
-
-            //Display Costs
-            var structureCosts = [structureUpgrades["turret"][0].costs, structureUpgrades["mine"][0].costs, structureUpgrades["shield"][0].costs, structureUpgrades["landingPad"][0].costs];
-
-            var costSize = canvas.height / 45;
-            var costPadding = canvas.height / 75;
-            var costY = padding + imageSizes + costPadding;
-
-            structureCosts.forEach(costs => {
-                
-                var costX = 5;
-
-                for (var cost in costs) {
-                    if (costs.hasOwnProperty(cost)) {
-
-                        var color = "white";
-                        if(!playerItems[cost] || playerItems[cost] < costs[cost])
-                            color = "#ff9696";
-
-                        c.drawImage(getImage(cost), xValue + costX, costY + yValue, costSize, costSize);
-                        c.font = windowHeight / 50 + "px Helvetica";
-                        c.fillStyle = color;
-                        c.fillText(costs[cost], xValue + costX + costSize * 1.2, costY + costSize / 1.3 + yValue);
         
-                        costX += costSize + costPadding * 3;
-                    }
-                }
-                
-                costY += padding + imageSizes;
+        if(currentPlanet){
             
+            var hoveredStructure = null;
+
+            //Highlight Seleted Structures
+            ownedPlanets.forEach(planet => { 
+                planet.structures.forEach(structure => {
+                    
+                    var distance = Math.sqrt(Math.pow(mouse.x - structure.x, 2) + Math.pow(mouse.y - structure.y, 2));
+                    
+                    if(distance < structure.size / 2)
+                        hoveredStructure = structure;
+                });
             });
 
+            var selectedNew = false;
+
+            if(hoveredStructure && hoveredStructure != selectedStructure)
+            {   
+                if(mouse.clicked)
+                {
+                    selectedStructure = hoveredStructure;
+                    planetShopSelection = selectedStructure.type + selectedStructure.level.toString();
+                    cc.fillStyle = "#5beeff";
+
+                    selectedNew = true;
+                }
+
+                cc.fillStyle = "#ffffff";
+                
+                cc.globalAlpha = .5;
+
+                cc.save();
+                cc.translate(hoveredStructure.x, hoveredStructure.y);
+                cc.rotate((hoveredStructure.rotation - 90) / -57.2958);
+                cc.fillRect(-hoveredStructure.size / 2, -hoveredStructure.size / 2, hoveredStructure.size, hoveredStructure.size);
+                cc.restore();
+
+                ctx.globalCompositeOperation="source-in";
+                cc.globalAlpha = 1;
+                hoveredStructure.draw(cc);
+            }
+            if(selectedStructure && !selectedNew){
+                
+                cc.fillStyle = "#5beeff";
+                cc.globalAlpha = .5;
+
+                cc.save();
+                cc.translate(selectedStructure.x, selectedStructure.y);
+                cc.rotate((selectedStructure.rotation - 90) / -57.2958);
+                cc.fillRect(-selectedStructure.size / 2, -selectedStructure.size / 2, selectedStructure.size, selectedStructure.size);
+                cc.restore();
+
+                cc.globalAlpha = 1;
+                selectedStructure.draw(cc);
+            }
+
+            //Draw planet structure shop ------------------------------------------------------------
+            var numYButtons = 4;
+            var numXButtons = 2;
+
+            var buttonSizes = Math.sqrt(canvas.height * canvas.width) / 18;
+            var padding = Math.sqrt(canvas.height * canvas.width) / 100;
+
+            var selectedStructrueImageSize = Math.sqrt(canvas.height * canvas.width) / 8;
+
+            var yVal = canvas.height - (buttonSizes + padding) * numYButtons - padding * 2;
+            var xVal = padding;
+
+            //Box Label -----------------------------
+
+            var backgroundWidth = (buttonSizes + padding) * numXButtons + padding;
+            var backgroundHeight = (buttonSizes + padding) * numYButtons + padding;
+
             c.globalAlpha = 1;
+            c.fillStyle = "white";
+            c.font = windowHeight / 40 + "px Helvetica";
+            c.textAlign = "center";
+            c.fillText("Structures", backgroundWidth / 2 + padding, yVal - padding);
+
+            c.globalAlpha = .2;
+            c.fillRect(xVal, yVal, backgroundWidth, backgroundHeight);
+
+            //Draw Buttons ------------------------------
+            c.globalAlpha = 1;
+
+            var buttonY = yVal;
+            var buttonX = xVal;
+            for (let ix = 0; ix < numXButtons; ix++) {
+
+                for (let iy = 0; iy < numYButtons; iy++) {
+                    c.fillRect(buttonX + padding, buttonY + padding, buttonSizes, buttonSizes);
+                    buttonY += buttonSizes + padding;
+                }
+
+                buttonX += buttonSizes + padding;
+                buttonY = yVal;
+            }
+
+            //Draw Selected Structure Panel -------------            
+            c.globalAlpha = 1;
+
+            if(planetShopSelection != null)
+            {
+                var pannelWidth = selectedStructrueImageSize + padding * 2;
+                var pannelHeight = backgroundHeight;
+
+                var panelX = xVal + backgroundWidth
+                var panelY = canvas.height - pannelHeight - padding;
+
+                //Background
+                c.globalAlpha = .2;
+                c.fillRect(panelX, panelY, pannelWidth, pannelHeight);
+
+                //Division Line
+                c.globalAlpha = .5;
+                c.fillRect(panelX - 2, panelY + 10, 4, pannelHeight - 20);
+
+                //Image
+                c.globalAlpha = 1;
+                c.drawImage(getImage(planetShopSelection), panelX + pannelWidth / 2 - selectedStructrueImageSize / 2, panelY + padding, selectedStructrueImageSize, selectedStructrueImageSize);
+                //c.fillRect(panelX + pannelWidth / 2 - selectedStructrueImageSize / 2, panelY + padding, selectedStructrueImageSize, selectedStructrueImageSize);
+
+                //Buy / Upgrade button
+                var shopButtonWidth = pannelWidth * 2 / 3;
+                var shopButtonHeight = pannelHeight / 10;
+
+                var shopButtonX = panelX + (panelX - shopButtonWidth) / 2;
+                var shopButtonY = panelY + padding * 2 + selectedStructrueImageSize;
+
+                c.fillRect(shopButtonX, shopButtonY, shopButtonWidth, shopButtonHeight);
+                
+                var label = "Buy";
+                
+                if(planetShopSelection)
+                    label = "Upgrade"
+
+                c.globalAlpha = .8;
+                c.fillStyle = "Black";
+                c.font = "bold " + pannelWidth / 10 + "px Helvetica";
+                c.textAlign = "center";
+                c.fillText(label, shopButtonX + shopButtonWidth / 2, shopButtonY + shopButtonHeight - padding);
+
+            }
+
+            c.textAlign = "left";
+
         }
         
         var miniMapSize = windowHeight / 8;
@@ -3056,6 +3134,8 @@ function animate() {
 
         }
     }
+
+    cc.scale( 1 / scale, 1 / scale);
 
 }
 

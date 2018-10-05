@@ -282,7 +282,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {}; //{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
+    this.drops = {gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
 
     this.shipTurret;
 
@@ -879,10 +879,22 @@ function newConnetcion(socket){
     //var playerPosition = {x: getRndInteger(-spawnSize, spawnSize), y: getRndInteger(-spawnSize, spawnSize)};
     var playerPosition = playerSpawnPoint(-spawnSize, spawnSize, -spawnSize, spawnSize, worldId);
     
-    playerObject = {id: socket.id, worldId: worldId, x: playerPosition.x , y: playerPosition.y};
+    playerObject = {id: socket.id, worldId: worldId, x: playerPosition.x, y: playerPosition.y};
+
+    var playerData = newPlayerData(worldId, playerObject.x, playerObject.y);
+    
+    if(!playerData)
+    {
+        worldId = addWorld();
+        playerObject.worldId = worldId;
+        playerData = newPlayerData(worldId, playerObject.x, playerObject.y);
+    }
+
+    playerObject.planet = playerData.planet;
 
     socket.join(worldId);
-    socket.emit("setupLocalWorld", newPlayerData(worldId, playerObject.x, playerObject.y));
+        
+    socket.emit("setupLocalWorld", playerData);
     syncDamage(worldId);
     socket.emit("showWorld");
 
@@ -2332,10 +2344,21 @@ function allStructures(worldId){
 
 function newPlayerData(id, x, y) {
 
+    var playerPlanet = false;
+
+    worldsData[id].worldObjects.planets.forEach(planet => {
+        if(planet.occupiedBy == null && planet.owner == null)
+            playerPlanet = planet;
+    });
+
+    if(!playerPlanet)
+        return false;
+
     var data = {
         existingPlayers: worldsData[id].clients,
         worldObjects: worldsData[id].worldObjects,
         gridSize: gridSize,
+        planet: playerPlanet.id,
         gridBoxScale: gridBoxScale,
         worldId: id,
         x: x,

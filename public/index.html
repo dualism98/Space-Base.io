@@ -55,7 +55,11 @@
     
     <body>
         <div id="content">
-            <canvas>
+            
+            <canvas id="mainCanvas" style="position: absolute; left: 0; top: 0; z-index: -2;">
+            </canvas>
+
+            <canvas id="compositeCanvas" style="position: absolute; left: 0; top: 0; z-index: -1;">
             </canvas>
 
             <div id="preGameContent">
