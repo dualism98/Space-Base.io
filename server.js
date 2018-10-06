@@ -569,6 +569,28 @@ var structureUpgrades = {
         identifier: "landingPad"
     }
     ],
+    electricity: [
+        {
+            costs: {iron: 20},
+            identifier: "electricity",
+            power: 25
+        },
+        {
+            costs: {iron: 20},
+            identifier: "electricity",
+            power: 50
+        },
+        {
+            costs: {iron: 20},
+            identifier: "electricity",
+            power: 100
+        },
+        {
+            costs: {iron: 20},
+            identifier: "electricity",
+            power: 200
+        }
+    ],
     turret: [
         {
             costs: {iron: 20},
