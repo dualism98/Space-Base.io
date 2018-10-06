@@ -1170,7 +1170,7 @@ function newConnetcion(socket){
 
         if(planet.hasMaxStructure(data.type, maxPlanetObjects[data.type]))
         {
-            io.sockets.connected[data.ownerId].emit("returnMsg", "Planet aready has max " + data.type + 's');
+            io.sockets.connected[data.ownerId].emit("returnMsg", "Planet already has max " + data.type + 's');
             return;
         }
 

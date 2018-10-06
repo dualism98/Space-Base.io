@@ -283,6 +283,10 @@ var positionSendTime = 0;
 var planetShopSelection = null;
 var selectedStructure = null;
 var lastSelectedStructue = null;;
+var boughtStructure = null;
+
+var structureSpawnPosition = null;
+var structureSpawnRotation = null;
 
 var checklist = {
     fly:{
@@ -729,7 +733,7 @@ function receiveUpgradeInfo(data){
     shopUpgrades = data.shopUpgrades;
 }
 function returnMsg(data){
-    displayMessage(data, 10, 5);
+    displayMessage(data, 35, 5);
 }
 function upgradeSync(data){
 
@@ -981,11 +985,15 @@ window.addEventListener('resize',
     windowWidth =  $(window).width();
     windowHeight =  $(window).height();
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    for (var can in canvases) {
+        if (canvases.hasOwnProperty(can)) {
+            canvases[can].width = window.innerWidth;
+            canvases[can].height = window.innerHeight;
+        }
+    }
 
-    centerX = (canvas.width / 2 / scale);
-    centerY = (canvas.height / 2 / scale);
+    centerX = (window.innerWidth / 2 / scale);
+    centerY = (window.innerHeight / 2 / scale);
 });
 
 $('#playerNameInput').on('keypress', function (e) {
@@ -1076,6 +1084,9 @@ $(document).keyup(function(e){
 
 $(document).keypress(function(e){
 
+    if(boughtStructure != null)
+        return;
+
     if(currentPlanet && spaceShip){
         if(e.keyCode == 104) // H
         {
@@ -1085,15 +1096,24 @@ $(document).keypress(function(e){
                 socket.emit("heal", {id: clientId, worldId: worldId});
         }
 
-        if(e.keyCode == 108) // L
-            requestStructureSpawn(currentPlanet, currentPlanet.x, currentPlanet.y, 0, "landingPad", false, clientId);
-        if(e.keyCode == 115) // S
-            requestStructureSpawn(currentPlanet, currentPlanet.x, currentPlanet.y, 0, "shield", false, clientId);
-        if(e.keyCode == 109) // M
-            requestStructureSpawn(currentPlanet, structureSpawnPosition.x, structureSpawnPosition.y, structureSpawnRotation, "mine", false, clientId);
-        if(e.keyCode == 116) // T
-            requestStructureSpawn(currentPlanet, structureSpawnPosition.x, structureSpawnPosition.y, structureSpawnRotation, "turret", false, clientId);
+        if(e.keyCode == 108 || e.keyCode == 115 || e.keyCode == 109 || e.keyCode == 116)
+        {
+            if(structureSpawnPoint(50 * scale))
+            {
+                if(e.keyCode == 108) // L
+                    requestStructureSpawn("landingPad");
+                if(e.keyCode == 115) // S
+                    requestStructureSpawn("shield");
+                if(e.keyCode == 109) // M
+                    requestStructureSpawn("mine");
+                if(e.keyCode == 116) // T
+                    requestStructureSpawn("turret");
+    
+            }
+        }
+        
 
+        
         if(e.keyCode == 32){ //SPACE
             socket.emit('planetOccupancy', {planetId: currentPlanet.id, playerId: null, worldId: worldId})
 
@@ -1258,14 +1278,20 @@ $(document).on('keyup', function(e){
     }
 });
 
-function requestStructureSpawn(planet, x, y, rotation, type, isFacade, ownerId){
-    var globalPos = screenPosToCords(x, y);
+function requestStructureSpawn(type){
+
+    var globalPos;
+
+    if(structureSpawnPosition != null)
+        globalPos = screenPosToCords(structureSpawnPosition.x, structureSpawnPosition.y);
+    else
+        globalPos = screenPosToCords(-1908129038, 102839);
 
     var spawnData = {
         planetId: currentPlanet.id,
         x: globalPos.x, 
         y: globalPos.y,
-        rotation: rotation,
+        rotation: structureSpawnRotation,
         type: type,
         ownerId: clientId,
         isFacade: false,
@@ -1322,11 +1348,11 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         if(this.health != this.maxHealth)
         displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, healthBarWidth, 20, this.health / this.maxHealth, "green");
 
-        if(currentPlanet == this){
-            var rad = Math.atan2(mouse.y - this.y, mouse.x - this.x) * -57.2958;
-            structureSpawnRotation = rad;
-            drawPointAroundCircle(this.x, this.y, radius + 20, rad, 1);
-        }
+        // if(currentPlanet == this){
+        //     var rad = Math.atan2(mouse.y - this.y, mouse.x - this.x) * -57.2958;
+        //     structureSpawnRotation = rad;
+        //     drawPointAroundCircle(this.x, this.y, radius + 20, rad, 1);
+        // }
     }
 
     this.updateStructures = function(){
@@ -2209,9 +2235,6 @@ var isScaling = true;
 
 
 function animate() {
-
-    console.log(mouse.clickDown)
-
     canvas.width = innerWidth;
     canvas.height = innerHeight;
 
@@ -2685,13 +2708,26 @@ function animate() {
     if(spaceShip){
 
         if(currentPlanet){
-            c.font = windowHeight / 17 + "px Arial";
-            c.fillStyle = "white";
-            c.globalAlpha = .2;
-            c.textAlign="center"; 
-            c.fillText($('input#takeOff').val(), windowWidth / 2, (windowHeight - 80));
-            c.textAlign="left"; 
-            c.globalAlpha = 1;
+            if(boughtStructure)
+            {
+                c.font = windowHeight / 17 + "px Arial";
+                c.fillStyle = "white";
+                c.globalAlpha = .2;
+                c.textAlign="center"; 
+                c.fillText($('input#placeStructue').val() + boughtStructure, windowWidth / 2, (windowHeight - 80));
+                c.textAlign="left"; 
+                c.globalAlpha = 1;
+            }
+            else{
+                c.font = windowHeight / 17 + "px Arial";
+                c.fillStyle = "white";
+                c.globalAlpha = .2;
+                c.textAlign="center"; 
+                c.fillText($('input#takeOff').val(), windowWidth / 2, (windowHeight - 80));
+                c.textAlign="left"; 
+                c.globalAlpha = 1;
+            }
+           
         }
         else if(!currentPlanet && closestAvailablePlanet){
 
@@ -2918,324 +2954,362 @@ function animate() {
             c.textAlign = "left";
         }
         
+
+        //Planet Structure Placement -----------------------------------------------
         if(currentPlanet){
-            
-            var hoveredStructure = null;
 
-            //Highlight Seleted Structures ----------------------------------------------------
-
-            ownedPlanets.forEach(planet => { 
-                planet.structures.forEach(structure => {
-                    
-                    var distance = Math.sqrt(Math.pow(mouse.x - structure.x, 2) + Math.pow(mouse.y - structure.y, 2));
-                    
-                    if(distance < structure.size / 2)
-                        hoveredStructure = structure;
-                });
-            });
-
-            var selectedNew = false;
-
-            var slCtx = FindCanvas("selectedObj", "destination-atop", true);            //Selected structure canvas context
-            var hlCtx = FindCanvas("highlightedObjCanvas", "destination-atop", true);   //Highlighted structure canvas context
-
-            if(hoveredStructure)
-            {   
-                if(hoveredStructure != selectedStructure)
-                {
-
+            if(boughtStructure != null)
+            {
+                if(structureSpawnPoint(50 * scale, boughtStructure + "0")){
                     if(mouse.clickDown)
                     {
-                        selectedStructure = hoveredStructure;
-                        planetShopSelection = selectedStructure;
-                        hlCtx.fillStyle = "#5beeff";
-    
-                        selectedNew = true;
+                        requestStructureSpawn(boughtStructure);
+                        boughtStructure = null;
+
+                        structureSpawnPosition = null;
+                        structureSpawnRotation = null;
                     }
-    
-                    hlCtx.fillStyle = "#ffffff";
-                    
-                    hlCtx.globalAlpha = .5;
-    
-                    hlCtx.save();
-                    hlCtx.translate(hoveredStructure.x, hoveredStructure.y);
-                    hlCtx.rotate((hoveredStructure.rotation - 90) / -57.2958);
-                    hlCtx.fillRect(-hoveredStructure.size / 2, -hoveredStructure.size / 2, hoveredStructure.size, hoveredStructure.size);
-                    hlCtx.restore();
-    
-                    hlCtx.globalAlpha = 1;
-                    hoveredStructure.draw(hlCtx);
-                }
-                else if(mouse.clickDown)
-                {
-                    selectedStructure = null;
-                    planetShopSelection = null;
                 }
             }
-            else{
-                lastSelectedStructue = null;
-            }
-            if(selectedStructure && !selectedNew){
-                
-                slCtx.fillStyle = "#5beeff";
-                slCtx.globalAlpha = .5;
-
-                slCtx.save();
-                slCtx.translate(selectedStructure.x, selectedStructure.y);
-                slCtx.rotate((selectedStructure.rotation - 90) / -57.2958);
-                slCtx.fillRect(-selectedStructure.size / 2, -selectedStructure.size / 2, selectedStructure.size, selectedStructure.size);
-                slCtx.restore();
-
-                slCtx.globalAlpha = 1;
-                selectedStructure.draw(slCtx);
-            }
-
-            //Draw planet structure shop ------------------------------------------------------------
-            var numYButtons = 4;
-            var numXButtons = 2;
-
-            var buttonSizes = Math.sqrt(canvas.height * canvas.width) / 18;
-            var padding = Math.sqrt(canvas.height * canvas.width) / 100;
-
-            var selectedStructureImageSize = Math.sqrt(canvas.height * canvas.width) / 9;
-
-            var yVal = canvas.height - (buttonSizes + padding) * numYButtons - padding * 2;
-            var xVal = padding;
-
-            //Box Label -----------------------------
-            var backgroundWidth = (buttonSizes + padding) * numXButtons + padding;
-            var backgroundHeight = (buttonSizes + padding) * numYButtons + padding;
-
-            var cornerRadius = Math.sqrt(canvas.height * canvas.width) / 70;
-            var fontsize = Math.sqrt(canvas.height * canvas.width) / 45;
-            
-            var yTextSize = fontsize - padding / Math.sqrt(canvas.height * canvas.width);
-
-            c.globalAlpha = .2;
-            c.beginPath();
-            c.moveTo(xVal + padding, yVal);
-            c.lineTo(xVal + padding, yVal - yTextSize + cornerRadius);
-            c.arc(xVal + padding + cornerRadius, yVal - yTextSize, cornerRadius, -180 * Math.PI / 180, -90 * Math.PI / 180);
-            c.lineTo(xVal + backgroundWidth - padding - cornerRadius, yVal - yTextSize - cornerRadius);
-            c.arc(xVal + backgroundWidth - padding - cornerRadius, yVal - yTextSize, cornerRadius, -90 * Math.PI / 180, 0);
-            c.lineTo(xVal + backgroundWidth - padding, yVal);
-            c.fill();
-
-            c.globalAlpha = 1;
-            c.fillStyle = "white";
-            c.font = fontsize + "px Helvetica";
-            c.textAlign = "center";
-            c.fillText("Structures", backgroundWidth / 2 + padding, yVal - padding);
-
-            c.globalAlpha = .2;
-            c.fillRect(xVal, yVal, backgroundWidth, backgroundHeight);
-
-            //Draw Buttons ------------------------------
-            c.globalAlpha = 1;
-
-            var buttonY = yVal;
-            var buttonX = xVal;
-
-            var mouseX = mouse.x * scale;
-            var mouseY = mouse.y * scale;
-
-            var buttonTypes = ["mine", "turret", "shield"];
-            var typeI = 0;
-
-            for (let ix = 0; ix < numXButtons; ix++) {
-
-                for (let iy = 0; iy < numYButtons; iy++) {
-
-                    if (mouseY > buttonY + padding && mouseY < buttonY + padding + buttonSizes && mouseX > buttonX + padding && mouseX < buttonX + padding + buttonSizes) {
-
-                        if(mouse.clicked)
-                        {
-                            if(mouse.clickDown)
-                            {
-                                planetShopSelection = buttonTypes[typeI];
-                            }
-
-                            c.fillStyle = "#a3a3a3";
-                        }
-                        else
-                            c.fillStyle = "#cccccc";
-                    }
-                    else
-                    c.fillStyle = "#ffffff";
-
-                    c.fillRect(buttonX + padding, buttonY + padding, buttonSizes, buttonSizes);
-                    buttonY += buttonSizes + padding;
-                    typeI++;
-                }
-
-                buttonX += buttonSizes + padding;
-                buttonY = yVal;
-            }
-
-            //Draw Selected Structure Panel -------------            
-            c.globalAlpha = 1;
-
-            if(planetShopSelection != null)
+            else
             {
+                var hoveredStructure = null;
 
-                var type = planetShopSelection;
-                var level = 0;
-    
-                if(typeof planetShopSelection == "object")
-                {
-                    type = planetShopSelection.type;
-                    level = planetShopSelection.level;
+                //Highlight Seleted Structures ----------------------------------------------------
+
+                ownedPlanets.forEach(planet => { 
+                    planet.structures.forEach(structure => {
+                        
+                        var distance = Math.sqrt(Math.pow(mouse.x - structure.x, 2) + Math.pow(mouse.y - structure.y, 2));
+                        
+                        if(distance < structure.size / 2)
+                            hoveredStructure = structure;
+                    });
+                });
+
+                var selectedNew = false;
+
+                var slCtx = FindCanvas("selectedObj", "destination-atop", true);            //Selected structure canvas context
+                var hlCtx = FindCanvas("highlightedObjCanvas", "destination-atop", true);   //Highlighted structure canvas context
+
+                if(hoveredStructure)
+                {   
+                    if(hoveredStructure != selectedStructure)
+                    {
+
+                        if(mouse.clickDown)
+                        {
+                            selectedStructure = hoveredStructure;
+                            planetShopSelection = selectedStructure;
+                            hlCtx.fillStyle = "#5beeff";
+        
+                            selectedNew = true;
+                        }
+        
+                        hlCtx.fillStyle = "#ffffff";
+                        
+                        hlCtx.globalAlpha = .5;
+        
+                        hlCtx.save();
+                        hlCtx.translate(hoveredStructure.x, hoveredStructure.y);
+                        hlCtx.rotate((hoveredStructure.rotation - 90) / -57.2958);
+                        hlCtx.fillRect(-hoveredStructure.size / 2, -hoveredStructure.size / 2, hoveredStructure.size, hoveredStructure.size);
+                        hlCtx.restore();
+        
+                        hlCtx.globalAlpha = 1;
+                        hoveredStructure.draw(hlCtx);
+                    }
+                    else if(mouse.clickDown)
+                    {
+                        selectedStructure = null;
+                        planetShopSelection = null;
+                    }
+                }
+                else{
+                    lastSelectedStructue = null;
+                }
+                if(selectedStructure && !selectedNew){
+                    
+                    slCtx.fillStyle = "#5beeff";
+                    slCtx.globalAlpha = .5;
+
+                    slCtx.save();
+                    slCtx.translate(selectedStructure.x, selectedStructure.y);
+                    slCtx.rotate((selectedStructure.rotation - 90) / -57.2958);
+                    slCtx.fillRect(-selectedStructure.size / 2, -selectedStructure.size / 2, selectedStructure.size, selectedStructure.size);
+                    slCtx.restore();
+
+                    slCtx.globalAlpha = 1;
+                    selectedStructure.draw(slCtx);
                 }
 
-                var upgrades = structureUpgrades[type];
+                //Draw planet structure shop ------------------------------------------------------------
+                var numYButtons = 4;
+                var numXButtons = 2;
 
-                var pannelWidth = selectedStructureImageSize * 8/7 + padding * 2;
-                var pannelHeight = backgroundHeight;
+                var buttonSizes = Math.sqrt(canvas.height * canvas.width) / 18;
+                var padding = Math.sqrt(canvas.height * canvas.width) / 100;
 
-                var panelX = xVal + backgroundWidth
-                var panelY = canvas.height - pannelHeight - padding;
+                var selectedStructureImageSize = Math.sqrt(canvas.height * canvas.width) / 9;
 
+                var yVal = canvas.height - (buttonSizes + padding) * numYButtons - padding * 2;
+                var xVal = padding;
 
-                //Header
-                var headerX = panelX;
+                //Box Label -----------------------------
+                var backgroundWidth = (buttonSizes + padding) * numXButtons + padding;
+                var backgroundHeight = (buttonSizes + padding) * numYButtons + padding;
+
+                var cornerRadius = Math.sqrt(canvas.height * canvas.width) / 70;
+                var fontsize = Math.sqrt(canvas.height * canvas.width) / 45;
+                
+                var yTextSize = fontsize - padding / Math.sqrt(canvas.height * canvas.width);
 
                 c.globalAlpha = .2;
                 c.beginPath();
-                c.moveTo(headerX + padding, yVal);
-                c.lineTo(headerX + padding, yVal - yTextSize + cornerRadius);
-                c.arc(headerX + padding + cornerRadius, yVal - yTextSize, cornerRadius, -180 * Math.PI / 180, -90 * Math.PI / 180);
-                c.lineTo(headerX + pannelWidth - padding - cornerRadius, yVal - yTextSize - cornerRadius);
-                c.arc(headerX + pannelWidth - padding - cornerRadius, yVal - yTextSize, cornerRadius, -90 * Math.PI / 180, 0);
-                c.lineTo(headerX + pannelWidth - padding, yVal);
+                c.moveTo(xVal + padding, yVal);
+                c.lineTo(xVal + padding, yVal - yTextSize + cornerRadius);
+                c.arc(xVal + padding + cornerRadius, yVal - yTextSize, cornerRadius, -180 * Math.PI / 180, -90 * Math.PI / 180);
+                c.lineTo(xVal + backgroundWidth - padding - cornerRadius, yVal - yTextSize - cornerRadius);
+                c.arc(xVal + backgroundWidth - padding - cornerRadius, yVal - yTextSize, cornerRadius, -90 * Math.PI / 180, 0);
+                c.lineTo(xVal + backgroundWidth - padding, yVal);
                 c.fill();
 
                 c.globalAlpha = 1;
                 c.fillStyle = "white";
                 c.font = fontsize + "px Helvetica";
                 c.textAlign = "center";
+                c.fillText("Structures", backgroundWidth / 2 + padding, yVal - padding);
 
-                var upperasedType = type.charAt(0).toUpperCase() + type.slice(1);
-
-                c.fillText(upperasedType, headerX + pannelWidth / 2, yVal - padding);
-
-                //Background
                 c.globalAlpha = .2;
-                c.fillRect(panelX, panelY, pannelWidth, pannelHeight);
+                c.fillRect(xVal, yVal, backgroundWidth, backgroundHeight);
 
-                //Division Line
-                c.globalAlpha = .5;
-                c.fillRect(panelX - 2, panelY + 10, 4, pannelHeight - 20);
-
-                //Image
+                //Draw Buttons ------------------------------
                 c.globalAlpha = 1;
-                var imageName = type + level;
-                c.drawImage(getImage(imageName), panelX + pannelWidth / 2 - selectedStructureImageSize / 2, panelY + padding, selectedStructureImageSize, selectedStructureImageSize);
 
-                //Buy / Upgrade button
-                var shopButtonWidth = pannelWidth * 2 / 3;
-                var shopButtonHeight = pannelHeight / 10;
+                var buttonY = yVal;
+                var buttonX = xVal;
 
-                var shopButtonX = panelX + pannelWidth / 2 - shopButtonWidth / 2;
-                var shopButtonY = panelY + padding * 2 + selectedStructureImageSize;
+                var mouseX = mouse.x * scale;
+                var mouseY = mouse.y * scale;
 
-                var label = "Buy";
-                var upgrading = false;
-                var fullyUpgraded = false;
+                var buttonTypes = ["landingPad", "mine", "turret", "shield"];
 
-                fontsize = Math.sqrt(canvas.height * canvas.width) / 60;
-                
-                if(typeof planetShopSelection == "object")
-                {
-                    if(upgrades[level + 1] == null)
-                    {
-                        fullyUpgraded = true;
-                        label = "Fully Upgraded";
-                        fontsize = Math.sqrt(canvas.height * canvas.width) / 80;
-                    }
-                    else
-                    {
-                        label = "Upgrade";
-                        upgrading = true;
-                    }
-                }
+                var typeI = 0;
 
-                if (!fullyUpgraded && mouseY > shopButtonY && mouseY < shopButtonY + shopButtonHeight && mouseX > shopButtonX && mouseX < shopButtonX + shopButtonWidth) {
-                    c.fillStyle = "#e2e2e2";
+                for (let ix = 0; ix < numXButtons; ix++) {
 
-                    if(mouse.clicked)
-                    {
-                        if(mouse.clickDown && upgrading)
-                        {
-                            var data = {id: planetShopSelection.id, worldId: worldId}
-                            socket.emit('upgradeRequest', data);
+                    for (let iy = 0; iy < numYButtons; iy++) {
+
+                        if (mouseY > buttonY + padding && mouseY < buttonY + padding + buttonSizes && mouseX > buttonX + padding && mouseX < buttonX + padding + buttonSizes) {
+
+                            if(mouse.clicked)
+                            {
+                                if(mouse.clickDown)
+                                {
+                                    selectedStructure = null;
+                                    planetShopSelection = buttonTypes[typeI];
+                                }
+
+                                c.fillStyle = "#a3a3a3";
+                            }
+                            else
+                                c.fillStyle = "#cccccc";
                         }
+                        else
+                        c.fillStyle = "#ffffff";
 
-                        c.fillStyle = "#c6c6c6";
+                        c.fillRect(buttonX + padding, buttonY + padding, buttonSizes, buttonSizes);
+                        buttonY += buttonSizes + padding;
+                        typeI++;
                     }
+
+                    buttonX += buttonSizes + padding;
+                    buttonY = yVal;
                 }
-                else{
-                    c.fillStyle = "#ffffff";
-                }
 
-                c.fillRect(shopButtonX, shopButtonY, shopButtonWidth, shopButtonHeight);
+                //Draw Selected Structure Panel -------------            
+                c.globalAlpha = 1;
 
-                c.globalAlpha = .8;
-                c.fillStyle = "black";
-                c.font = "bold " + fontsize + "px Helvetica";
-                c.textAlign = "center";
-                c.fillText(label, shopButtonX + shopButtonWidth / 2, shopButtonY + shopButtonHeight - padding);
+                if(planetShopSelection != null)
+                {
 
-                // Cost
-                var upgradeCosts = upgrades[level].costs
-
-                var costX = panelX + padding;
-                var startCostY = shopButtonY + shopButtonHeight + padding;
-                var costY = startCostY;
-                
-                var costSize = Math.sqrt(canvas.height * canvas.width) / 45;
-
-                if(upgradeCosts){
-                    for (var cost in upgradeCosts) {
-                        if (upgradeCosts.hasOwnProperty(cost)) {
-                            var color = "white";
-
-                            if(!playerItems[cost] || playerItems[cost] < upgradeCosts[cost])
-                                color = "#ff9696";
+                    var type = planetShopSelection;
+                    var level = 0;
         
-                            c.drawImage(getImage(cost), costX, costY, costSize, costSize);
-                            c.font = costSize / 1.5 + "px Helvetica";
-                            c.fillStyle = color;
-                            c.textAlign = "left";
-                            c.fillText(upgradeCosts[cost], costX + costSize + padding, costY + costSize / 1.3);
-            
-                            costY += costSize + padding;
-                        }
+                    if(typeof planetShopSelection == "object")
+                    {
+                        type = planetShopSelection.type;
+                        level = planetShopSelection.level;
                     }
-                }
-            
-                if(typeof planetShopSelection == "string")
-                {
-                    // Description
-                    var descBoxHeight = -1 * (costY + padding - canvas.height + padding);
-                    var descBoxWidth = pannelWidth - padding * 2;
 
-                    var descBoxX = panelX + pannelWidth / 2 - descBoxWidth / 2;
-                    var descBoxY = costY;
+                    var upgrades = structureUpgrades[type];
 
-                    var fontsize = Math.sqrt(canvas.height * canvas.width) / 65;
+                    var pannelWidth = selectedStructureImageSize * 8/7 + padding * 2;
+                    var pannelHeight = backgroundHeight;
+
+                    var panelX = xVal + backgroundWidth
+                    var panelY = canvas.height - pannelHeight - padding;
+
+
+                    //Header
+                    var headerX = panelX;
+
                     c.globalAlpha = .2;
                     c.fillStyle = "#ffffff";
-                    c.fillRect(descBoxX, descBoxY, descBoxWidth, descBoxHeight);
+
+                    c.beginPath();
+                    c.moveTo(headerX + padding, yVal);
+                    c.lineTo(headerX + padding, yVal - yTextSize + cornerRadius);
+                    c.arc(headerX + padding + cornerRadius, yVal - yTextSize, cornerRadius, -180 * Math.PI / 180, -90 * Math.PI / 180);
+                    c.lineTo(headerX + pannelWidth - padding - cornerRadius, yVal - yTextSize - cornerRadius);
+                    c.arc(headerX + pannelWidth - padding - cornerRadius, yVal - yTextSize, cornerRadius, -90 * Math.PI / 180, 0);
+                    c.lineTo(headerX + pannelWidth - padding, yVal);
+                    c.fill();
 
                     c.globalAlpha = 1;
-                    c.textAlign = "left";
-                    c.fillStyle = "white";
                     c.font = fontsize + "px Helvetica";
-                    wrapText(c, $('input#' + type).val(), descBoxX + padding / 2, descBoxY + fontsize + padding / 5, descBoxWidth - padding / 2, fontsize);
-                } 
-            }
+                    c.textAlign = "center";
 
-            c.textAlign = "left";
+                    var upperasedType = type.charAt(0).toUpperCase() + type.slice(1);
+
+                    c.fillText(upperasedType, headerX + pannelWidth / 2, yVal - padding);
+
+                    //Background
+                    c.globalAlpha = .2;
+                    c.fillRect(panelX, panelY, pannelWidth, pannelHeight);
+
+                    //Division Line
+                    c.globalAlpha = .5;
+                    c.fillRect(panelX - 2, panelY + 10, 4, pannelHeight - 20);
+
+                    //Image
+                    c.globalAlpha = 1;
+                    var imageName = type + level;
+                    c.drawImage(getImage(imageName), panelX + pannelWidth / 2 - selectedStructureImageSize / 2, panelY + padding, selectedStructureImageSize, selectedStructureImageSize);
+
+                    //Buy / Upgrade button
+                    var shopButtonWidth = pannelWidth * 2 / 3;
+                    var shopButtonHeight = pannelHeight / 10;
+
+                    var shopButtonX = panelX + pannelWidth / 2 - shopButtonWidth / 2;
+                    var shopButtonY = panelY + padding * 2 + selectedStructureImageSize;
+
+                    var label = "Buy";
+                    var upgrading = false;
+                    var fullyUpgraded = false;
+
+                    fontsize = Math.sqrt(canvas.height * canvas.width) / 60;
+                    
+                    if(typeof planetShopSelection == "object")
+                    {
+                        if(upgrades[level + 1] == null)
+                        {
+                            fullyUpgraded = true;
+                            label = "Fully Upgraded";
+                            fontsize = Math.sqrt(canvas.height * canvas.width) / 80;
+                        }
+                        else
+                        {
+                            label = "Upgrade";
+                            upgrading = true;
+                        }
+                    }
+
+                    if (!fullyUpgraded && mouseY > shopButtonY && mouseY < shopButtonY + shopButtonHeight && mouseX > shopButtonX && mouseX < shopButtonX + shopButtonWidth) {
+                        c.fillStyle = "#e2e2e2";
+
+                        if(mouse.clicked)
+                        {
+                            if(mouse.clickDown)
+                            {
+                                if(upgrading)
+                                {
+                                    var data = {id: planetShopSelection.id, worldId: worldId}
+                                    socket.emit('upgradeRequest', data);
+                                }
+                                else
+                                {
+                                    if(type == "shield" || type == "landingPad")
+                                        requestStructureSpawn(type);
+                                    else
+                                        boughtStructure = type;
+                                }
+                                
+                            }
+
+                            c.fillStyle = "#c6c6c6";
+                        }
+                    }
+                    else{
+                        c.fillStyle = "#ffffff";
+                    }
+
+                    c.fillRect(shopButtonX, shopButtonY, shopButtonWidth, shopButtonHeight);
+
+                    c.globalAlpha = .8;
+                    c.fillStyle = "black";
+                    c.font = "bold " + fontsize + "px Helvetica";
+                    c.textAlign = "center";
+                    c.fillText(label, shopButtonX + shopButtonWidth / 2, shopButtonY + shopButtonHeight - padding);
+
+                    // Cost
+                    if(!fullyUpgraded)
+                    {
+                        if(upgrading)
+                            level++;
+                        var upgradeCosts = upgrades[level].costs
+
+                        var costX = panelX + padding;
+                        var startCostY = shopButtonY + shopButtonHeight + padding;
+                        var costY = startCostY;
+                        
+                        var costSize = Math.sqrt(canvas.height * canvas.width) / 45;
+    
+                        if(upgradeCosts){
+                            for (var cost in upgradeCosts) {
+                                if (upgradeCosts.hasOwnProperty(cost)) {
+                                    var color = "white";
+    
+                                    if(!playerItems[cost] || playerItems[cost] < upgradeCosts[cost])
+                                        color = "#ff9696";
+                
+                                    c.drawImage(getImage(cost), costX, costY, costSize, costSize);
+                                    c.font = costSize / 1.5 + "px Helvetica";
+                                    c.fillStyle = color;
+                                    c.textAlign = "left";
+                                    c.fillText(upgradeCosts[cost], costX + costSize + padding, costY + costSize / 1.3);
+                    
+                                    costY += costSize + padding;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Description
+                    if(typeof planetShopSelection == "string")
+                    {
+                        
+                        var descBoxHeight = -1 * (costY + padding - canvas.height + padding);
+                        var descBoxWidth = pannelWidth - padding * 2;
+
+                        var descBoxX = panelX + pannelWidth / 2 - descBoxWidth / 2;
+                        var descBoxY = costY;
+
+                        var fontsize = Math.sqrt(canvas.height * canvas.width) / 65;
+                        c.globalAlpha = .2;
+                        c.fillStyle = "#ffffff";
+                        c.fillRect(descBoxX, descBoxY, descBoxWidth, descBoxHeight);
+
+                        c.globalAlpha = 1;
+                        c.textAlign = "left";
+                        c.fillStyle = "white";
+                        c.font = fontsize + "px Helvetica";
+                        wrapText(c, $('input#' + type).val(), descBoxX + padding / 2, descBoxY + fontsize + padding / 5, descBoxWidth - padding / 2, fontsize);
+                    } 
+                }
+
+                c.textAlign = "left";
+            }
 
         }
         
@@ -4377,21 +4451,43 @@ function polygon(ctx, x, y, radius, sides, startAngle, anticlockwise) {
     ctx.restore();
   }
 
-function drawPointAroundCircle(startx, starty, radius, angle, distance){
-    var x = startx + radius * Math.cos(-angle*Math.PI/180) * distance;
-    var y = starty + radius * Math.sin(-angle*Math.PI/180) * distance;
+function structureSpawnPoint(structureSize, img){
 
-    structureSpawnPosition = new Vector(x, y);
+    var positionAviable = true;
 
-    rectWidth = 30;
-    rectHeight = 30;
+    var rad = Math.atan2(mouse.y - currentPlanet.y, mouse.x - currentPlanet.x) * -57.2958;
+    structureSpawnRotation = rad;
 
-    c.save();
-    c.translate(x, y);
-    c.rotate(angle / -57.2958);
-    c.fillStyle = "#42aaf4";
-    c.fillRect(-rectWidth/2+20,-rectHeight/2,rectWidth,rectHeight);
-    c.restore();
+    var x = currentPlanet.x * scale + (currentPlanet.radius * scale + structureSize / 2) * Math.cos(-rad*Math.PI/180);
+    var y = currentPlanet.y * scale + (currentPlanet.radius * scale + structureSize / 2) * Math.sin(-rad*Math.PI/180);
+
+    structureSpawnPosition = new Vector(x / scale, y / scale);
+
+    currentPlanet.structures.forEach(structure => {
+
+        var distance = Math.sqrt(Math.pow(x / scale - structure.x, 2) + Math.pow(y / scale - structure.y, 2));
+
+        if(distance < structure.size / 2 + structureSize / 2 / scale)
+            positionAviable = false;
+    }); 
+
+    if(img)
+    {
+        if(positionAviable)
+            c.globalAlpha = 1;
+        else
+            c.globalAlpha = .5;
+
+        c.save();
+        c.translate(x, y);
+        c.rotate((rad - 90) * Math.PI / -180);
+        c.drawImage(getImage(img), -structureSize/2,-structureSize/2,structureSize,structureSize);
+        //c.fillStyle = "#42aaf4";
+        //c.fillRect(-rectWidth/2+20,-rectHeight/2,rectWidth,rectHeight);
+        c.restore();
+    }
+
+    return positionAviable;
 }
 
 function isOnScreen(x, y, size){
