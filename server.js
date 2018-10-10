@@ -573,22 +573,22 @@ var structureUpgrades = {
         {
             costs: {iron: 20},
             identifier: "electricity",
-            power: 25
+            power: 5
+        },
+        {
+            costs: {iron: 20},
+            identifier: "electricity",
+            power: 10
+        },
+        {
+            costs: {iron: 20},
+            identifier: "electricity",
+            power: 20
         },
         {
             costs: {iron: 20},
             identifier: "electricity",
             power: 50
-        },
-        {
-            costs: {iron: 20},
-            identifier: "electricity",
-            power: 100
-        },
-        {
-            costs: {iron: 20},
-            identifier: "electricity",
-            power: 200
         }
     ],
     turret: [
