@@ -187,7 +187,7 @@ var dropDict = {};
 var playerItems = {};
 
 var images = {};
-var imageArray = ["NF", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "charge", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "S", "shield0", "shield1", "shield2", "shield3", "shield4", "shield5", "shield6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "shop", "spaceship0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "water"];
+var imageArray = ["NF", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "charge", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "S", "satellite0", "shield0", "shield1", "shield2", "shield3", "shield4", "shield5", "shield6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "shop", "spaceship0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "water"];
 
 function getImage(item){
     for (var image in images) {
@@ -284,6 +284,7 @@ var planetShopSelection = null;
 var selectedStructure = null;
 var lastSelectedStructue = null;;
 var boughtStructure = null;
+var electricityTimer = {time: 0, duration: 50, on: false};
 
 var structureSpawnPosition = null;
 var structureSpawnRotation = null;
@@ -1359,11 +1360,11 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         this.draw();
         this.updateStructures();
 
-        if(!this.powered)
+        if(!this.powered && this.owner == clientId)
         {
             this.structures.forEach(structure => {
 
-                if(structure.type == "landingPad")
+                if(structure.type == "landingPad" || structure.type == "electricity")
                     return;
 
                 var size = 30;
@@ -1375,13 +1376,23 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
                 var powerX = (this.x - structure.x) * scalar + this.x;
                 var powerY = (this.y - structure.y) * scalar + this.y;
 
-                c.translate(powerX, powerY);
-                c.rotate((structure.rotation - 90) / -57.2958);
-                c.drawImage(getImage('charge'), -size / 2, -size / 2, size, size);
-                c.rotate(-(structure.rotation - 90) / -57.2958);
-                c.translate(-powerX, -powerY);
-                
+                if(electricityTimer.on)
+                {
+                    c.translate(powerX, powerY);
+                    c.rotate((structure.rotation - 90) / -57.2958);
+                    c.drawImage(getImage('charge'), -size / 2, -size / 2, size, size);
+                    c.rotate(-(structure.rotation - 90) / -57.2958);
+                    c.translate(-powerX, -powerY);
+                }
             });
+
+            if(electricityTimer.time < electricityTimer.duration)
+                electricityTimer.time++;
+            else
+            {
+                electricityTimer.time = 0;
+                electricityTimer.on = !electricityTimer.on;
+            }
             
         }
 
@@ -1428,8 +1439,12 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
 
 
         if(type === "electricity"){
-            var electricity = new Electricity(planet, x, y, rotation, level, isFacade, ownerId, id);
+            var electricity = new Electricity(planet, x, y, rotation, level, ownerId, id);
             this.structures.push(electricity);
+        }
+        else if(type === "satellite"){
+            var satellite = new Satellite(planet, x, y, rotation, level, ownerId, id);
+            this.structures.push(satellite);
         }
         else if(type === "mine"){
             var mine = new Mine(planet, x, y, rotation, level, ownerId, id);
@@ -1592,7 +1607,7 @@ function Mine(planet, x, y, rotation, level, ownerId, id){
         //console.log(cost);
     }
 }
-function Electricity(planet, x, y, rotation, level, isFacade, ownerId, id){
+function Electricity(planet, x, y, rotation, level, ownerId, id){
 
     this.planet = planet;
     this.x;
@@ -1600,7 +1615,6 @@ function Electricity(planet, x, y, rotation, level, isFacade, ownerId, id){
     this.rotation = rotation;
     this.size = 50;
     this.id = id;
-    this.isFacade = isFacade;
     this.ownerId = ownerId;
     this.type = "electricity";
 
@@ -1624,33 +1638,48 @@ function Electricity(planet, x, y, rotation, level, isFacade, ownerId, id){
         ctx.restore();
     }
 
-    this.drawElectricity = function(){
-
-        // var ctx = FindCanvas("electricityCanvas", "source-over", true); 
-
-        // ctx.globalAlpha = .75;
-        // ctx.strokeStyle = "#fff354";
-        // ctx.fillStyle = "#fff354";;
-        // ctx.lineWidth = 10;
+    this.update = function(){ 
         
-        // this.planet.structures.forEach(strucutre => {
+        var pos = cordsToScreenPos(this.coordX, this.coordY);
+        this.x = pos.x;
+        this.y = pos.y;
 
-        //     if(strucutre.type == "landingPad" || strucutre.type == "electricity")
-        //         return;
+        this.draw();
+    }
 
-        //     var distance = Math.sqrt(Math.pow(this.x - strucutre.x, 2) + Math.pow(this.y - strucutre.y, 2));
+}
+function Satellite(planet, x, y, rotation, level, ownerId, id){
 
-        //     var powerLevel = Math.round(Math.sqrt(distance) * (strucutre.level + 1));
+    this.planet = planet;
+    this.x;
+    this.y;
+    this.rotation = rotation;
+    this.size = 50;
+    this.id = id;
+    this.ownerId = ownerId;
+    this.type = "satellite";
 
-        //     if(powerLevel < this.power)
-        //     {
-        //         ctx.beginPath();
-        //         ctx.arc(strucutre.x, strucutre.y, 1 / powerLevel * this.power * 4, 0, Math.PI * 2);
-        //         ctx.fill();
-        //     }
-        // });
+    this.distance = 150;
 
-        // ctx.globalAlpha = 1;
+    this.coordX = x;
+    this.coordY = y;
+
+    this.level = level;
+
+    this.draw = function(context){
+
+        var ctx = c;
+        if(context != null)
+            ctx = context;    
+
+        this.x = (this.planet.x + (this.planet.radius + this.distance) * Math.cos(-this.rotation*Math.PI/180));
+        this.y = (this.planet.y + (this.planet.radius + this.distance) * Math.sin(-this.rotation*Math.PI/180));
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((this.rotation - 90) / -57.2958);
+        ctx.drawImage(getImage('satellite' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.restore();
     }
 
     this.update = function(){ 
@@ -1658,6 +1687,8 @@ function Electricity(planet, x, y, rotation, level, isFacade, ownerId, id){
         var pos = cordsToScreenPos(this.coordX, this.coordY);
         this.x = pos.x;
         this.y = pos.y;
+
+        this.rotation += .1;
 
         this.draw();
     }
@@ -2422,8 +2453,19 @@ function animate() {
 
             if(spaceshipVelocity.getMagnitude() < .2 && distance < 2)
             {
+
+                var satelliteAddedRange = 0;
+
+                if(currentPlanet.powered)
+                {
+                    currentPlanet.structures.forEach(structure => {
+                        if(structure.type == "satellite")
+                            satelliteAddedRange += structure.range;
+                    });
+                }
+
                 landed = true;
-                targetScale = 200 / currentPlanet.radius;
+                targetScale = (250 - satelliteAddedRange) / currentPlanet.radius;
                 mousePullxTarget = 0;
                 mousePullxTarget = 0;
             }
@@ -3082,7 +3124,12 @@ function animate() {
 
             if(boughtStructure != null)
             {
-                if(structureSpawnPoint(50 * scale, boughtStructure + "0")){
+                var addedDist = 0;
+
+                if(boughtStructure == "satellite")
+                    addedDist = new Satellite().distance - new Satellite().size / 2;
+
+                if(structureSpawnPoint(50 * scale, boughtStructure + "0", addedDist)){
                     if(mouse.clickDown)
                     {
                         requestStructureSpawn(boughtStructure);
@@ -3163,16 +3210,6 @@ function animate() {
 
                     slCtx.globalAlpha = 1;
                     selectedStructure.draw(slCtx);
-
-                    if(selectedStructure.type == "electricity")
-                    {
-                        currentPlanet.structures.forEach(structure => {
-                            if(structure.type == "electricity")
-                            {
-                                structure.drawElectricity();
-                            }
-                        });
-                    }
                 }
 
                 //Draw planet structure shop ------------------------------------------------------------
@@ -3224,7 +3261,7 @@ function animate() {
                 var mouseX = mouse.x * scale;
                 var mouseY = mouse.y * scale;
 
-                var buttonTypes = ["spaceShip", "landingPad", "mine", "turret", "shield", "electricity"];
+                var buttonTypes = ["spaceShip", "landingPad", "mine", "turret", "shield", "electricity", "satellite"];
 
                 var typeI = 0;
 
@@ -3275,6 +3312,9 @@ function animate() {
                     }
 
                     var upgrades = structureUpgrades[type];
+
+                    if(upgrades == undefined)
+                        upgrades = playerUpgrades;
 
                     var pannelWidth = selectedStructureImageSize * 8/7 + padding * 2;
                     var pannelHeight = backgroundHeight;
@@ -4583,15 +4623,20 @@ function polygon(ctx, x, y, radius, sides, startAngle, anticlockwise) {
     ctx.restore();
   }
 
-function structureSpawnPoint(structureSize, img){
+function structureSpawnPoint(structureSize, img, addedDist){
 
     var positionAviable = true;
 
     var rad = Math.atan2(mouse.y - currentPlanet.y, mouse.x - currentPlanet.x) * -57.2958;
     structureSpawnRotation = rad;
 
-    var x = currentPlanet.x * scale + (currentPlanet.radius * scale + structureSize / 2) * Math.cos(-rad*Math.PI/180);
-    var y = currentPlanet.y * scale + (currentPlanet.radius * scale + structureSize / 2) * Math.sin(-rad*Math.PI/180);
+    var dist = 0
+
+    if(addedDist)
+        dist += addedDist;
+
+    var x = currentPlanet.x * scale + ((currentPlanet.radius + dist) * scale + structureSize / 2) * Math.cos(-rad*Math.PI/180);
+    var y = currentPlanet.y * scale + ((currentPlanet.radius + dist) * scale + structureSize / 2) * Math.sin(-rad*Math.PI/180);
 
     structureSpawnPosition = new Vector(x / scale, y / scale);
 

@@ -60,7 +60,9 @@ var maxPlanetObjects = {
     mine: 5,
     turret: 5,
     shield: 1,
-    landingPad: 1
+    landingPad: 1,
+    electricity: 3,
+    satellite: 1
 };
 
 function positonAviable(size, x, y, hittableObjectsRef) {
@@ -589,6 +591,28 @@ var structureUpgrades = {
             costs: {iron: 20},
             identifier: "electricity",
             power: 50
+        }
+    ],
+    satellite: [
+        {
+            costs: {iron: 20},
+            identifier: "satellite",
+            range: 25
+        },
+        {
+            costs: {iron: 20},
+            identifier: "satellite",
+            range: 50
+        },
+        {
+            costs: {iron: 20},
+            identifier: "satellite",
+            range: 75
+        },
+        {
+            costs: {iron: 20},
+            identifier: "satellite",
+            range: 100
         }
     ],
     turret: [
