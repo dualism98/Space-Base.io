@@ -1311,7 +1311,7 @@ function newConnetcion(socket){
 
                     if(data.type == "shield"){
                         var shieldRadius = planet.radius + 100;  
-                        var newHittableObj = {x: data.x, y: data.y, radius: shieldRadius, health: upgrades.maxHealth, maxHealth: upgrades.maxHealth, id: data.id, structure: true, planet: planet};
+                        var newHittableObj = {x: planet.x, y: planet.y, radius: shieldRadius, health: upgrades.maxHealth, maxHealth: upgrades.maxHealth, id: data.id, structure: true, planet: planet};
                         newHittableObj.drops = upgrades.drops;
                         worldsData[data.worldId].hittableObjects.push(newHittableObj);
 

@@ -1091,21 +1091,32 @@ $(document).keypress(function(e){
                 socket.emit("heal", {id: clientId, worldId: worldId});
         }
 
-        if(e.keyCode == 108 || e.keyCode == 115 || e.keyCode == 109 || e.keyCode == 116)
+        
+        if(structureSpawnPoint(50 * scale))
         {
-            if(structureSpawnPoint(50 * scale))
+            switch (e.keyCode)
             {
-                if(e.keyCode == 108) // L
+                case 108 : // L
                     requestStructureSpawn("landingPad");
-                if(e.keyCode == 115) // S
+                    break;
+                case 115: // S
                     requestStructureSpawn("shield");
-                if(e.keyCode == 109) // M
+                    break;
+                case 109: // M
                     requestStructureSpawn("mine");
-                if(e.keyCode == 116) // T
+                    break;
+                case 116: // T
                     requestStructureSpawn("turret");
-    
+                    break;
+                case 101: // E
+                    requestStructureSpawn("electricity");
+                    break;
+                case 113: // Q
+                    requestStructureSpawn("satellite");
+                    break;
             }
         }
+        
         
         if(e.keyCode == 32){ //SPACE
             socket.emit('planetOccupancy', {planetId: currentPlanet.id, playerId: null, worldId: worldId})
@@ -1343,7 +1354,9 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
 
         if(!this.powered && this.owner == clientId)
         {
-            this.structures.forEach(structure => {
+            var powerlessStructures = this.structures;
+
+            powerlessStructures.forEach(structure => {
 
                 if(structure.type == "landingPad" || structure.type == "electricity")
                     return;
@@ -1389,17 +1402,15 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
                 this.structures[i].update();
             else
             {
-                if(this.structures[i].type != "shield")
+                if((this.structures[i].isFacade != null && !this.structures[i].isFacade))
                 {
-                    if((this.structures[i].isFacade != null && !this.structures[i].isFacade))
-                    {
-                        this.structures[i].isFacade = true;
-                        this.structures[i].update();
-                        this.structures[i].isFacade = false;
-                    }
-                    else if(this.structures[i].isFacade == undefined)
-                        this.structures[i].update();
-                }       
+                    this.structures[i].isFacade = true;
+                    this.structures[i].update();
+                    this.structures[i].isFacade = false;
+                }
+                else if(this.structures[i].isFacade == undefined)
+                    this.structures[i].update();
+                    
             }
         } 
     }
@@ -1438,7 +1449,7 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
             this.structures.push(new Turret(planet, x, y, rotation, level, isFacade, ownerId, id));
         }
         else if(type === "shield"){
-            var shield = new Shield(planet, shieldRadius, level, id);
+            var shield = new Shield(planet, x, y, rotation, level, ownerId, id);
             this.shield = shield;
             this.structures.push(shield);
 
@@ -1458,15 +1469,24 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         }
     }
 }
-function Shield(planet, radius, level, id){
+function Shield(planet, x, y, rotation, level, ownerId, id){
     this.planet = planet;
     this.x;
     this.y;
-    this.radius = radius;
-    this.color = "blue";
+    this.rotation = rotation;
+    this.size = 50;
     this.id = id;
+    this.ownerId = ownerId;
     this.type = "shield";
-    this.level = level;
+
+    this.color = "#287aff"
+
+    this.coordX = x;
+    this.coordY = y;
+
+    var healthBarWidth = 300;
+
+    var addedShieldRadius = 100;
 
     this.draw = function(context){
 
@@ -1474,30 +1494,50 @@ function Shield(planet, radius, level, id){
         if(context != null)
             ctx = context;    
 
-        ctx.beginPath();
-        ctx.globalAlpha = 0.3;
-        ctx.lineWidth = 10;
-        ctx.arc(this.x, this.y, this.radius + c.lineWidth / 2, 0, Math.PI * 2, false);
-        ctx.strokeStyle = "blue";
-        ctx.stroke();
 
-        ctx.globalAlpha = 0.1;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        ctx.globalAlpha = 1;
+        //Draw Shield
+        if(planet.powered)
+        {
+            ctx.beginPath();
+            ctx.globalAlpha = 0.3;
+            ctx.lineWidth = 10;
+            ctx.arc(this.planet.x, this.planet.y, this.planet.radius + addedShieldRadius+ c.lineWidth / 2, 0, Math.PI * 2, false);
+            ctx.strokeStyle = this.color;
+            ctx.stroke();
+    
+            ctx.globalAlpha = 0.1;
+            ctx.beginPath();
+            ctx.arc(this.planet.x, this.planet.y, this.planet.radius + addedShieldRadius, 0, Math.PI * 2, false);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
 
-        healthBarWidth = 300;
+        //Draw Generators
+        var ctx = c;
+        if(context != null)
+            ctx = context;    
+
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((this.rotation - 90) / -57.2958);
+        ctx.drawImage(getImage('shieldGenerator' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.restore();
+
+        // ctx.save();
+        // ctx.translate(this.planet.x + (this.planet.x - this.x), this.planet.y + (this.planet.y - this.y));
+        // ctx.rotate((this.rotation + 90) / -57.2958);
+        // ctx.drawImage(getImage('shieldGenerator' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        // ctx.restore();
 
         var hittableObj = hittableObjects[this.id];
-
         if(hittableObj)
-            displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, 300, 20, hittableObj.object.health / hittableObj.object.maxHealth, "blue");
+            displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, 300, 20, hittableObj.health / hittableObj.maxHealth, this.color);
     }
     this.update = function(){
 
-        var pos = cordsToScreenPos(this.planet.coordX, this.planet.coordY);
+        var pos = cordsToScreenPos(this.coordX, this.coordY);
 
         this.x = pos.x;
         this.y = pos.y;
@@ -3260,11 +3300,15 @@ function animate() {
                             c.fillStyle = "#ffffff";
 
                         var imagePadding = 20;
+                        var imageName = buttonTypes[typeI] + "Gray";
+                        if(typeI > buttonTypes.length - 1)
+                            imageName = "x"
+                        
 
                         c.globalAlpha = ".5";
                         c.fillRect(buttonX + padding, buttonY + padding, buttonSizes, buttonSizes);
                         c.globalAlpha = "1";
-                        c.drawImage(getImage(buttonTypes[typeI] + "Gray"), buttonX + padding + imagePadding / 2, buttonY + padding + imagePadding / 2, buttonSizes - imagePadding, buttonSizes - imagePadding);
+                        c.drawImage(getImage(imageName), buttonX + padding + imagePadding / 2, buttonY + padding + imagePadding / 2, buttonSizes - imagePadding, buttonSizes - imagePadding);
                         buttonY += buttonSizes + padding;
                         typeI++;
                     }
@@ -3333,7 +3377,26 @@ function animate() {
 
                     //Image
                     c.globalAlpha = 1;
-                    var imageName = type + level;
+
+                    var fullyUpgraded = false;
+                    var upgrading = typeof planetShopSelection == "object";
+
+                    
+                    if(upgrading)
+                        fullyUpgraded = upgrades[level + 1] == null
+                    
+                    var imageLevel = level;
+
+                    if(upgrading && !fullyUpgraded)
+                        imageLevel = level + 1;
+
+                    var imageName = type + imageLevel;
+
+                    if(type == "shield")
+                        imageName = "shieldGenerator" + imageLevel;
+
+                    
+
                     c.drawImage(getImage(imageName), panelX + pannelWidth / 2 - selectedStructureImageSize / 2, panelY + padding, selectedStructureImageSize, selectedStructureImageSize);
 
                     //Buy / Upgrade button
@@ -3344,25 +3407,22 @@ function animate() {
                     var shopButtonY = panelY + padding * 2 + selectedStructureImageSize;
 
                     var label = "Buy";
-                    var upgrading = false;
-                    var fullyUpgraded = false;
 
                     fontsize = Math.sqrt(canvas.height * canvas.width) / 60;
                     
-                    if(typeof planetShopSelection == "object")
+                    if(upgrading)
                     {
-                        if(upgrades[level + 1] == null)
-                        {
-                            fullyUpgraded = true;
+                        if(fullyUpgraded){
                             label = "Fully Upgraded";
                             fontsize = Math.sqrt(canvas.height * canvas.width) / 80;
                         }
-                        else
-                        {
+                        else{
                             label = "Upgrade";
                             upgrading = true;
                         }
                     }
+
+                    
 
                     if (!fullyUpgraded && mouseY > shopButtonY && mouseY < shopButtonY + shopButtonHeight && mouseX > shopButtonX && mouseX < shopButtonX + shopButtonWidth) {
                         c.fillStyle = "#e2e2e2";
@@ -3378,7 +3438,7 @@ function animate() {
                                 }
                                 else
                                 {
-                                    if(type == "shield" || type == "landingPad")
+                                    if(type == "landingPad")
                                         requestStructureSpawn(type);
                                     else
                                         boughtStructure = type;
