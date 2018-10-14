@@ -187,7 +187,7 @@ var dropDict = {};
 var playerItems = {};
 
 var images = {};
-var imageArray = ["NF", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "charge", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "S", "satellite0", "shield0", "shield1", "shield2", "shield3", "shield4", "shield5", "shield6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "shop", "spaceship0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "water"];
+var imageArray = ["NF", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "charge", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "mineGray", "S", "satellite0", "satellite1", "satellite2", "satellite3", "satellite4", "satelliteGray", "shield0", "shield1", "shield2", "shield3", "shield4", "shield5", "shield6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "shop", "spaceship0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "spaceShipGray", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "turretGray", "water"];
 
 function getImage(item){
     for (var image in images) {
@@ -295,12 +295,6 @@ var checklist = {
     },
     shoot:{
         isActive: true
-    },
-    upgrade:{
-        isActive: false
-    },
-    upgradeClick:{
-        isActive: false
     },
     landingPad:{
         isActive: false
@@ -1199,12 +1193,6 @@ $(document).keypress(function(e){
     if(!showUpgradesPannel && !clickedUpgrade)
         showUpgradesPannel = e.keyCode == 102; //F
 
-    if(showUpgradesPannel && spaceShip && checklist.upgrade.isActive)
-    {
-        checklist.upgrade.done = true;
-        checklist.upgradeClick.isActive = true;
-    }
-
 
     if(e.keyCode == 59) // ;
         statsView = !statsView; 
@@ -1213,13 +1201,6 @@ $(document).keypress(function(e){
 }).keyup(function(e){
 
     showUpgradesPannel = false;
-
-    if(spaceShip && checklist.upgrade.done && !checklist.upgradeClick.done) {
-        checklist.upgrade.isActive = true;
-        checklist.upgrade.done = false;
-        checklist.upgradeClick.isActive = false;
-    }
-
     clickedUpgrade = false;
 });
 
@@ -2983,15 +2964,6 @@ function animate() {
 
         var yPositions = {};
         var i = 0;
-
-
-        if(spaceShip.level == 0 && !checklist.upgrade.isActive)
-        {
-            if(playerHasResources(playerUpgrades[1].costs))
-            {
-                checklist.upgrade.isActive = true;
-            }
-        }
         
 
         function getCardYPos(index)
@@ -3234,6 +3206,8 @@ function animate() {
                 var yTextSize = fontsize - padding / Math.sqrt(canvas.height * canvas.width);
 
                 c.globalAlpha = .2;
+                c.fillStyle = "#ffffff";
+
                 c.beginPath();
                 c.moveTo(xVal + padding, yVal);
                 c.lineTo(xVal + padding, yVal - yTextSize + cornerRadius);
@@ -3244,7 +3218,6 @@ function animate() {
                 c.fill();
 
                 c.globalAlpha = 1;
-                c.fillStyle = "white";
                 c.font = fontsize + "px Helvetica";
                 c.textAlign = "center";
                 c.fillText("Structures", backgroundWidth / 2 + padding, yVal - padding);
@@ -3268,9 +3241,8 @@ function animate() {
                 for (let ix = 0; ix < numXButtons; ix++) {
 
                     for (let iy = 0; iy < numYButtons; iy++) {
-
-                        if (mouseY > buttonY + padding && mouseY < buttonY + padding + buttonSizes && mouseX > buttonX + padding && mouseX < buttonX + padding + buttonSizes) {
-
+                        if (mouseY > buttonY + padding && mouseY < buttonY + padding + buttonSizes && mouseX > buttonX + padding && mouseX < buttonX + padding + buttonSizes) 
+                        {
                             if(mouse.clicked)
                             {
                                 if(mouse.clickDown)
@@ -3285,9 +3257,14 @@ function animate() {
                                 c.fillStyle = "#cccccc";
                         }
                         else
-                        c.fillStyle = "#ffffff";
+                            c.fillStyle = "#ffffff";
 
+                        var imagePadding = 20;
+
+                        c.globalAlpha = ".5";
                         c.fillRect(buttonX + padding, buttonY + padding, buttonSizes, buttonSizes);
+                        c.globalAlpha = "1";
+                        c.drawImage(getImage(buttonTypes[typeI] + "Gray"), buttonX + padding + imagePadding / 2, buttonY + padding + imagePadding / 2, buttonSizes - imagePadding, buttonSizes - imagePadding);
                         buttonY += buttonSizes + padding;
                         typeI++;
                     }
@@ -4237,9 +4214,6 @@ function showUpgrades(){
                             c.stroke();
                         }
                         if(mouse.clicked){
-
-                            checklist.upgradeClick.done = true;
-
                             var data = {id: upgradeId, worldId: worldId}
                             socket.emit('upgradeRequest', data);
                             clickedUpgrade = true;
