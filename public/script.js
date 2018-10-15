@@ -240,8 +240,8 @@ var caughtInBlackHole = false;
 var aquiredItems = {};
 var aquireItemsFadeTime = 50;
 
-var DISPLAY_NEWS = true;
-var newsDisplayed = true;
+var DISPLAY_NEWS = false;
+var newsDisplayed = DISPLAY_NEWS;
 
 var POSITION_SEND_DELAY = 6;
 var positionSendTime = 0;
@@ -1373,7 +1373,7 @@ function Shield(planet, radius, level, id){
         var hittableObj = hittableObjects[this.id];
 
         if(hittableObj)
-            displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, 300, 20, hittableObj.object.health / hittableObj.object.maxHealth, "blue");
+            displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, 300, 20, hittableObj.health / hittableObj.maxHealth, "blue");
     }
     this.update = function(){
 
