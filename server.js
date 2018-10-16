@@ -383,6 +383,19 @@ function Structure(planetId, x, y, rotation, type, ownerId, level, worldId, id){
 
 var playerUpgrades = [
         {   
+            speed: 20,
+            fireRate: 20,
+            maxHealth: 5,
+            damage: 1,
+            radius: 6,
+            turningSpeed: .05,
+            bulletRange: .5,
+            projectileSpeed: 6,
+            oxygen: 100,
+            identifier: "spaceship"
+        },
+        {   
+            costs: {iron: 1},
             speed: 50,
             fireRate: 15,
             maxHealth: 10,

@@ -187,7 +187,7 @@ var dropDict = {};
 var playerItems = {};
 
 var images = {};
-var imageArray = ["NF", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "charge", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "mineGray", "S", "satellite0", "satellite1", "satellite2", "satellite3", "satellite4", "satelliteGray", "shield0", "shield1", "shield2", "shield3", "shield4", "shield5", "shield6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "shop", "spaceship0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "spaceShipGray", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "turretGray", "water"];
+var imageArray = ["NF", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "charge", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "mineGray", "S", "satellite0", "satellite1", "satellite2", "satellite3", "satelliteGray", "shieldGenerator0", "shieldGenerator1", "shieldGenerator2", "shieldGenerator3", "shieldGenerator4", "shieldGenerator5", "shieldGenerator6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "shop", "spaceship0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "spaceShipGray", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "turretGray", "water"];
 
 function getImage(item){
     for (var image in images) {
@@ -1429,7 +1429,6 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
                 checklist.structures.done = true;
         }
 
-
         if(type === "electricity"){
             var electricity = new Electricity(planet, x, y, rotation, level, ownerId, id);
             this.structures.push(electricity);
@@ -1469,6 +1468,7 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         }
     }
 }
+
 function Shield(planet, x, y, rotation, level, ownerId, id){
     this.planet = planet;
     this.x;
@@ -2113,6 +2113,8 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
 
     this.turret;
 
+    this.oxygenRemaining;
+
     this.shopUpgrades = {
         bulletPenetration: {
             level: 0,
@@ -2152,6 +2154,9 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     this.update = function(){
         this.draw();
 
+        if(this.oxygen)
+            this.doOxygen();
+
         if(this.turret){
             var pos = screenPosToCords(centerX, centerY);
             this.turret.size = this.radius / 2;
@@ -2173,6 +2178,19 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
             c.globalAlpha = 1;
                 
         }  
+    }
+    this.doOxygen = function(){
+        if(this.oxygenRemaining == null)
+            this.oxygenRemaining = this.oxygen;
+        else
+        {
+            if(!currentPlanet)
+                this.oxygenRemaining--;
+            else if (this.oxygenRemaining < this.oxygen)
+                this.oxygenRemaining++
+        }
+
+        displayBar(centerX, centerY, 100, 20,this.oxygenRemaining / this.oxygen, "#a3e1ff");
     }
 
 }
@@ -2848,7 +2866,7 @@ function animate() {
                 }
 
                 var arrowRotation = Math.atan2(centerY - planet.y, centerX - planet.x) - (45 * Math.PI / 180);
-                var arrowSize = 10 / scale;
+                var arrowSize = 20 / scale;
 
                 var arrowColor = "#ffffff";
 
@@ -3137,11 +3155,15 @@ function animate() {
             if(boughtStructure != null)
             {
                 var addedDist = 0;
+                var structureImage = boughtStructure;
 
                 if(boughtStructure == "satellite")
                     addedDist = new Satellite().distance - new Satellite().size / 2;
+                else if(boughtStructure == "shield")
+                    structureImage = "shieldGenerator"
 
-                if(structureSpawnPoint(50 * scale, boughtStructure + "0", addedDist)){
+
+                if(structureSpawnPoint(50 * scale, structureImage + "0", addedDist)){
                     if(mouse.clickDown)
                     {
                         requestStructureSpawn(boughtStructure);
@@ -3299,10 +3321,14 @@ function animate() {
                         else
                             c.fillStyle = "#ffffff";
 
+
                         var imagePadding = 20;
                         var imageName = buttonTypes[typeI] + "Gray";
+
                         if(typeI > buttonTypes.length - 1)
                             imageName = "x"
+                        else if(buttonTypes[typeI] == "shield")
+                            imageName = "shieldGeneratorGray"
                         
 
                         c.globalAlpha = ".5";
@@ -3331,6 +3357,8 @@ function animate() {
                         type = planetShopSelection.type;
                         level = planetShopSelection.level;
                     }
+                    else if(type == "spaceShip")
+                        level = spaceShip.level;
 
                     var upgrades = structureUpgrades[type];
 
@@ -3381,7 +3409,18 @@ function animate() {
                     var fullyUpgraded = false;
                     var upgrading = typeof planetShopSelection == "object";
 
-                    
+                    if(type == "spaceShip")
+                    {
+                        if(spaceShip.level > 0)
+                        {
+                            upgrading = true;
+                            fullyUpgraded = upgrades[level + 1] == null
+                        }
+                        else{
+                            level = 1;
+                        }
+                    }
+
                     if(upgrading)
                         fullyUpgraded = upgrades[level + 1] == null
                     
@@ -3409,7 +3448,7 @@ function animate() {
                     var label = "Buy";
 
                     fontsize = Math.sqrt(canvas.height * canvas.width) / 60;
-                    
+
                     if(upgrading)
                     {
                         if(fullyUpgraded){
@@ -3421,9 +3460,6 @@ function animate() {
                             upgrading = true;
                         }
                     }
-
-                    
-
                     if (!fullyUpgraded && mouseY > shopButtonY && mouseY < shopButtonY + shopButtonHeight && mouseX > shopButtonX && mouseX < shopButtonX + shopButtonWidth) {
                         c.fillStyle = "#e2e2e2";
 
@@ -3433,13 +3469,23 @@ function animate() {
                             {
                                 if(upgrading)
                                 {
-                                    var data = {id: planetShopSelection.id, worldId: worldId}
+                                    var id = planetShopSelection.id;
+
+                                    if(type == "spaceShip")
+                                        id = clientId;
+                                    
+                                    var data = {id: id, worldId: worldId}
                                     socket.emit('upgradeRequest', data);
                                 }
                                 else
                                 {
                                     if(type == "landingPad")
                                         requestStructureSpawn(type);
+                                    else if(type == "spaceShip")
+                                    {
+                                        var data = {id: clientId, worldId: worldId}
+                                        socket.emit('upgradeRequest', data);
+                                    }
                                     else
                                         boughtStructure = type;
                                 }
@@ -3495,9 +3541,8 @@ function animate() {
                     }
                     
                     // Description
-                    if(typeof planetShopSelection == "string")
+                    if(typeof planetShopSelection == "string" && !(type == "spaceShip" && level > 0) )
                     {
-                        
                         var descBoxHeight = -1 * (costY + padding - canvas.height + padding);
                         var descBoxWidth = pannelWidth - padding * 2;
 
@@ -3657,7 +3702,7 @@ function drawLeaderBoard(){
 
     var width = windowHeight * .22;
     var height = windowHeight / 4;
-    var padding = windowHeight / 50;
+    var padding = windowHeight / 65;
 
     var PLAYERS_ON_BOARD = 5;
 
@@ -3666,7 +3711,7 @@ function drawLeaderBoard(){
     c.textAlign = "center";
     c.font = height / 10 + "px Helvetica";
     c.fillStyle = "white";
-    c.fillText($('input#leaderboard').val(), windowWidth - width / 2 - padding, padding * 2.5);
+    c.fillText($('input#leaderboard').val(), windowWidth - width / 2 - padding, padding * 2.8);
     c.textAlign = "left";
 
     c.globalAlpha = .25;
@@ -3678,7 +3723,7 @@ function drawLeaderBoard(){
     c.font = height / 15 + "px Helvetica";
     c.globalAlpha = .75;
 
-    var IMAGE_SIZE = padding * 2;
+    var IMAGE_SIZE =  windowHeight / 35;
 
     var topPlayers = otherPlayers.concat(spaceShip);
 
@@ -3687,65 +3732,79 @@ function drawLeaderBoard(){
 	    if (player1.level < player2.level) return 1;
     });
 
+    topPlayers = topPlayers.slice(0, PLAYERS_ON_BOARD);
+
+    if(!topPlayers.includes(spaceShip))
+        topPlayers.push(spaceShip);
+
     var num = 0;
-
-    var playerOnBoard = false;
-
     var placement = {};
 
     topPlayers.forEach(player => {
 
-        if(num < PLAYERS_ON_BOARD)
+        if(num >= PLAYERS_ON_BOARD)
         {
-            var name;
-            if(player == spaceShip)
-            {
-                playerOnBoard = true;
-                name = username;
-            }
-            else
-                name = player.username;
+            playerY = height + padding * 3.6;
 
-                
-            c.drawImage(getImage("spaceship" + player.level), windowWidth - width - IMAGE_SIZE / 2.2 + padding, playerY - IMAGE_SIZE / 1.5, IMAGE_SIZE, IMAGE_SIZE);
-            
-            if(player == spaceShip)
-                c.globalAlpha = 1;
-            else 
-                c.globalAlpha = .5;
-
-            
-            c.fillStyle = "#e0ecff";
-            c.fillText(num + 1 + ")", windowWidth - width - padding / 1.3, playerY);
-            c.fillText(name, windowWidth - width + padding * 2.2, playerY);
+            c.globalAlpha = .25;
+            c.fillStyle = "#898989";
+            c.fillRect(windowWidth - width - padding, height + padding * 2, width, height / 5);
             c.globalAlpha = 1;
-            playerY += IMAGE_SIZE;
         }
+
+        var name;
+        if(player == spaceShip)
+        {
+            name = username;
+        }
+        else
+            name = player.username;
+
+        c.save();
+        c.translate(windowWidth - width + padding * 1.4 + IMAGE_SIZE / 2, playerY);
+        c.rotate(Math.PI/2);
+        c.drawImage(getImage("spaceship" + player.level), IMAGE_SIZE / -2, IMAGE_SIZE / -2, IMAGE_SIZE, IMAGE_SIZE);
+        c.restore();
+
+        if(player == spaceShip)
+            c.globalAlpha = 1;
+        else 
+            c.globalAlpha = .5;
+
+        c.fillStyle = "#e0ecff";
+        c.fillText(num + 1 + ")", windowWidth - width, playerY);
+        c.fillText(name, windowWidth - width + padding * 2 + IMAGE_SIZE, playerY);
+        c.globalAlpha = 1;
+        playerY += IMAGE_SIZE + padding;
+        
 
         placement[player.id] = num;
 
         num++;
     });
 
-    if(!playerOnBoard)
-    {
+    // if(!playerOnBoard)
+    // {
 
-        playerY = height + padding * 3.5;
+        
 
-        c.globalAlpha = .25;
-        c.fillStyle = "#898989";
-        c.fillRect(windowWidth - width - padding, height + padding * 2, width, height / 5);
+    //     c.globalAlpha = 1;
+        
+    //     c.save();
+    //     c.translate(windowWidth - width + padding * 1.4 + IMAGE_SIZE / 2, playerY);
+    //     c.rotate(Math.PI/2);
+    //     c.drawImage(getImage("spaceship" + player.level), IMAGE_SIZE / -2, IMAGE_SIZE / -2, IMAGE_SIZE, IMAGE_SIZE);
+    //     c.restore();
+        
+    //     c.globalAlpha = .5;
+    //     c.fillStyle = "white";
+    //     c.fillText(placement[clientId] + 1 + ")", windowWidth - width - padding / 1.3, playerY);
+    //     c.fillText(username, windowWidth - width + padding * 2.1, playerY);
+        
 
-        c.globalAlpha = 1;
-        c.drawImage(getImage("spaceship" + spaceShip.level), windowWidth - width - IMAGE_SIZE / 2.2 + padding, playerY - IMAGE_SIZE / 1.5, IMAGE_SIZE, IMAGE_SIZE);
-        c.globalAlpha = .5;
-        c.fillStyle = "white";
-        c.fillText(placement[clientId] + 1 + ")", windowWidth - width - padding / 1.3, playerY);
-        c.fillText(username, windowWidth - width + padding * 2.1, playerY);
+    //     playerY += IMAGE_SIZE;
 
-        playerY += IMAGE_SIZE;
-
-    }
+    // }
 
     c.globalAlpha = 1;
 }
