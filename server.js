@@ -25,16 +25,16 @@ var gridSize = 15000;
 var gridBoxScale = 200;
 var spawnTries = 5;
 
-// var numOfasteroids = 0;
-// var numOfPlanets = 0;
-// var numOfMoons = 0;
-// var numOfSuns = 0;
-// var numOfCrystals = 0;
-// var numOfBlackHoles = 0;
-// var numOfWormHoles = 6;
-// var gridSize = 2000;
-// var gridBoxScale = 10;
-// var spawnTries = 5;
+var numOfasteroids = 0;
+var numOfPlanets = 5;
+var numOfMoons = 0;
+var numOfSuns = 0;
+var numOfCrystals = 0;
+var numOfBlackHoles = 0;
+var numOfWormHoles = 6;
+var gridSize = 2000;
+var gridBoxScale = 10;
+var spawnTries = 5;
 
 var edgeSpawnPadding = 2000;
 var precentItemKillBoost = .5;
@@ -43,6 +43,7 @@ var mineProductionRate = 2500;
 var despawnProjectilesRate = 100;
 var shieldHealRate = 1000;
 var sunDamageRate = 1000;
+var updateEnemiesRate = 10;
 
 var unspawnedObjects = [];
 
@@ -137,9 +138,10 @@ function addWorld(){
         lobbyClients: [],
         worldObjects: objects.worldObjects,
         hittableObjects: objects.hittableObjects,
-        projectiles: []
+        projectiles: [],
+        enemies: []
     }
-
+    
     worldIds.push(worldId);
 
     numberOfWorlds++;
@@ -275,7 +277,7 @@ function SpaceMatter(x, y, radius, color, maxHealth, drops, type, id){
     this.drops = drops;
     this.type = type;
     this.id = id;
-}
+} 
 
 function Player(x, y, rotation, level, id, worldId){
     this.x = x;
@@ -933,6 +935,8 @@ function newConnetcion(socket){
     if(worldId == null){
         worldId = addWorld();
     }
+
+    spawnEnemy(gridSize / 2, gridSize / 2, 5, worldId);
 
     var spawnSize = (gridSize - edgeSpawnPadding) / 2;
     //var playerPosition = {x: getRndInteger(-spawnSize, spawnSize), y: getRndInteger(-spawnSize, spawnSize)};
@@ -1760,17 +1764,19 @@ function damageObject(worldId, id, senderId, damage){
         var possibleClient = findObjectWithId(worldsData[worldId].clients, target.object.id);
 
         //If the thing attacked was a planet
-       var possiblePlanet = findObjectWithId(worldWorldObjects.planets, target.object.id);
+        var possiblePlanet = findObjectWithId(worldWorldObjects.planets, target.object.id);
 
         //If the thing attacked was space matter
-       var possibleSpaceMatter = findObjectWithId(worldWorldObjects.asteroids, target.object.id);
+        var possibleSpaceMatter = findObjectWithId(worldWorldObjects.asteroids, target.object.id);
 
-       if(possibleClient)
-       {
+        //If the thing attacked was space matter
+        var possibleEnemy = findObjectWithId(worldWorldObjects.enemies, target.object.id);
+
+        if(possibleClient)
+        {
             worldsData[worldId].worldObjects.planets.forEach(planet => {
                 if(planet.occupiedBy == target.object.id)
                 {
-
                     var shieldRef = false;
 
                     planet.structures.forEach(structure => {
@@ -1799,7 +1805,7 @@ function damageObject(worldId, id, senderId, damage){
                 }
 
             });
-       }
+        }
     
        if(possiblePlanet)
        {
@@ -1950,6 +1956,21 @@ function damageObject(worldId, id, senderId, damage){
                         }
                             
                     }
+                    else if(possibleEnemy)
+                    {
+                        var enemy = findObjectWithId(worldsData[possibleEnemy.worldId].enemies, possibleEnemy.id);
+
+                        if(enemy.object)
+                        {
+                            worldsData[possibleEnemy.worldId].enemies.splice(enemy.index)
+
+                            //Insert destroy on all of clients here ------------------------------------------------------------------------
+
+                            console.log("also destroy it on the other clients here");
+                        }    
+                        else
+                            console.log('\x1b[31m%s\x1b[0m', "[ERROR]","Enemy not found on server... :(");
+                    }
                     else{
                         console.log("object type of damaged object is not accounted for on the server");
                         return;
@@ -2018,6 +2039,146 @@ function damageObject(worldId, id, senderId, damage){
     }
     else
         console.log(id, " is not accounted for on the sever");
+}
+
+var playerRepultionDist = 200;
+
+var attractDistance = 400;
+var attractionForce = 3;
+
+var repultionDistance = 70;
+var repultionForce = .5;
+
+var accelSpeed = .5;
+
+var iterationsBeforeSend = 20;
+var sendi = iterationsBeforeSend;
+
+function spawnEnemy(x, y, level, worldId)
+{
+    var enemy = new Player(x, y, 0, level, "enemy-" + uniqueId(), worldId); 
+    enemy.speed /= 90;
+
+    var velX = Math.random() - 0.5;
+    var velY = Math.random() - 0.5;
+
+    var mag = Math.sqrt(Math.pow(velX, 2) + Math.pow(velY, 2));
+
+    velX *= enemy.speed / mag;
+    velY *= enemy.speed / mag;
+
+    enemy.velocity = {x: velX, y: velY};
+
+    worldsData[worldId].enemies.push(enemy);
+    worldsData[worldId].hittableObjects.push(enemy);
+
+    io.to(worldId).emit('newPlayer', enemy);
+}
+
+setInterval(updateEnemies, 1);
+
+function updateEnemies(){
+
+    for (let index = 0; index < worldIds.length; index++) {
+        const worldId = worldIds[index];
+        
+        var worldData = worldsData[worldId];
+        var enemies = worldData.enemies;
+        
+        for (let i = 0; i < enemies.length; i++) {
+            const enemy = enemies[i];
+            
+            var player = findClosestPlayer(enemy.x, enemy.y, worldId);
+            var distanceToPlayer = Math.sqrt(Math.pow(player.x - enemy.x, 2) + Math.pow(player.y - enemy.y, 2));
+            var targetRot = -Math.atan2(enemy.x - player.x, enemy.y - player.y) - Math.PI / 180 * 90;
+            
+            //Attraction to player
+            if (distanceToPlayer < attractDistance)
+            { 
+                enemy.rotation = targetRot;
+            
+                var force = attractionForce * (distanceToPlayer - playerRepultionDist) / (attractDistance - playerRepultionDist);
+            
+                var targetX = Math.cos(enemy.rotation) * force;
+                var targetY = Math.sin(enemy.rotation) * force;
+            
+                enemy.velocity.x = targetX * accelSpeed - enemy.velocity.x;
+                enemy.velocity.y = targetY * accelSpeed - enemy.velocity.y;
+                
+            }
+            else
+                enemy.rotation = Math.atan2(enemy.velocity.y, enemy.velocity.x);
+            
+            //Pushing Other Enemies Away
+            for (var z = 0; z < enemies.length; z++) {
+                var otherEnemy = enemies[z];
+                
+                if(otherEnemy != enemy)
+                {
+        
+                    var distanceToOtherEnemy = Math.sqrt(Math.pow(otherEnemy.x - enemy.x, 2) + Math.pow(otherEnemy.y - enemy.y, 2));
+            
+                    if (distanceToOtherEnemy < repultionDistance)
+                    {
+                        enemy.velocity.x -= (otherEnemy.x - enemy.x) / Math.abs(otherEnemy.x - enemy.x) * repultionForce;
+                        enemy.velocity.y -= (otherEnemy.y - enemy.y) / Math.abs(otherEnemy.y - enemy.y) * repultionForce;
+                    }
+        
+                }
+                
+            }
+            
+            //Rebounding off Walls
+            if (enemy.x + enemy.velocity.x > gridSize || enemy.x + enemy.velocity.x < 0)
+                enemy.velocity.x *= -1;
+        
+            if (enemy.y + enemy.velocity.y > gridSize || enemy.y + enemy.velocity.y < 0)
+                enemy.velocity.y *= -1;
+        
+            //Cap velocity at speed
+            var mag = Math.sqrt(Math.pow(enemy.velocity.x, 2) + Math.pow(enemy.velocity.y, 2));
+            enemy.velocity.x *= enemy.speed / mag;
+            enemy.velocity.y *= enemy.speed / mag;
+                
+            enemy.x += enemy.velocity.x;
+            enemy.y += enemy.velocity.y;
+            
+            //console.log("x: " + enemy.x + ", y: " + enemy.y);
+
+        
+            if(sendi == iterationsBeforeSend)
+            {
+                data = {x: enemy.x, y: enemy.y, rot: enemy.rotation, id: enemy.id};
+                io.to(worldId).emit('playerPos', data);
+                sendi = 0;
+            }
+            else
+                sendi++;
+
+
+        }        
+    }
+}
+
+function findClosestPlayer(x ,y, worldId){
+
+    var dist = null;
+    var closestPlayer = false;
+
+    for (let i = 0; i < worldsData[worldId].clients.length; i++) {
+        const player = worldsData[worldId].clients[i];
+        
+        var playerDist = Math.sqrt(Math.pow(player.x - x, 2) + Math.pow(player.y - y, 2));
+
+        if(dist == null || playerDist < dist)
+        {
+            closestPlayer = player
+            dist = playerDist;
+        }
+            
+    }
+
+    return closestPlayer;
 }
 
 function itemDropped(drops, playerRecivingId, worldId, precent){
@@ -2414,7 +2575,7 @@ function newPlayerData(id, x, y) {
         return false;
 
     var data = {
-        existingPlayers: worldsData[id].clients,
+        existingPlayers: worldsData[id].clients.concat(worldsData[id].enemies),
         worldObjects: worldsData[id].worldObjects,
         gridSize: gridSize,
         planet: playerPlanet.id,
