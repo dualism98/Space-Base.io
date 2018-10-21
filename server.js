@@ -399,7 +399,7 @@ var playerUpgrades = [
         {   
             costs: {iron: 1},
             speed: 50,
-            fireRate: 15,
+            fireRate: 100,
             maxHealth: 10,
             damage: 1,
             radius: 10,
@@ -411,7 +411,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 5},
             speed: 48,
-            fireRate: 16,
+            fireRate: 95,
             maxHealth: 20,
             damage: 2,
             radius: 15,
@@ -423,7 +423,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 20},
             speed: 46,
-            fireRate: 17,
+            fireRate: 90,
             maxHealth: 30,
             damage: 3,
             radius: 20,
@@ -435,7 +435,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 50},
             speed: 44,
-            fireRate: 18,
+            fireRate: 85,
             maxHealth: 50,
             damage: 5,
             radius: 25,
@@ -447,7 +447,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 100, iron: 5},
             speed: 42,
-            fireRate: 19,
+            fireRate: 80,
             maxHealth: 80,
             damage: 8,
             radius: 30,
@@ -459,7 +459,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 300, iron: 10},
             speed: 40,
-            fireRate: 20,
+            fireRate: 75,
             maxHealth: 130,
             damage: 13,
             radius: 35,
@@ -471,7 +471,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 750, iron: 50},
             speed: 38,
-            fireRate: 21,
+            fireRate: 70,
             maxHealth: 210,
             damage: 21,
             radius: 40,
@@ -483,7 +483,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 1200, iron: 100, earth: 10},
             speed: 36,
-            fireRate: 25,
+            fireRate: 65,
             maxHealth: 340,
             damage: 34,
             radius: 45,
@@ -495,7 +495,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 2000, iron: 300, earth: 50, crystal: 5},
             speed: 34,
-            fireRate: 30,
+            fireRate: 60,
             maxHealth: 500,
             damage: 55,
             radius: 50,
@@ -507,7 +507,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 5000, iron: 800, earth: 300, crystal: 10},
             speed: 32,
-            fireRate: 35,
+            fireRate: 55,
             maxHealth: 890,
             damage: 89,
             radius: 55,
@@ -519,7 +519,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 10000, iron: 2500, earth: 500, crystal: 20},
             speed: 30,
-            fireRate: 40,
+            fireRate: 50,
             maxHealth: 1440,
             damage: 144,
             radius: 60,
@@ -543,7 +543,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 100000, iron: 10000, earth: 1200, crystal: 75, gem: 5},
             speed: 26,
-            fireRate: 50,
+            fireRate: 40,
             maxHealth: 3000,
             damage: 300,
             radius: 70,
@@ -555,7 +555,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 250000, iron: 20000, earth: 2500, crystal: 100, gem: 10},
             speed: 24,
-            fireRate: 60,
+            fireRate: 35,
             maxHealth: 4000,
             damage: 400,
             radius: 75,
@@ -567,7 +567,7 @@ var playerUpgrades = [
         {   
             costs: {asteroidBits: 500000, iron: 50000, earth: 5000, crystal: 130, gem: 25},
             speed: 22,
-            fireRate: 70,
+            fireRate: 30,
             maxHealth: 5000,
             damage: 500,
             radius: 80,
@@ -1086,8 +1086,6 @@ function newConnetcion(socket){
             projectile.object.hitObjects.push(data.id);
         else
             projectile.object.hitObjects = [data.id];
-
-
         
         if(projectile.object.bulletPenetration > 0 && target && target.object.type && !target.object.structure && target.object.type != "planet"){
             projectile.object.bulletPenetration--;
@@ -1198,8 +1196,6 @@ function newConnetcion(socket){
 
         socket.broadcast.to(data.worldId).emit('spawnProj', data);
         worldsData[data.worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, shooter.object.damage * data.percentDamage, shooter.object.bulletRange, bulletPenetration, data.worldId, data.id));
-
-        //console.log('\x1b[33m%s\x1b[0m', "spawned projectile with id: ", data.id, " total: ", worldsData[data.worldId].projectiles.length);
     });
 
     socket.on('requestSpawnStructure', function(data){
@@ -1707,7 +1703,6 @@ function disconnectPlayer(id, socket, worldId){
                 }
             });
 
-
             var playerPosition;
 
             if(respawnPlanet) //Respawn player on their owned planet
@@ -1769,8 +1764,8 @@ function damageObject(worldId, id, senderId, damage){
         //If the thing attacked was space matter
         var possibleSpaceMatter = findObjectWithId(worldWorldObjects.asteroids, target.object.id);
 
-        //If the thing attacked was space matter
-        var possibleEnemy = findObjectWithId(worldWorldObjects.enemies, target.object.id);
+        //If the thing attacked was an enemy
+        var possibleEnemy = findObjectWithId(worldsData[worldId].enemies, target.object.id);
 
         if(possibleClient)
         {
@@ -1958,15 +1953,13 @@ function damageObject(worldId, id, senderId, damage){
                     }
                     else if(possibleEnemy)
                     {
-                        var enemy = findObjectWithId(worldsData[possibleEnemy.worldId].enemies, possibleEnemy.id);
+                        var enemy = findObjectWithId(worldsData[possibleEnemy.object.worldId].enemies, possibleEnemy.object.id);
 
                         if(enemy.object)
                         {
-                            worldsData[possibleEnemy.worldId].enemies.splice(enemy.index)
-
-                            //Insert destroy on all of clients here ------------------------------------------------------------------------
-
-                            console.log("also destroy it on the other clients here");
+                            var enemyData = {clientId: enemy.object.id, forGood: false};
+                            io.to(worldId).emit('playerExited', enemyData);
+                            worldsData[possibleEnemy.object.worldId].enemies.splice(enemy.index);
                         }    
                         else
                             console.log('\x1b[31m%s\x1b[0m', "[ERROR]","Enemy not found on server... :(");
@@ -1999,7 +1992,6 @@ function damageObject(worldId, id, senderId, damage){
                                 unspawnedObjects.splice(i, 1);
                                 continue;
                             }
-                                
 
                             worldHittableObjects = worldsData[obj.worldId].hittableObjects;
                             worldWorldObjects = worldsData[obj.worldId].worldObjects;
@@ -2044,15 +2036,17 @@ function damageObject(worldId, id, senderId, damage){
 var playerRepultionDist = 200;
 
 var attractDistance = 400;
-var attractionForce = 2;
+var attractionForce = .5;
 
 var repultionDistance = 70;
 var repultionForce = .2;
 
 var accelSpeed = .3;
 
-var iterationsBeforeSend = 20;
+var iterationsBeforeSend = 50;
 var sendi = iterationsBeforeSend;
+
+var enemyProjectiles = [];
 
 function spawnEnemy(x, y, level, worldId)
 {
@@ -2068,6 +2062,7 @@ function spawnEnemy(x, y, level, worldId)
     velY *= enemy.speed / mag;
 
     enemy.velocity = {x: velX, y: velY};
+    enemy.shootTimer = enemy.fireRate;
 
     worldsData[worldId].enemies.push(enemy);
     worldsData[worldId].hittableObjects.push(enemy);
@@ -2078,6 +2073,47 @@ function spawnEnemy(x, y, level, worldId)
 setInterval(updateEnemies, 1);
 
 function updateEnemies(){
+
+    for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
+
+        var worldId = enemyProjectiles[i].worldId;
+        const proj = worldsData[worldId].projectiles[enemyProjectiles[i].index];
+
+        if(!proj)
+        {
+            continue;
+            console.log("asdasd");
+        }
+            
+
+        worldsData[worldId].hittableObjects.forEach(obj => {
+           
+            var isEnemy = false;
+
+            worldsData[worldId].enemies.forEach(enemy => {
+                if(enemy.id == obj.id)
+                {
+                    isEnemy = true;
+                    return;
+                }
+            });
+
+            if(!isEnemy)
+            {
+                var dist = Math.sqrt(Math.pow(proj.x - obj.x, 2) + Math.pow(proj.y - obj.y, 2));
+
+                //Projectile hit something
+                if(dist < proj.size + obj.radius)
+                {
+                    worldsData[worldId].projectiles.splice(enemyProjectiles[i].index, 1);
+                    enemyProjectiles.splice(i, 1);
+                    io.to(worldId).emit('destroyProjectile', {id: proj.id});
+                    return;
+                }
+            }
+        });
+        
+    }
 
     for (let index = 0; index < worldIds.length; index++) {
         const worldId = worldIds[index];
@@ -2090,19 +2126,35 @@ function updateEnemies(){
             
             var player = findClosestPlayer(enemy.x, enemy.y, worldId);
             var distanceToPlayer = Math.sqrt(Math.pow(player.x - enemy.x, 2) + Math.pow(player.y - enemy.y, 2));
-            var targetRot = -Math.atan2(enemy.x - player.x, enemy.y - player.y) - Math.PI / 180 * 90;
             var force = enemy.speed;
 
-            playerRepultionDist = player.radius * 4;
+            playerRepultionDist = player.radius * 3 + 50;
 
-            //Attraction to player
+            //In Range Of Player
             if (distanceToPlayer < attractDistance)
             { 
+                //Shoot
+                if(enemy.shootTimer > 0)
+                    enemy.shootTimer--;
+                else{
+
+                    var projVelX = Math.cos(enemy.rotation) * enemy.projectileSpeed;
+                    var projVelY = Math.sin(enemy.rotation) * enemy.projectileSpeed;
+                    
+                    var projVelocity = {x: projVelX, y: projVelY};
+                    var data = {x: enemy.x, y: enemy.y, vel: projVelocity, size: enemy.radius / 10, color: "#89f442", bulletPenetration: 0, id: uniqueId()}
+
+                    io.to(worldId).emit('spawnProj', data);
+                    worldsData[worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, enemy.damage, enemy.bulletRange, 0, worldId, data.id));
+                    enemyProjectiles.push({index: worldsData[worldId].projectiles.length - 1, worldId: worldId});
+                    enemy.shootTimer = enemy.fireRate;
+                }
+
+                //Attraction to player
+                targetRot = -Math.atan2(enemy.x - player.x, enemy.y - player.y) - Math.PI / 180 * 90;
                 enemy.rotation = targetRot;
                 force = attractionForce * (distanceToPlayer - playerRepultionDist) / (attractDistance - playerRepultionDist);
             }
-
-            console.log(enemy.rotation + " --- " + (Math.PI - enemy.rotation) * -2 + enemy.rotation);
 
             //Rebounding off Walls
             if (enemy.x + enemy.velocity.x > gridSize || enemy.x + enemy.velocity.x < 0)

@@ -1177,7 +1177,7 @@ $(document).keypress(function(e){
                 {
                     shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, spaceShip.projectileSpeed, spaceShip.radius / 4, spaceShip.shopUpgrades.bulletPenetration.value + 1, "#f45c42", clientId, 1 - playerReloadTimer / 1000);
                     shootCooldownTimer = 0;
-                    playerReloadTimer = 1000;
+                    playerReloadTimer = spaceShip.fireRate;
                 }
             }
             
@@ -3642,15 +3642,13 @@ function animate() {
         }
 
         if(playerReloadTimer > 0){
-            if(playerReloadTimer - spaceShip.fireRate > 0)
-                playerReloadTimer -= spaceShip.fireRate;
-            else
-                playerReloadTimer = 0;
+
+            playerReloadTimer -= 1;
         }
 
         if(!currentPlanet){
             var width = canvas.width / 5;
-            displayBar(centerX * scale - width / 2, canvas.height - 30, width, 20, (1000 - playerReloadTimer) / 1000, "#ff5a51");
+            displayBar(centerX * scale - width / 2, canvas.height - 30, width, 20, (spaceShip.fireRate - playerReloadTimer) / spaceShip.fireRate, "#ff5a51");
         }
 
     }
