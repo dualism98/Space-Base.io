@@ -2044,19 +2044,19 @@ function damageObject(worldId, id, senderId, damage){
 var playerRepultionDist = 200;
 
 var attractDistance = 400;
-var attractionForce = 3;
+var attractionForce = 2;
 
 var repultionDistance = 70;
-var repultionForce = .5;
+var repultionForce = .2;
 
-var accelSpeed = .5;
+var accelSpeed = .3;
 
 var iterationsBeforeSend = 20;
 var sendi = iterationsBeforeSend;
 
 function spawnEnemy(x, y, level, worldId)
 {
-    var enemy = new Player(x, y, 0, level, "enemy-" + uniqueId(), worldId); 
+    var enemy = new Player(x, y, 1, level, "enemy-" + uniqueId(), worldId); 
     enemy.speed /= 90;
 
     var velX = Math.random() - 0.5;
@@ -2091,50 +2091,51 @@ function updateEnemies(){
             var player = findClosestPlayer(enemy.x, enemy.y, worldId);
             var distanceToPlayer = Math.sqrt(Math.pow(player.x - enemy.x, 2) + Math.pow(player.y - enemy.y, 2));
             var targetRot = -Math.atan2(enemy.x - player.x, enemy.y - player.y) - Math.PI / 180 * 90;
-            
+            var force = enemy.speed;
+
+            playerRepultionDist = player.radius * 4;
+
             //Attraction to player
             if (distanceToPlayer < attractDistance)
             { 
                 enemy.rotation = targetRot;
-            
-                var force = attractionForce * (distanceToPlayer - playerRepultionDist) / (attractDistance - playerRepultionDist);
-            
-                var targetX = Math.cos(enemy.rotation) * force;
-                var targetY = Math.sin(enemy.rotation) * force;
-            
-                enemy.velocity.x = targetX * accelSpeed - enemy.velocity.x;
-                enemy.velocity.y = targetY * accelSpeed - enemy.velocity.y;
-                
+                force = attractionForce * (distanceToPlayer - playerRepultionDist) / (attractDistance - playerRepultionDist);
             }
-            else
-                enemy.rotation = Math.atan2(enemy.velocity.y, enemy.velocity.x);
+
+            console.log(enemy.rotation + " --- " + (Math.PI - enemy.rotation) * -2 + enemy.rotation);
+
+            //Rebounding off Walls
+            if (enemy.x + enemy.velocity.x > gridSize || enemy.x + enemy.velocity.x < 0)
+                enemy.rotation = (Math.PI - enemy.rotation) * -2 + enemy.rotation;
+
+            if (enemy.y + enemy.velocity.y > gridSize || enemy.y + enemy.velocity.y < 0)
+                enemy.rotation = (Math.PI - enemy.rotation) * -2 + enemy.rotation;
+
+            var targetX = Math.cos(enemy.rotation) * force;
+            var targetY = Math.sin(enemy.rotation) * force;
             
+            enemy.velocity.x = targetX;
+            enemy.velocity.y = targetY;
+
             //Pushing Other Enemies Away
             for (var z = 0; z < enemies.length; z++) {
                 var otherEnemy = enemies[z];
                 
                 if(otherEnemy != enemy)
                 {
-        
                     var distanceToOtherEnemy = Math.sqrt(Math.pow(otherEnemy.x - enemy.x, 2) + Math.pow(otherEnemy.y - enemy.y, 2));
-            
+
                     if (distanceToOtherEnemy < repultionDistance)
                     {
                         enemy.velocity.x -= (otherEnemy.x - enemy.x) / Math.abs(otherEnemy.x - enemy.x) * repultionForce;
                         enemy.velocity.y -= (otherEnemy.y - enemy.y) / Math.abs(otherEnemy.y - enemy.y) * repultionForce;
                     }
-        
+
                 }
                 
             }
             
-            //Rebounding off Walls
-            if (enemy.x + enemy.velocity.x > gridSize || enemy.x + enemy.velocity.x < 0)
-                enemy.velocity.x *= -1;
-        
-            if (enemy.y + enemy.velocity.y > gridSize || enemy.y + enemy.velocity.y < 0)
-                enemy.velocity.y *= -1;
-        
+
             //Cap velocity at speed
             var mag = Math.sqrt(Math.pow(enemy.velocity.x, 2) + Math.pow(enemy.velocity.y, 2));
             enemy.velocity.x *= enemy.speed / mag;
