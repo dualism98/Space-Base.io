@@ -575,7 +575,7 @@ function startLocalPlayer(data){
     friendlyObjectIds = [clientId];
 
     //Spawn client player
-    spaceShip = new SpaceShip(centerX, centerY, player.maxHealth, player.health, player.level, player.radius, player.speed, player.turningSpeed, player.fireRate, player.projectileSpeed, clientId);
+    spaceShip = new SpaceShip(centerX, centerY, player.maxHealth, player.health, player.level, player.radius, player.speed, player.turningSpeed, player.fireRate, player.projectileSpeed, player.oxygen, clientId);
     spaceShip.shopUpgrades = player.shopUpgrades;
     
     playerItems = {};
@@ -1316,6 +1316,8 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
 
     var healthBarWidth = 100;
 
+    this.stripeVars = null;
+
     this.draw = function(){
         c.beginPath();
         c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
@@ -1326,12 +1328,35 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         c.arc(this.x, this.y, this.radius - 20, 0, Math.PI * 2, false);
         c.fillStyle = shadeColorHex(this.color, 10);
         c.fill();
+
+        
+        
+        var height = this.radius - this.stripeVars.ofsetY;
+        var width = Math.sqrt(-8 * height * (height / 2 - this.radius)); 
+
+        var start = {x: -width / 2, y: this.stripeVars.ofsetY};
+        var end = {x: width / 2, y: this.stripeVars.ofsetY};
+
+        var angle = Math.PI / 2 - Math.acos(this.stripeVars.ofsetY / this.radius);
+
+        c.fillStyle = shadeColorHex(this.color, this.stripeVars.colorHex);
+        c.globalAlpha = .2;
+        
+        c.save();
+        c.translate(this.x, this.y);
+        c.rotate(this.stripeVars.rotation);
+        c.beginPath();
+        c.arc(0, 0, this.radius, angle, Math.PI - angle, false);
+        c.wavy(start, end, this.stripeVars.frequency, 12, 4);
+        c.fill();
+        c.restore();
+        c.globalAlpha = 1;
+
     }
     this.update = function(){
         var pos = cordsToScreenPos(this.coordX, this.coordY);
         this.x = pos.x;
         this.y = pos.y
-
 
         var powerAvailable = 0;
         var powerNeeded = 0;
@@ -1348,6 +1373,15 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         });
 
         this.powered = powerAvailable >= powerNeeded;
+
+        if(this.stripeVars == null)
+        {
+            this.stripeVars = {};
+            this.stripeVars.frequency = Math.floor(Math.random() * this.radius / 20) + .002 * this.radius;  
+            this.stripeVars.rotation = Math.floor(Math.random() * Math.PI * 2);
+            this.stripeVars.ofsetY = Math.floor(Math.random() * 100) - 50;
+            this.stripeVars.colorHex = Math.floor(Math.random() * 120) -50;
+        }
 
         this.draw();
         this.updateStructures();
@@ -1393,7 +1427,7 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         healthBarWidth = 200;
 
         if(this.health != this.maxHealth)
-        displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, healthBarWidth, 20, this.health / this.maxHealth, "green");
+            displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, healthBarWidth, 20, this.health / this.maxHealth, "#88ff60");
     }
 
     this.updateStructures = function(){
@@ -2095,7 +2129,7 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
         this.draw();
     }
 }
-function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, fireRate, projectileSpeed, id){
+function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, fireRate, projectileSpeed, oxygen, id){
     this.coordX = x;
     this.coordY = y;
     this.rotation = 0;
@@ -2106,6 +2140,7 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     this.fireRate = fireRate;
     this.turningSpeed = turningSpeed;
     this.projectileSpeed = projectileSpeed;
+    this.oxygen = oxygen;
     this.level = level;
     this.id = id;
 
@@ -2114,6 +2149,8 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     this.turret;
 
     this.oxygenRemaining;
+    this.oxygenVignetteFade = {i: 0, time: 200};
+    this.oxygenBarBlink = {i: 0, time: 50, legnth: 20};
 
     this.shopUpgrades = {
         bulletPenetration: {
@@ -2180,17 +2217,56 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
         }  
     }
     this.doOxygen = function(){
+
+        var dispBarBGColor = null;
+
         if(this.oxygenRemaining == null)
             this.oxygenRemaining = this.oxygen;
         else
         {
             if(!currentPlanet)
-                this.oxygenRemaining--;
-            else if (this.oxygenRemaining < this.oxygen)
-                this.oxygenRemaining++
+            {
+                if(this.oxygenRemaining > 0)
+                    this.oxygenRemaining--;
+                else
+                {
+
+                    if(this.oxygenBarBlink.i < this.oxygenBarBlink.time)
+                        this.oxygenBarBlink.i++;
+                    else if(this.oxygenBarBlink.i < this.oxygenBarBlink.time + this.oxygenBarBlink.legnth)
+                    {
+                        dispBarBGColor = "red";
+                        this.oxygenBarBlink.i++;
+                    }
+                    else
+                        this.oxygenBarBlink.i = 0;
+                        
+                    if(this.oxygenVignetteFade.i < this.oxygenVignetteFade.time)
+                    {
+                        $("#vignetteOverlay").css("opacity", this.oxygenVignetteFade.i / this.oxygenVignetteFade.time);
+                        this.oxygenVignetteFade.i++;
+                    }                        
+                }
+                
+            }
+            else
+            {
+                this.oxygenBarBlink.i = 0;
+
+                if (this.oxygenRemaining < this.oxygen)
+                    this.oxygenRemaining++
+
+                if(this.oxygenVignetteFade.i > 0){
+                    $("#vignetteOverlay").css("opacity", this.oxygenVignetteFade.i / this.oxygenVignetteFade.time);
+                    this.oxygenVignetteFade.i--;
+                }
+            } 
         }
 
-        displayBar(centerX, centerY, 100, 20,this.oxygenRemaining / this.oxygen, "#a3e1ff");
+        var width = windowWidth / 3 / scale;
+        var height = windowHeight / 20 / scale;
+
+        displayBar(centerX - width /2, windowHeight / scale - height * 5, width, height, this.oxygenRemaining / this.oxygen, "#a3e1ff", dispBarBGColor);
     }
 
 }
@@ -4544,9 +4620,14 @@ function displayResources(){
 
 }
 
-function displayBar(x, y, width, height, fillPrecentage, color) {
-    c.globalAlpha = 0.75;
-    c.fillStyle = "#bababa";
+function displayBar(x, y, width, height, fillPrecentage, color, backgroundColor) {
+
+
+    var bg = backgroundColor == null ? "#bababa" : backgroundColor;
+
+
+    c.globalAlpha = 0.55;
+    c.fillStyle = bg;
     c.fillRect(x, y, width, height);
 
     c.fillStyle = color;
@@ -4797,6 +4878,29 @@ function findObjectWithId(array, id){
 var uniqueId = function() {
     return 'id-' + Math.random().toString(36).substr(2, 16);
 };
+
+CanvasRenderingContext2D.prototype.wavy = function(from, to, frequency, amplitude, step, negative) 
+{ 
+	var cx = 0, cy = 0, 
+		fx = from.x, fy = from.y, 
+		tx = to.x, ty = to.y,
+		i = 0, waveOffsetLength = 0,
+		
+		ang = Math.atan2(ty - fy, tx - fx),
+		distance = Math.sqrt((fx - tx) * (fx - tx) + (fy - ty) * (fy - ty)),
+		a = amplitude * (!negative ? 1 : -1),
+		f = Math.PI * frequency;
+	
+	for (i; i <= distance; i += step) 
+	{
+		waveOffsetLength = Math.sin((i / distance) * f) * a;
+		cx = from.x + Math.cos(ang) * i + Math.cos(ang - Math.PI/2) * waveOffsetLength;
+		cy = from.y + Math.sin(ang) * i + Math.sin(ang - Math.PI/2) * waveOffsetLength;
+        
+        if(i > 0)
+            this.lineTo(cx, cy);
+	}
+}
 
 function findUpgrade(id){
 
