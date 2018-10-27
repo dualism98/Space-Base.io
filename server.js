@@ -43,6 +43,7 @@ var mineProductionRate = 2500;
 var despawnProjectilesRate = 100;
 var shieldHealRate = 1000;
 var sunDamageRate = 1000;
+var oxygenDamageRate = 2000;
 var updateEnemiesRate = 10;
 
 var unspawnedObjects = [];
@@ -139,7 +140,8 @@ function addWorld(){
         worldObjects: objects.worldObjects,
         hittableObjects: objects.hittableObjects,
         projectiles: [],
-        enemies: []
+        enemies: [],
+        noOxygen: []
     }
     
     worldIds.push(worldId);
@@ -1584,6 +1586,19 @@ function newConnetcion(socket){
 
     });
 
+    socket.on('oxygen', function(data){
+
+        console.log(socket.id);
+
+        var noOxygen = worldsData[data.worldId].noOxygen;
+
+        if(data.has)
+            noOxygen.splice(noOxygen.indexOf(socket.id), 1);
+        else if(!noOxygen.contains(socket.id))
+            noOxygen.push(socket.id);
+    
+    });
+
     socket.on('disconnect', function (data) {
         
         var worldId;
@@ -2050,29 +2065,15 @@ var sendi = iterationsBeforeSend;
 
 var enemyProjectiles = [];
 
-function spawnEnemy(x, y, level, worldId)
-{
-    var enemy = new Player(x, y, 1, level, "enemy-" + uniqueId(), worldId); 
-    enemy.speed /= 10;
+//Recursive Functions --------------------------------------------------------------------------------------------------
 
-    var velX = Math.random() - 0.5;
-    var velY = Math.random() - 0.5;
-
-    var mag = Math.sqrt(Math.pow(velX, 2) + Math.pow(velY, 2));
-
-    velX *= enemy.speed / mag;
-    velY *= enemy.speed / mag;
-
-    enemy.velocity = {x: velX, y: velY};
-    enemy.shootTimer = enemy.fireRate;
-
-    worldsData[worldId].enemies.push(enemy);
-    worldsData[worldId].hittableObjects.push(enemy);
-
-    io.to(worldId).emit('newPlayer', enemy);
-}
-
+setInterval(sunDamage, sunDamageRate);
+setInterval(oxygenDamage, oxygenDamageRate);
+setInterval(shieldHeal, shieldHealRate);
+setInterval(despawnProjectiles, despawnProjectilesRate);
+setInterval(mineProduce, mineProductionRate);
 setInterval(updateEnemies, 10);
+
 
 function updateEnemies(){
 
@@ -2226,6 +2227,195 @@ function updateEnemies(){
     }
 }
 
+function sunDamage()
+{
+    var syncWorldIds = {};
+
+    allClients().forEach(client => {
+
+        var player = findObjectWithId(worldsData[client.worldId].hittableObjects, client.id).object;
+
+        worldsData[client.worldId].worldObjects.asteroids.forEach(matter => {
+            if(matter.type == "sun")
+            {
+                var distance = Math.sqrt(Math.pow(matter.x - client.x, 2) + Math.pow(matter.y - client.y, 2)); 
+
+                if(distance < client.radius + matter.radius){
+
+                    var damage = player.maxHealth / 5;
+
+                    damageObject(player.worldId, player.id, null, damage);
+
+                    if(syncWorldIds[player.worldId])
+                        syncWorldIds[player.worldId].push(player.id)
+                    else
+                        syncWorldIds[player.worldId] = [player.id];
+                }
+
+            }
+        });
+
+    });
+
+    for (var syncWorldId in syncWorldIds) {
+        if (syncWorldIds.hasOwnProperty(syncWorldId)) 
+            syncDamage(syncWorldId, syncWorldIds[syncWorldId]);
+    }
+
+}
+
+function oxygenDamage()
+{
+    var syncWorldIds = {};
+
+    var spliced = [];
+
+    for (let i = 0; i < worldIds.length; i++) {
+        const worldId = worldIds[i];
+
+        for (let x = worldsData[worldId].noOxygen.length - 1; x >= 0; x--) {
+            const client = worldsData[worldId].noOxygen[x];
+         
+            var damage = Math.floor(player.maxHealth / 5);
+
+            var hittableObj = findObjectWithId(worldsData[worldId].hittableObjects, client);
+
+            if(damage >= hittableObj.health)
+                worldsData[worldId].noOxygen.splice(worldsData[worldId].noOxygen.indexOf(client), 1); //-----------------------------------------------------------------------------------asljdgbjl ashdghjyasdgfhiufasd hjafsdhgfjasdfhaksd
+
+            damageObject(worldId, client, null, damage);
+
+            if(syncWorldIds[worldId])
+                syncWorldIds[worldId].push(client);
+            else
+                syncWorldIds[worldId] = [client];
+
+        }
+    }
+
+    for (var syncWorldId in syncWorldIds) {
+        if (syncWorldIds.hasOwnProperty(syncWorldId)) 
+            syncDamage(syncWorldId, syncWorldIds[syncWorldId]);
+    }
+
+}
+
+function shieldHeal()
+{
+    var syncWorldIds = {};
+
+    allStructures().forEach(structure => {
+        if(structure.type == "shield"){
+            var shield = findObjectWithId(worldsData[structure.worldId].hittableObjects, structure.id).object;
+
+            var addamount = shield.maxHealth / 25;
+
+            if(shield.health != shield.maxHealth){
+                if(shield.health + addamount < shield.maxHealth)
+                    shield.health += addamount;
+                else
+                    shield.health = shield.maxHealth;
+
+
+                if(syncWorldIds[structure.worldId])
+                    syncWorldIds[structure.worldId].push(structure.id)
+                else
+                    syncWorldIds[structure.worldId] = [structure.id];
+            }
+        }
+    });
+
+    for (var syncWorldId in syncWorldIds) {
+        if (syncWorldIds.hasOwnProperty(syncWorldId)) 
+            syncDamage(syncWorldId, syncWorldIds[syncWorldId]);
+    }
+    
+}
+
+function despawnProjectiles()
+{
+    allProjectiles().forEach(projectile => {
+
+        if(projectile.time != null){
+            if(projectile.time > projectile.bulletRange){
+                var data = {id: projectile.id}
+    
+                var hitProj = findObjectWithId(worldsData[projectile.worldId].projectiles, projectile.id);
+                if(hitProj)
+                    worldsData[projectile.worldId].projectiles.splice(hitProj.index, 1);
+    
+                io.sockets.to(projectile.worldId).emit('destroyProjectile', data);
+            }
+
+            projectile.time++;
+        }
+        else{
+            projectile.time = 0;
+        }
+
+    });
+}
+
+function mineProduce()
+{
+    var mineProduceItems = [{item: 'iron', chance: .1}, {item: 'asteroidBits', chance: 1}];
+
+    allClients().forEach(client => {
+
+        var mineData = [];
+    
+        client.structures.forEach(structure => {
+            if(structure.type == "mine"){
+
+                for(var i = 0; i < mineProduceItems.length; i++){
+                
+                    var mineProduceItem = mineProduceItems[i].item;
+                    var amount = Math.round(mineProduceItems[i].chance * structure.amount);
+
+                    if(amount > 0){
+                        mineData.push({id: structure.id, amount: structure.amount, item: mineProduceItem});
+
+                        if(client.drops[mineProduceItem])
+                            client.drops[mineProduceItem] += structure.amount;
+                        else
+                            client.drops[mineProduceItem] = structure.amount;
+                    }
+                }
+            }
+        });
+
+        if(mineData.length > 0){
+            io.sockets.connected[client.id].emit("mineProduce", mineData);
+        }
+        
+    
+    });
+}
+
+// ----------------------------------------------------------------------------------------------------------------
+
+function spawnEnemy(x, y, level, worldId)
+{
+    var enemy = new Player(x, y, 1, level, "enemy-" + uniqueId(), worldId); 
+    enemy.speed /= 10;
+
+    var velX = Math.random() - 0.5;
+    var velY = Math.random() - 0.5;
+
+    var mag = Math.sqrt(Math.pow(velX, 2) + Math.pow(velY, 2));
+
+    velX *= enemy.speed / mag;
+    velY *= enemy.speed / mag;
+
+    enemy.velocity = {x: velX, y: velY};
+    enemy.shootTimer = enemy.fireRate;
+
+    worldsData[worldId].enemies.push(enemy);
+    worldsData[worldId].hittableObjects.push(enemy);
+
+    io.to(worldId).emit('newPlayer', enemy);
+}
+
 function findClosestPlayer(x ,y, worldId){
 
     var dist = null;
@@ -2339,143 +2529,6 @@ function syncDamage(worldId, changedIds){
     }
 
     io.to(worldId).emit('damageSync', healthData);
-}
-
-
-setInterval(sunDamage, sunDamageRate);
-
-function sunDamage()
-{
-    var syncWorldIds = {};
-
-    allClients().forEach(client => {
-
-        var player = findObjectWithId(worldsData[client.worldId].hittableObjects, client.id).object;
-
-        worldsData[client.worldId].worldObjects.asteroids.forEach(matter => {
-            if(matter.type == "sun")
-            {
-                var distance = Math.sqrt(Math.pow(matter.x - client.x, 2) + Math.pow(matter.y - client.y, 2)); 
-
-                if(distance < client.radius + matter.radius){
-
-                    var damage = player.maxHealth / 5;;
-
-                    damageObject(player.worldId, player.id, null, damage);
-
-                    if(syncWorldIds[player.worldId])
-                        syncWorldIds[player.worldId].push(player.id)
-                    else
-                        syncWorldIds[player.worldId] = [player.id];
-                }
-
-            }
-        });
-
-    });
-
-    for (var syncWorldId in syncWorldIds) {
-        if (syncWorldIds.hasOwnProperty(syncWorldId)) 
-            syncDamage(syncWorldId, syncWorldIds[syncWorldId]);
-    }
-
-}
-
-setInterval(shieldHeal, shieldHealRate);
-function shieldHeal()
-{
-    var syncWorldIds = {};
-
-    allStructures().forEach(structure => {
-        if(structure.type == "shield"){
-            var shield = findObjectWithId(worldsData[structure.worldId].hittableObjects, structure.id).object;
-
-            var addamount = shield.maxHealth / 25;
-
-            if(shield.health != shield.maxHealth){
-                if(shield.health + addamount < shield.maxHealth)
-                    shield.health += addamount;
-                else
-                    shield.health = shield.maxHealth;
-
-
-                if(syncWorldIds[structure.worldId])
-                    syncWorldIds[structure.worldId].push(structure.id)
-                else
-                    syncWorldIds[structure.worldId] = [structure.id];
-            }
-        }
-    });
-
-    for (var syncWorldId in syncWorldIds) {
-        if (syncWorldIds.hasOwnProperty(syncWorldId)) 
-            syncDamage(syncWorldId, syncWorldIds[syncWorldId]);
-    }
-    
-}
-
-
-setInterval(despawnProjectiles, despawnProjectilesRate);
-
-function despawnProjectiles()
-{
-    allProjectiles().forEach(projectile => {
-
-        if(projectile.time != null){
-            if(projectile.time > projectile.bulletRange){
-                var data = {id: projectile.id}
-    
-                var hitProj = findObjectWithId(worldsData[projectile.worldId].projectiles, projectile.id);
-                if(hitProj)
-                    worldsData[projectile.worldId].projectiles.splice(hitProj.index, 1);
-    
-                io.sockets.to(projectile.worldId).emit('destroyProjectile', data);
-            }
-
-            projectile.time++;
-        }
-        else{
-            projectile.time = 0;
-        }
-
-    });
-}
-
-setInterval(mineProduce, mineProductionRate);
-function mineProduce()
-{
-    var mineProduceItems = [{item: 'iron', chance: .1}, {item: 'asteroidBits', chance: 1}];
-
-    allClients().forEach(client => {
-
-        var mineData = [];
-    
-        client.structures.forEach(structure => {
-            if(structure.type == "mine"){
-
-                for(var i = 0; i < mineProduceItems.length; i++){
-                
-                    var mineProduceItem = mineProduceItems[i].item;
-                    var amount = Math.round(mineProduceItems[i].chance * structure.amount);
-
-                    if(amount > 0){
-                        mineData.push({id: structure.id, amount: structure.amount, item: mineProduceItem});
-
-                        if(client.drops[mineProduceItem])
-                            client.drops[mineProduceItem] += structure.amount;
-                        else
-                            client.drops[mineProduceItem] = structure.amount;
-                    }
-                }
-            }
-        });
-
-        if(mineData.length > 0){
-            io.sockets.connected[client.id].emit("mineProduce", mineData);
-        }
-        
-    
-    });
 }
 
 //Utility Functions --------------------------------------------------------------------------------------------------

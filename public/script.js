@@ -1377,10 +1377,10 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         if(this.stripeVars == null)
         {
             this.stripeVars = {};
-            this.stripeVars.frequency = Math.floor(Math.random() * this.radius / 20) + .002 * this.radius;  
+            this.stripeVars.frequency = Math.floor(Math.random() * this.radius / 20) + .004 * this.radius;  
             this.stripeVars.rotation = Math.floor(Math.random() * Math.PI * 2);
             this.stripeVars.ofsetY = Math.floor(Math.random() * 100) - 50;
-            this.stripeVars.colorHex = Math.floor(Math.random() * 120) -50;
+            this.stripeVars.colorHex = Math.floor(Math.random() * 60) + 20;
         }
 
         this.draw();
@@ -2227,7 +2227,12 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
             if(!currentPlanet)
             {
                 if(this.oxygenRemaining > 0)
+                {
+                    if(this.oxygenRemaining == 1)
+                        socket.emit("oxygen", {has: false, worldId: worldId});
+                    
                     this.oxygenRemaining--;
+                } 
                 else
                 {
 
@@ -2252,6 +2257,9 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
             else
             {
                 this.oxygenBarBlink.i = 0;
+
+                if(this.oxygenRemaining == 0)
+                    socket.emit("oxygen", {has: true, worldId: worldId});
 
                 if (this.oxygenRemaining < this.oxygen)
                     this.oxygenRemaining++
