@@ -106,6 +106,7 @@ var socket;
 var clientId;
 var otherPlayers = [];
 var worldObjects = [];
+var worldItems = {};
 var hittableObjects = {};
 var gridSize;
 var gridBoxScale;
@@ -320,6 +321,7 @@ function setup(){
     socket.on('spawnStructure', spawnNetworkedStructure);
     socket.on('destroyProjectile', destroyNetworkedProjectile);
     socket.on("items", onAquiredItems);
+    socket.on("updateItems", updateItems);
     socket.on("upgradeInfo", receiveUpgradeInfo)
     socket.on("upgradeSync", upgradeSync);
     socket.on("returnMsg", returnMsg);
@@ -567,6 +569,7 @@ function showWorld(){
     
     animate();
 }
+
 function startLocalPlayer(data){
 
     var player = data.player;
@@ -615,6 +618,7 @@ function startLocalPlayer(data){
     }
 
 }
+
 function newPlayer(data){
     otherPlayers.push(new NetworkSpaceShip(data.x, data.y, data.maxHealth, data.health, data.rotation, data.level, data.radius, data.username, data.id));
 }
@@ -741,8 +745,6 @@ function upgradeSync(data){
     for (var property in data.upgrade) {
         if (data.upgrade.hasOwnProperty(property)) {
 
-            console.log(property);
-
             if(property == "maxHealth" || property == "oxygen"){
 
                 var val = "";
@@ -751,8 +753,10 @@ function upgradeSync(data){
                 {
                     case "maxHealth":
                         val = "health"
+                        break;
                     case "oxygen":
                         val = "oxygenRemaining"
+                        break;
                 }
 
                 var precent = upgradedObject[val] / upgradedObject[property];
@@ -856,6 +860,29 @@ function onAquiredItems(data){
             aquiredItems[drop] = {amount: data.drops[drop], time: aquireItemsFadeTime};
         }
     } 
+}
+
+function updateItems(data){
+
+    for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+        
+        var localItem = worldItems[item.id];
+
+        if(item.collected){
+            if(localItem)
+                delete worldItems[item.id];
+            continue;
+        }
+
+        if(!localItem)
+            localItem = worldItems[item.id] = new Item(item.x, item.y, item.type, item.id);
+        
+        localItem.coordX = item.x;
+        localItem.coordY = item.y;
+        localItem.targetRotation = item.rot;
+    }
+
 }
 
 function cloak(data){
@@ -1904,6 +1931,110 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
 
 }
 
+function Item(coordX, coordY, type, id) {
+    this.speed = 10;
+    this.x;
+    this.y;
+    this.type = type;
+    this.id = id;
+    this.size = 10;
+
+    this.targetRotation = 0;
+    this.rotation = 0;
+
+    this.coordX = coordX;
+    this.coordY = coordY;
+
+    this.coordChangeWatcher = new Vector();
+    this.rotWatcher = 0;
+
+    this.lastCoordX = 0;
+    this.lastCoordY = 0;
+
+    this.lastRot = 0;
+    this.rotation = 0;
+    this.rotLerpTime = 10;
+    this.rotLerpAmount = 0;
+
+    this.lerpAmount = 0;
+    this.lerpTime = 10;
+
+    this.displayPos = new Vector();
+
+    var jumpDistance = 5000;
+
+    this.update = function(){
+        
+        var coords = new Vector(this.coordX, this.coordY);
+        var lastCoords = new Vector(this.lastCoordX, this.lastCoordY);
+        this.displayPos = coords;
+
+        if(this.coordChangeWatcher.x != coords.x && this.coordChangeWatcher.y != coords.y)
+        {
+            this.lastCoordX = this.coordChangeWatcher.x;
+            this.lastCoordY = this.coordChangeWatcher.y;
+            lastCoords = new Vector(this.lastCoordX, this.lastCoordY);
+
+            this.lerpTime = this.lerpAmount;
+            this.lerpAmount = 0;
+            this.coordChangeWatcher = coords;
+        }
+
+        if(this.rotWatcher != this.targetRotation)
+        {
+            this.lastRot = this.rotWatcher;
+
+            this.rotLerpTime = this.rotLerpAmount;
+            this.rotLerpAmount = 0;
+
+            this.rotWatcher = this.targetRotation;
+        }
+
+        var distance = Math.abs(Math.pow(coords.x - lastCoords.x, 2) + Math.pow(coords.y - lastCoords.y, 2));
+
+        if(distance > jumpDistance)
+        {
+            this.lastCoordX = coords.x;
+            this.lastCoordY = coords.y
+            this.displayPos = coords;
+        }
+        else if (this.lerpAmount <= this.lerpTime) {
+            var t = Math.round(this.lerpAmount / this.lerpTime * 100) / 100;
+            var subCoord = Vector.prototype.subtract(coords, lastCoords);
+            this.displayPos = Vector.prototype.addition(lastCoords, new Vector(subCoord.x * t, subCoord.y * t));
+            this.lerpAmount++;
+        }
+        else if(this.lerpAmount > this.lerpTime){
+            this.lerpAmount++;
+        }
+
+        if(this.rotLerpAmount <= this.rotLerpTime){
+            this.rotLerpAmount++;
+            this.rotation = this.lastRot + (this.targetRotation - this.lastRot) * this.rotLerpAmount / this.rotLerpTime;
+        }
+        else{
+            this.rotation = this.targetRotation;
+        }
+
+        var pos = cordsToScreenPos(this.displayPos.x, this.displayPos.y);
+
+        this.x = pos.x;
+        this.y = pos.y;
+
+        this.draw();
+    }
+
+    this.draw = function() {
+     
+        c.translate(this.x, this.y);
+        c.rotate(this.rotation);
+        c.drawImage(getImage(this.type), -this.size, -this.size, this.size * 2, this.size * 2);
+        c.rotate(-this.rotation);
+        c.translate(-this.x, -this.y);
+
+    }
+}
+
 function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
     this.pos = new Vector(0, 0);
     this.radius = radius;
@@ -2319,7 +2450,7 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
 
     this.displayPos = new Vector();
 
-    var jumpDistance = 100000;
+    var jumpDistance = 5000;
 
     this.turret;
 
@@ -2391,8 +2522,6 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
         else{
             this.rotation = this.targetRotation;
         }
-        // else if (this.rotLerpAmount / this.rotLerpTime > 1)
-        // this.rotLerpAmount++;
 
         var pos = cordsToScreenPos(this.displayPos.x, this.displayPos.y);
 
@@ -2425,9 +2554,10 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
             c.globalAlpha = this.alpha;
             this.turret.update();
             c.globalAlpha = 1;
-        }  
+        }
     }
 }
+
 function Shop(coordX, coordY, radius, upgradeType){
     this.x;
     this.y;
@@ -3002,6 +3132,12 @@ function animate() {
             }
         }
 
+    }
+
+    for (var item in worldItems) {
+        if (worldItems.hasOwnProperty(item)) {
+            worldItems[item].update();
+        }
     }
 
     var isInSun = false;

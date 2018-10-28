@@ -45,6 +45,9 @@ var shieldHealRate = 1000;
 var sunDamageRate = 1000;
 var oxygenDamageRate = 2000;
 var updateEnemiesRate = 10;
+var updateItemsRate = 10;
+
+var itemCollectDist = 10;
 
 var unspawnedObjects = [];
 
@@ -141,7 +144,8 @@ function addWorld(){
         hittableObjects: objects.hittableObjects,
         projectiles: [],
         enemies: [],
-        noOxygen: []
+        noOxygen: [],
+        items: []
     }
     
     worldIds.push(worldId);
@@ -386,6 +390,16 @@ function Structure(planetId, x, y, rotation, type, ownerId, level, worldId, id){
     this.id = id;
 }
 
+function Item(x, y, type, amount, id) {
+    this.speed = 10;
+    this.x = x;
+    this.y = y;
+    this.rotation = 0;
+    this.type = type;
+    this.amount = amount;
+    this.id = id;
+}
+ 
 var playerUpgrades = [
         {   
             speed: 20,
@@ -954,7 +968,7 @@ function newConnetcion(socket){
         worldId = addWorld();
     }
 
-    spawnEnemy(gridSize / 2, gridSize / 2, 5, worldId);
+    //spawnEnemy(gridSize / 2, gridSize / 2, 5, worldId);
 
     var spawnSize = (gridSize - edgeSpawnPadding) / 2;
     //var playerPosition = {x: getRndInteger(-spawnSize, spawnSize), y: getRndInteger(-spawnSize, spawnSize)};
@@ -1878,7 +1892,7 @@ function damageObject(worldId, id, senderId, damage){
             if(target.object.type == 'crystal')
             {   
                 if(target.object.health - damage <= 0)
-                    itemDropped(target.object.drops, senderId, worldId, 1); 
+                    itemDropped(target.object.x, target.object.y, target.object.drops, worldId, 1); 
             }
             else
             {
@@ -1893,7 +1907,7 @@ function damageObject(worldId, id, senderId, damage){
                     precentDamage += precentItemKillBoost;
 
 
-                itemDropped(target.object.drops, senderId, worldId, precentDamage); 
+                itemDropped(target.object.x, target.object.y, target.object.drops, worldId, precentDamage); 
             }
         }   
 
@@ -1924,7 +1938,7 @@ function damageObject(worldId, id, senderId, damage){
                         target.object.drops["gem"] = 1;
 
                     if(target.object.drops && senderId)
-                        itemDropped(target.object.drops, senderId, worldId, 1); 
+                        itemDropped(target.object.x, target.object.y, target.object.drops, worldId, 1); 
                     
                 }
                 else{
@@ -2090,8 +2104,8 @@ setInterval(oxygenDamage, oxygenDamageRate);
 setInterval(shieldHeal, shieldHealRate);
 setInterval(despawnProjectiles, despawnProjectilesRate);
 setInterval(mineProduce, mineProductionRate);
-setInterval(updateEnemies, 10);
-
+setInterval(updateEnemies, updateEnemiesRate);
+setInterval(updateItems, updateItemsRate);
 
 function updateEnemies(){
 
@@ -2243,6 +2257,51 @@ function updateEnemies(){
 
         }        
     }
+}
+
+function updateItems(){
+
+    for (let x = 0; x < worldIds.length; x++) {
+        const worldId = worldIds[x];
+
+        var items = worldsData[worldId].items;
+
+        var data = [];
+
+        for (var i = items.length - 1; i >= 0; i--){
+
+            var item = items[i];
+        
+            var player = findClosestPlayer(item.x, item.y, worldId);
+            var distanceToPlayer = Math.sqrt(Math.pow(player.x - item.x, 2) + Math.pow(player.y - item.y, 2));
+                
+            if(distanceToPlayer < itemCollectDist)
+            {
+                data.push({collected: true, id: item.id});
+                itemCollected({type: item.type, ammount: item.ammount}, player.id, worldId);
+                items.splice(i, 1);
+                continue;
+            }
+                
+            velX = (item.x - player.x) * .5;
+            velY = (item.y - player.y) * .5;
+        
+            var mag = Math.sqrt(Math.pow(velX, 2) + Math.pow(velY, 2));
+            var itemSpeed = item.speed / Math.sqrt(distanceToPlayer);
+    
+            velX *= itemSpeed / mag;
+            velY *= itemSpeed / mag;
+        
+            item.x -= velX;
+            item.y -= velY;
+        
+            data.push({x: item.x, y: item.y, rot: item.rotation, type: item.type, id: item.id})
+            
+        }
+
+        io.to(worldId).emit('updateItems', data);
+    }
+    
 }
 
 function sunDamage()
@@ -2454,37 +2513,42 @@ function findClosestPlayer(x ,y, worldId){
     return closestPlayer;
 }
 
-function itemDropped(drops, playerRecivingId, worldId, precent){
+function itemDropped(x, y, drops, worldId, precent){
+
+    for (var drop in drops) {
+        if (drops.hasOwnProperty(drop)) {
+
+            var amount = Math.round(drops[drop] * precent);
+            
+            if(amount > 0)
+                worldsData[worldId].items.push(new Item(x, y, drop, amount, "item-" + uniqueId()));
+
+        }
+    }
+
+}
+
+function itemCollected(item, playerRecivingId, worldId) {
 
     var player = findObjectWithId(worldsData[worldId].clients, playerRecivingId);
-
-    var data = {
-        drops: {}
-    }
 
     if(!player)
         return;
     else
         player = player.object;
 
-    for (var drop in drops) {
-        if (drops.hasOwnProperty(drop)) {
+    if(player.drops[item.type])
+        player.drops[item.type] += item.amount;
+    else
+        player.drops[item.type] = item.amount;
 
-            var amount = Math.round(drops[drop] * precent);
+    if(item.amount > 0)
+        data.drops[item.type] = item.amount;
 
-            if(player.drops[drop])
-                player.drops[drop] += amount;
-            else
-                player.drops[drop] = amount;
+    data = {};
+    data[item.type] = item.amount;
 
-            if(amount > 0)
-            {
-                data.drops[drop] = amount
-            }
-        }
-    }
-
-    io.sockets.connected[playerRecivingId].emit("items", data);
+    io.sockets.connected[playerRecivingId].emit('items', data);
 }
 
 function syncDamage(worldId, changedIds){
