@@ -282,7 +282,7 @@ var positionSendTime = 0;
 
 var planetShopSelection = null;
 var selectedStructure = null;
-var lastSelectedStructue = null;;
+var lastSelectedStructue = null;
 var boughtStructure = null;
 var electricityTimer = {time: 0, duration: 50, on: false};
 
@@ -741,11 +741,24 @@ function upgradeSync(data){
     for (var property in data.upgrade) {
         if (data.upgrade.hasOwnProperty(property)) {
 
-            if(property == "maxHealth"){
-                var precent = upgradedObject["health"] / upgradedObject[property];
+            console.log(property);
+
+            if(property == "maxHealth" || property == "oxygen"){
+
+                var val = "";
+
+                switch (property)
+                {
+                    case "maxHealth":
+                        val = "health"
+                    case "oxygen":
+                        val = "oxygenRemaining"
+                }
+
+                var precent = upgradedObject[val] / upgradedObject[property];
 
                 upgradedObject[property] = data.upgrade[property];
-                upgradedObject["health"] = precent * data.upgrade[property];
+                upgradedObject[val] = precent * data.upgrade[property];
             }
             else
                 upgradedObject[property] = data.upgrade[property];
@@ -2218,7 +2231,7 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     }
     this.doOxygen = function(){
 
-        var dispBarBGColor = null;
+        this.oxygenDispBarBGColor = null;
 
         if(this.oxygenRemaining == null)
             this.oxygenRemaining = this.oxygen;
@@ -2228,7 +2241,7 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
             {
                 if(this.oxygenRemaining > 0)
                 {
-                    if(this.oxygenRemaining == 1)
+                    if(this.oxygenRemaining - 1 <= 0)
                         socket.emit("oxygen", {has: false, worldId: worldId});
                     
                     this.oxygenRemaining--;
@@ -2270,11 +2283,6 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
                 }
             } 
         }
-
-        var width = windowWidth / 3 / scale;
-        var height = windowHeight / 20 / scale;
-
-        displayBar(centerX - width /2, windowHeight / scale - height * 5, width, height, this.oxygenRemaining / this.oxygen, "#a3e1ff", dispBarBGColor);
     }
 
 }
@@ -2714,6 +2722,14 @@ function animate() {
 
     }
     else{
+
+        var opacity = $("#vignetteOverlay").css("opacity");
+
+        if(opacity > 0){
+            opacity -= .2;
+            $("#vignetteOverlay").css("opacity", opacity);
+        }
+
         targetScale = startScale;
         
         spaceshipVelocity.x = 0;
@@ -3107,6 +3123,10 @@ function animate() {
         var yPositions = {};
         var i = 0;
         
+        var oxyWidth = windowWidth / 3;
+        var oxyHeight = windowHeight / 20;
+
+        displayBar(centerX * scale - oxyWidth / 2, centerY * scale + oxyHeight * 5, oxyWidth, oxyHeight, spaceShip.oxygenRemaining / spaceShip.oxygen, "#a3e1ff", spaceShip.oxyDispBarBGColor);
 
         function getCardYPos(index)
         {

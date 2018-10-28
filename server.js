@@ -396,7 +396,7 @@ var playerUpgrades = [
             turningSpeed: .05,
             bulletRange: .5,
             projectileSpeed: 6,
-            oxygen: 100,
+            oxygen: 1000,
             identifier: "spaceship"
         },
         {   
@@ -409,6 +409,7 @@ var playerUpgrades = [
             turningSpeed: .1,
             bulletRange: 1,
             projectileSpeed: 20,
+            oxygen: 2000,
             identifier: "spaceship"
         },
         {   
@@ -421,6 +422,7 @@ var playerUpgrades = [
             turningSpeed: .1,
             bulletRange: 1,
             projectileSpeed: 20,
+            oxygen: 2200,
             identifier: "spaceship"
         },
         {   
@@ -433,6 +435,7 @@ var playerUpgrades = [
             turningSpeed: .1,
             bulletRange: 2,
             projectileSpeed: 19,
+            oxygen: 2400,
             identifier: "spaceship"
         },
         {   
@@ -445,6 +448,7 @@ var playerUpgrades = [
             turningSpeed: .09,
             bulletRange: 2,
             projectileSpeed: 19,
+            oxygen: 2600,
             identifier: "spaceship"
         },
         {   
@@ -457,6 +461,7 @@ var playerUpgrades = [
             turningSpeed: .085,
             bulletRange: 3,
             projectileSpeed: 18,
+            oxygen: 2800,
             identifier: "spaceship"
         },
         {   
@@ -469,6 +474,7 @@ var playerUpgrades = [
             turningSpeed: .08,
             bulletRange: 4,
             projectileSpeed: 18,
+            oxygen: 3000,
             identifier: "spaceship"
         },
         {   
@@ -481,6 +487,7 @@ var playerUpgrades = [
             turningSpeed: .075,
             bulletRange: 5,
             projectileSpeed: 17,
+            oxygen: 3200,
             identifier: "spaceship"
         },
         {   
@@ -493,6 +500,7 @@ var playerUpgrades = [
             turningSpeed: .07,
             bulletRange: 6,
             projectileSpeed: 17,
+            oxygen: 3400,
             identifier: "spaceship"
         },
         {   
@@ -505,6 +513,7 @@ var playerUpgrades = [
             turningSpeed: .065,
             bulletRange: 7,
             projectileSpeed: 16,
+            oxygen: 3600,
             identifier: "spaceship"
         },
         {   
@@ -517,6 +526,7 @@ var playerUpgrades = [
             turningSpeed: .06,
             bulletRange: 8,
             projectileSpeed: 16,
+            oxygen: 3800,
             identifier: "spaceship"
         },
         {   
@@ -529,6 +539,7 @@ var playerUpgrades = [
             turningSpeed: .055,
             bulletRange: 9,
             projectileSpeed: 15,
+            oxygen: 4000,
             identifier: "spaceship"
         },
         {   
@@ -541,6 +552,7 @@ var playerUpgrades = [
             turningSpeed: .05,
             bulletRange: 10,
             projectileSpeed: 15,
+            oxygen: 4200,
             identifier: "spaceship"
         },
         {   
@@ -553,6 +565,7 @@ var playerUpgrades = [
             turningSpeed: .045,
             bulletRange: 11,
             projectileSpeed: 14,
+            oxygen: 4400,
             identifier: "spaceship"
         },
         {   
@@ -565,6 +578,7 @@ var playerUpgrades = [
             turningSpeed: .04,
             bulletRange: 12,
             projectileSpeed: 14,
+            oxygen: 4600,
             identifier: "spaceship"
         },
         {   
@@ -577,6 +591,7 @@ var playerUpgrades = [
             turningSpeed: .035,
             bulletRange: 13,
             projectileSpeed: 13,
+            oxygen: 4800,
             identifier: "spaceship"
         }
         
@@ -1588,8 +1603,6 @@ function newConnetcion(socket){
 
     socket.on('oxygen', function(data){
 
-        console.log(socket.id);
-
         var noOxygen = worldsData[data.worldId].noOxygen;
 
         if(data.has)
@@ -1613,6 +1626,11 @@ function newConnetcion(socket){
         if(worldsData[worldId])
         {
             console.log('\x1b[31m%s\x1b[0m', "player disconected: ", socket.id,  " clients connected: ", worldsData[worldId].clients.length, "In loby: ", worldsData[worldId].lobbyClients.length);
+
+            var noOxygen = worldsData[worldId].noOxygen;
+
+            if(noOxygen.contains(socket.id))
+                noOxygen.splice(noOxygen.indexOf(socket.id), 1);
 
             if(worldsData[worldId].clients.length + worldsData[worldId].lobbyClients.length == 0){
                 removeWorld(worldId);
@@ -2277,11 +2295,10 @@ function oxygenDamage()
             const client = worldsData[worldId].noOxygen[x];
          
             var damage = Math.floor(player.maxHealth / 5);
-
             var hittableObj = findObjectWithId(worldsData[worldId].hittableObjects, client);
 
-            if(damage >= hittableObj.health)
-                worldsData[worldId].noOxygen.splice(worldsData[worldId].noOxygen.indexOf(client), 1); //-----------------------------------------------------------------------------------asljdgbjl ashdghjyasdgfhiufasd hjafsdhgfjasdfhaksd
+            if(damage >= hittableObj.object.health)
+                worldsData[worldId].noOxygen.splice(worldsData[worldId].noOxygen.indexOf(client), 1);
 
             damageObject(worldId, client, null, damage);
 
