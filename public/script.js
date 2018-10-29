@@ -977,10 +977,12 @@ function sendProjectile(x, y, vel, size, color, id, shooterId, damagePercent){
 
     socket.emit('spawnProj', data);
 }
-function sendProjectileHit(projectileId, subjectId){
+function sendProjectileHit(projectileId, subjectId, hitX, hitY){
     var data = {
         id: subjectId,
         projectileId: projectileId,
+        hitX: Math.round(hitX),
+        hitY: Math.round(hitY),
         worldId: worldId
     }
 
@@ -1518,6 +1520,10 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
             if(!isFacade)
                 producingMines.push(mine);
         }
+        else if(type === "spawner"){
+            var spawner = new Spawner(planet, x, y, rotation, level, type, ownerId, id);
+            this.structures.push(spawner);
+        }
         else if(type === "turret"){
             this.structures.push(new Turret(planet, x, y, rotation, level, isFacade, ownerId, id));
         }
@@ -1688,6 +1694,46 @@ function Mine(planet, x, y, rotation, level, ownerId, id){
         ctx.translate(this.x, this.y);
         ctx.rotate((this.rotation - 90) / -57.2958);
         ctx.drawImage(getImage('mine' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.restore();
+    }
+    this.update = function(){ 
+        
+        var pos = cordsToScreenPos(this.coordX, this.coordY);
+        this.x = pos.x;
+        this.y = pos.y;
+
+        this.draw();
+    }
+    this.productionEffect = function(cost){
+        //console.log(cost);
+    }
+}
+function Spawner(planet, x, y, rotation, level, type, ownerId, id){
+    this.planet = planet;
+    this.x;
+    this.y;
+    this.rotation = rotation;
+    this.size = 50;
+    this.id = id;
+    this.ownerId = ownerId;
+    this.type = "spawner";
+    this.spawnerType = type;
+
+    this.coordX = x;
+    this.coordY = y;
+
+    this.level = level;
+
+    this.draw = function(context){
+
+        var ctx = c;
+        if(context != null)
+            ctx = context;    
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((this.rotation - 90) / -57.2958);
+        ctx.drawImage(getImage(type + 'Spawner' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
         ctx.restore();
     }
     this.update = function(){ 
@@ -2101,10 +2147,10 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
 
                     var hitWorldObject = findObjectWithId(allWorldObjects, id);
 
-                    if(hitWorldObject && hitWorldObject.object.type == "blackHole")
+                    if(hitWorldObject && (hitWorldObject.object.type == "blackHole" || hitWorldObject.object.id == "hive"))
                         return;
 
-                    sendProjectileHit(this.id, id);
+                    sendProjectileHit(this.id, id, this.coord.x, this.coord.y);
 
 
                     if(hitWorldObject)
@@ -2379,7 +2425,6 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
                 } 
                 else
                 {
-
                     if(this.oxygenBarBlink.i < this.oxygenBarBlink.time)
                         this.oxygenBarBlink.i++;
                     else if(this.oxygenBarBlink.i < this.oxygenBarBlink.time + this.oxygenBarBlink.legnth)
@@ -3537,6 +3582,10 @@ function animate() {
                 var mouseY = mouse.y * scale;
 
                 var buttonTypes = ["spaceShip", "landingPad", "mine", "turret", "shield", "electricity", "satellite"];
+
+                if(currentPlanet.id == "hive")
+                    buttonTypes = ["spawner"];
+                
 
                 var typeI = 0;
 

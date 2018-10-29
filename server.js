@@ -25,8 +25,8 @@ var gridSize = 15000;
 var gridBoxScale = 200;
 var spawnTries = 5;
 
-var numOfasteroids = 0;
-var numOfPlanets = 5;
+var numOfasteroids = 20;
+var numOfPlanets = 0;
 var numOfMoons = 0;
 var numOfSuns = 0;
 var numOfCrystals = 0;
@@ -44,10 +44,12 @@ var despawnProjectilesRate = 100;
 var shieldHealRate = 1000;
 var sunDamageRate = 1000;
 var oxygenDamageRate = 2000;
+var enemySpawnRate = 500;
 var updateEnemiesRate = 10;
 var updateItemsRate = 10;
 
 var itemCollectDist = 10;
+var itemAttractDist = 1000;
 
 var unspawnedObjects = [];
 
@@ -56,6 +58,7 @@ var crystalColors = ["#5b94ef", "#d957ed", "#f9f454", "#85f954"];
 var moonColors = ["#929aa8", "#758196", "#758196", "#2d3c56"];
 
 var clientsPerWorld = 30;
+var maxEnemiesPerWorld = 50;
 var numberOfWorlds = 0;
 
 var levelsLostOnDeath = 2;
@@ -145,7 +148,8 @@ function addWorld(){
         projectiles: [],
         enemies: [],
         noOxygen: [],
-        items: []
+        items: [],
+        spawners: []
     }
     
     worldIds.push(worldId);
@@ -187,6 +191,11 @@ function generateWorld(){
 
     generatedWorldObjects.shops.push(shop1, shop2, shop3, shop4);
     generatedHittableObjects.push(shop1, shop2, shop3, shop4);
+
+    var hive = new Planet(gridSize / 2, gridSize / 2, 180, [], "#84f74f", 1000, {}, "hive");
+    generatedWorldObjects.planets.push(hive);
+    generatedHittableObjects.push(hive);
+
 
     for(var i = 0; i < numOfSuns; i++){
 
@@ -390,10 +399,11 @@ function Structure(planetId, x, y, rotation, type, ownerId, level, worldId, id){
     this.id = id;
 }
 
-function Item(x, y, type, amount, id) {
-    this.speed = 10;
+function Item(x, y, initialVelocity, type, amount, id) {
+    this.speed = 180;
     this.x = x;
     this.y = y;
+    this.iVel = initialVelocity;
     this.rotation = 0;
     this.type = type;
     this.amount = amount;
@@ -854,6 +864,24 @@ var structureUpgrades = {
             drops: {crystal: 2500, iron: 2500, water: 2500},
             identifier: "shield"
         },
+    ],
+    spawner: [
+        {
+            costs: {water: 20},
+            identifier: "spawner"
+        },
+        {
+            costs: {water: 20},
+            identifier: "spawner"
+        },
+        {
+            costs: {water: 20},
+            identifier: "spawner"
+        },
+        {
+            costs: {water: 20},
+            identifier: "spawner"
+        },
     ]
 }
 
@@ -1084,7 +1112,7 @@ function newConnetcion(socket){
         
         if(player)
         {
-            damageObject(data.worldId, socket.id, socket.id, player.object.health * 2);
+            damageObject(data.worldId, socket.id, player.object.health * 2, true, player.object.x, player.object.y);
         }
     });
 
@@ -1112,7 +1140,7 @@ function newConnetcion(socket){
         if(target != null && (target.type == "blackHole" || target.type == "wormHole"))
             return;
 
-        damageObject(data.worldId, data.id, socket.id, damageDealt);
+        damageObject(data.worldId, data.id, damageDealt, true, data.hitX, data.hitY);
 
         if(projectile.object.hitObjects)
             projectile.object.hitObjects.push(data.id);
@@ -1641,11 +1669,6 @@ function newConnetcion(socket){
         {
             console.log('\x1b[31m%s\x1b[0m', "player disconected: ", socket.id,  " clients connected: ", worldsData[worldId].clients.length, "In loby: ", worldsData[worldId].lobbyClients.length);
 
-            var noOxygen = worldsData[worldId].noOxygen;
-
-            if(noOxygen.contains(socket.id))
-                noOxygen.splice(noOxygen.indexOf(socket.id), 1);
-
             if(worldsData[worldId].clients.length + worldsData[worldId].lobbyClients.length == 0){
                 removeWorld(worldId);
             }
@@ -1686,6 +1709,11 @@ function disconnectPlayer(id, socket, worldId){
                 respawnPlanet = planet;
             }
         });
+
+        var noOxygen = worldsData[worldId].noOxygen;
+
+        if(noOxygen.contains(id))
+            noOxygen.splice(noOxygen.indexOf(id), 1);
     
         if((!respawnPlanet || id == socket.id))
         {
@@ -1783,7 +1811,7 @@ function disconnectPlayer(id, socket, worldId){
     
 }
 
-function damageObject(worldId, id, senderId, damage){
+function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
 
     if(!worldIds.contains(worldId)){
         console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "world Id not accounted for on server. most likely old session.");
@@ -1868,7 +1896,7 @@ function damageObject(worldId, id, senderId, damage){
             }
        }
 
-        if(target.object.drops && senderId && !possibleClient){
+        if(target.object.drops && !possibleClient && spawnItems){
 
             if(possiblePlanet && possiblePlanet.object.structures)
             {
@@ -1892,7 +1920,7 @@ function damageObject(worldId, id, senderId, damage){
             if(target.object.type == 'crystal')
             {   
                 if(target.object.health - damage <= 0)
-                    itemDropped(target.object.x, target.object.y, target.object.drops, worldId, 1); 
+                    itemDropped(xHit, yHit, target.object.drops, worldId, 1); 
             }
             else
             {
@@ -1907,7 +1935,7 @@ function damageObject(worldId, id, senderId, damage){
                     precentDamage += precentItemKillBoost;
 
 
-                itemDropped(target.object.x, target.object.y, target.object.drops, worldId, precentDamage); 
+                itemDropped(xHit, yHit, target.object.drops, worldId, precentDamage); 
             }
         }   
 
@@ -1937,8 +1965,8 @@ function damageObject(worldId, id, senderId, damage){
                     if(!target.object.drops["gem"])
                         target.object.drops["gem"] = 1;
 
-                    if(target.object.drops && senderId)
-                        itemDropped(target.object.x, target.object.y, target.object.drops, worldId, 1); 
+                    if(target.object.drops && spawnItems)
+                        itemDropped(xHit, yHit, target.object.drops, worldId, 1); 
                     
                 }
                 else{
@@ -1951,6 +1979,9 @@ function damageObject(worldId, id, senderId, damage){
                         var color = possiblePlanet.object.color;
                         var health = possiblePlanet.object.maxHealth;
                         var drops = possiblePlanet.object.drops;
+
+                        if(possiblePlanet.object.id == "hive")
+                            return;
 
                         if(possiblePlanet.object.shield)
                         {
@@ -1986,6 +2017,9 @@ function damageObject(worldId, id, senderId, damage){
                         var drops = possibleSpaceMatter.object.drops;
                         var type = possibleSpaceMatter.object.type;
 
+                        if(type == "sun")
+                            return;
+
                         worldHittableObjects.splice(target.index, 1);
                         worldWorldObjects.asteroids.splice(possibleSpaceMatter.index, 1);
 
@@ -2007,6 +2041,13 @@ function damageObject(worldId, id, senderId, damage){
                             var enemyData = {clientId: enemy.object.id, forGood: false};
                             io.to(worldId).emit('playerExited', enemyData);
                             worldsData[possibleEnemy.object.worldId].enemies.splice(enemy.index);
+
+                            var hittableEnemy = findObjectWithId(worldsData[worldId].hittableObjects, id);
+
+                            if(hittableEnemy){
+                                console.log("bye");
+                                worldsData[worldId].hittableObjects.splice(hittableEnemy.index, 1);
+                            }
                         }    
                         else
                             console.log('\x1b[31m%s\x1b[0m', "[ERROR]","Enemy not found on server... :(");
@@ -2098,12 +2139,12 @@ var sendi = iterationsBeforeSend;
 var enemyProjectiles = [];
 
 //Recursive Functions --------------------------------------------------------------------------------------------------
-
 setInterval(sunDamage, sunDamageRate);
 setInterval(oxygenDamage, oxygenDamageRate);
 setInterval(shieldHeal, shieldHealRate);
 setInterval(despawnProjectiles, despawnProjectilesRate);
 setInterval(mineProduce, mineProductionRate);
+setInterval(spawnEnemies, enemySpawnRate);
 setInterval(updateEnemies, updateEnemiesRate);
 setInterval(updateItems, updateItemsRate);
 
@@ -2148,7 +2189,17 @@ function updateEnemies(){
                     worldsData[worldId].projectiles.splice(proj.index, 1);
                     enemyProjectiles.splice(i, 1);
                     io.to(worldId).emit('destroyProjectile', {id: proj.object.id});
-                    damageObject(worldId, obj.id, null, proj.object.damage);
+
+                    var dropItems = false;
+
+                    if(worldsData[worldId].clients.contains(obj.id))
+                    {
+                        var player = findObjectWithId(worldsData[worldId].hittableObjects, obj.id);
+                        if(player && proj.object.damage > player.object.health)
+                            dropItems = true;
+                    }
+
+                    damageObject(worldId, obj.id, proj.object.damage, dropItems);
                     break;
                 }
             }
@@ -2225,9 +2276,7 @@ function updateEnemies(){
                         targetX -= (otherEnemy.x - enemy.x) / Math.abs(otherEnemy.x - enemy.x) * repultionForce;
                         targetY -= (otherEnemy.y - enemy.y) / Math.abs(otherEnemy.y - enemy.y) * repultionForce;
                     }
-
                 }
-                
             }
 
             enemy.velocity.x = targetX;
@@ -2260,12 +2309,10 @@ function updateEnemies(){
 }
 
 function updateItems(){
-
     for (let x = 0; x < worldIds.length; x++) {
         const worldId = worldIds[x];
 
         var items = worldsData[worldId].items;
-
         var data = [];
 
         for (var i = items.length - 1; i >= 0; i--){
@@ -2274,34 +2321,41 @@ function updateItems(){
         
             var player = findClosestPlayer(item.x, item.y, worldId);
             var distanceToPlayer = Math.sqrt(Math.pow(player.x - item.x, 2) + Math.pow(player.y - item.y, 2));
-                
+            
             if(distanceToPlayer < itemCollectDist)
             {
                 data.push({collected: true, id: item.id});
-                itemCollected({type: item.type, ammount: item.ammount}, player.id, worldId);
+                itemCollected({type: item.type, amount: item.amount}, player.id, worldId);
                 items.splice(i, 1);
                 continue;
             }
-                
-            velX = (item.x - player.x) * .5;
-            velY = (item.y - player.y) * .5;
+
+            var velX = (item.x - player.x) * .5;
+            var velY = (item.y - player.y) * .5;
         
             var mag = Math.sqrt(Math.pow(velX, 2) + Math.pow(velY, 2));
-            var itemSpeed = item.speed / Math.sqrt(distanceToPlayer);
+            var itemSpeed = item.speed / distanceToPlayer;
     
             velX *= itemSpeed / mag;
             velY *= itemSpeed / mag;
         
-            item.x -= velX;
-            item.y -= velY;
+            if(distanceToPlayer > itemAttractDist)
+            {
+                velX = 0;
+                velY = 0;
+            }
+
+            item.x -= velX + item.iVel.x;
+            item.y -= velY + item.iVel.y;
         
-            data.push({x: item.x, y: item.y, rot: item.rotation, type: item.type, id: item.id})
+            item.iVel.x *= .9;
+            item.iVel.y *= .9;
             
+            data.push({x: item.x, y: item.y, rot: item.rotation, type: item.type, id: item.id})
         }
 
         io.to(worldId).emit('updateItems', data);
     }
-    
 }
 
 function sunDamage()
@@ -2321,7 +2375,7 @@ function sunDamage()
 
                     var damage = player.maxHealth / 5;
 
-                    damageObject(player.worldId, player.id, null, damage);
+                    damageObject(player.worldId, player.id, damage, true, player.x, player.y);
 
                     if(syncWorldIds[player.worldId])
                         syncWorldIds[player.worldId].push(player.id)
@@ -2352,14 +2406,17 @@ function oxygenDamage()
 
         for (let x = worldsData[worldId].noOxygen.length - 1; x >= 0; x--) {
             const client = worldsData[worldId].noOxygen[x];
-         
-            var damage = Math.floor(player.maxHealth / 5);
+
             var hittableObj = findObjectWithId(worldsData[worldId].hittableObjects, client);
+            if(!hittableObj)
+                continue;
+
+            var damage = Math.floor(hittableObj.maxHealth / 5);
 
             if(damage >= hittableObj.object.health)
                 worldsData[worldId].noOxygen.splice(worldsData[worldId].noOxygen.indexOf(client), 1);
 
-            damageObject(worldId, client, null, damage);
+            damageObject(worldId, client, damage, true, client.x, client.y);
 
             if(syncWorldIds[worldId])
                 syncWorldIds[worldId].push(client);
@@ -2468,6 +2525,34 @@ function mineProduce()
     });
 }
 
+function spawnEnemies()
+{
+    for (let i = 0; i < worldIds.length; i++) {
+        const worldId = worldIds[i];
+
+        var structures = allStructures(worldId);
+        var spawners = [];
+
+        for (let x = 0; x < structures.length; x++) {
+            const structure = structures[x];
+
+            if(structure.type == "spawner")
+                spawners.push(structure);
+        }
+
+        for (let y = 0; y < spawners.length; y++) {
+            const spawner = spawners[y];
+
+            if(worldsData[worldId].enemies.length < maxEnemiesPerWorld)
+            {
+                spawnEnemy(spawner.x, spawner.y, 0, worldId);
+            }
+        }
+    }
+
+    
+}
+
 // ----------------------------------------------------------------------------------------------------------------
 
 function spawnEnemy(x, y, level, worldId)
@@ -2490,6 +2575,7 @@ function spawnEnemy(x, y, level, worldId)
     worldsData[worldId].hittableObjects.push(enemy);
 
     io.to(worldId).emit('newPlayer', enemy);
+    syncDamage(worldId);
 }
 
 function findClosestPlayer(x ,y, worldId){
@@ -2513,6 +2599,8 @@ function findClosestPlayer(x ,y, worldId){
     return closestPlayer;
 }
 
+var itemSpawnSpeed = 8;
+
 function itemDropped(x, y, drops, worldId, precent){
 
     for (var drop in drops) {
@@ -2521,7 +2609,11 @@ function itemDropped(x, y, drops, worldId, precent){
             var amount = Math.round(drops[drop] * precent);
             
             if(amount > 0)
-                worldsData[worldId].items.push(new Item(x, y, drop, amount, "item-" + uniqueId()));
+            {
+                var iVel = {x: (Math.random() * 2 * itemSpawnSpeed) - itemSpawnSpeed, y: (Math.random() * 2 * itemSpawnSpeed) - itemSpawnSpeed};
+                worldsData[worldId].items.push(new Item(x, y, iVel, drop, amount, "item-" + uniqueId()));
+            }
+                
 
         }
     }
@@ -2537,18 +2629,20 @@ function itemCollected(item, playerRecivingId, worldId) {
     else
         player = player.object;
 
-    if(player.drops[item.type])
-        player.drops[item.type] += item.amount;
-    else
-        player.drops[item.type] = item.amount;
-
     if(item.amount > 0)
+    {
+        if(player.drops[item.type])
+            player.drops[item.type] += item.amount;
+        else
+            player.drops[item.type] = item.amount;
+
+        data = {drops: {}};
         data.drops[item.type] = item.amount;
 
-    data = {};
-    data[item.type] = item.amount;
+        io.sockets.connected[playerRecivingId].emit('items', data);
+    }
 
-    io.sockets.connected[playerRecivingId].emit('items', data);
+    
 }
 
 function syncDamage(worldId, changedIds){
