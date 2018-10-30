@@ -2499,16 +2499,29 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
 
     this.turret;
 
+    this.image = null;
+
+    this.isEnemy = this.id.substring(0,5) == "enemy";
+
     this.draw = function(){
         var healthBarWidth = 50;
 
         var testpos = cordsToScreenPos(this.lastCoordX, this.lastCoordY);
         var testpostarget = cordsToScreenPos(this.coordX, this.coordY);
 
+        if(this.image == null)
+        {
+            if(this.isEnemy)
+                this.image = getImage('enemyScout' + (this.level / 4));
+            else
+                this.image = getImage('spaceship' + this.level);
+        }
+
+
         c.globalAlpha = this.alpha;
         c.translate(this.x, this.y);
         c.rotate(this.rotation);
-        c.drawImage(getImage('spaceship' + this.level), -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+        c.drawImage(this.image, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
         c.rotate(-this.rotation);
         c.translate(-this.x, -this.y);
 
@@ -2576,15 +2589,18 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
         if(this.alpha > 0){
             this.draw();
 
-            //Display username above person
-            c.font = "20px Arial";
-            c.fillStyle = "white";
-            c.globalAlpha = .5;
-            c.textAlign = "center"; 
-            c.fillText(this.username, this.x, this.y - this.radius - 20);
-    
-            c.textAlign = "left"; 
-            c.globalAlpha = 1;
+            if(!this.isEnemy)
+            {
+                //Display username above person
+                c.font = "20px Arial";
+                c.fillStyle = "white";
+                c.globalAlpha = .5;
+                c.textAlign = "center"; 
+                c.fillText(this.username, this.x, this.y - this.radius - 20);
+
+                c.textAlign = "left"; 
+                c.globalAlpha = 1;
+            } 
         }
 
         if(this.turret){
@@ -2733,8 +2749,15 @@ function animate() {
     otherPlayers.forEach(player => {
         if(player.displayPos)
         { 
-            hittableObjects[player.id].x = player.displayPos.x;
-            hittableObjects[player.id].y = player.displayPos.y;
+            try{
+                hittableObjects[player.id].x = player.displayPos.x;
+                hittableObjects[player.id].y = player.displayPos.y;
+            }
+            catch(error)
+            {
+                console.log(error);
+            }
+            
         }
         else if(player.coordX && player.coordY){
             hittableObjects[player.id].x = player.coordX;
