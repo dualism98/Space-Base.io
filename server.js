@@ -26,7 +26,7 @@ var gridBoxScale = 200;
 var spawnTries = 5;
 
 var numOfasteroids = 20;
-var numOfPlanets = 0;
+var numOfPlanets = 5;
 var numOfMoons = 0;
 var numOfSuns = 0;
 var numOfCrystals = 0;
@@ -49,6 +49,8 @@ var updateEnemiesRate = 10;
 var updateItemsRate = 10;
 
 var itemCollectDist = 10;
+var itemMergeDist = 5;
+var itemMergeRange = 200;
 var itemAttractDist = 1000;
 
 var unspawnedObjects = [];
@@ -58,7 +60,7 @@ var crystalColors = ["#5b94ef", "#d957ed", "#f9f454", "#85f954"];
 var moonColors = ["#929aa8", "#758196", "#758196", "#2d3c56"];
 
 var clientsPerWorld = 30;
-var maxEnemiesPerWorld = 50;
+var maxEnemiesPerWorld = 1;
 var numberOfWorlds = 0;
 
 var levelsLostOnDeath = 2;
@@ -155,9 +157,8 @@ function addWorld(){
 
     
 
-    var crown = new Item(gridSize / 2, gridSize / 2, {x: 0, y: 0}, "crown", 1, "item-" + uniqueId());
-
-    worldsData[worldId].items.push(crown);
+    // var crown = new Item(gridSize / 2, gridSize / 2, {x: 0, y: 0}, "crown", 1, "item-" + uniqueId());
+    // worldsData[worldId].items.push(crown);
     
     worldIds.push(worldId);
 
@@ -204,9 +205,9 @@ function generateWorld(){
     generatedWorldObjects.shops.push(shop1, shop2, shop3, shop4);
     generatedHittableObjects.push(shop1, shop2, shop3, shop4);
 
-    var hive = new Planet(gridSize / 2, gridSize / 2, 180, [], "#84f74f", 1000, {}, "hive");
-    generatedWorldObjects.planets.push(hive);
-    generatedHittableObjects.push(hive);
+    // var hive = new Planet(gridSize / 2, gridSize / 2, 180, [], "#84f74f", 1000, {}, "hive");
+    // generatedWorldObjects.planets.push(hive);
+    // generatedHittableObjects.push(hive);
 
 
     for(var i = 0; i < numOfSuns; i++){
@@ -412,7 +413,8 @@ function Structure(planetId, x, y, rotation, type, ownerId, level, worldId, id){
 }
 
 function Item(x, y, initialVelocity, type, amount, id) {
-    this.speed = 180;
+    this.speed = 250;
+    this.mergeSpeed = 50;
     this.x = x;
     this.y = y;
     this.iVel = initialVelocity;
@@ -1012,6 +1014,8 @@ function newConnetcion(socket){
     //var playerPosition = {x: getRndInteger(-spawnSize, spawnSize), y: getRndInteger(-spawnSize, spawnSize)};
     var playerPosition = playerSpawnPoint(-spawnSize, spawnSize, -spawnSize, spawnSize, worldId);
     
+    //spawnEnemy(1000, 1000, 3, worldId);
+
     playerObject = {id: socket.id, worldId: worldId, x: playerPosition.x, y: playerPosition.y};
 
     var playerData = newPlayerData(worldId, playerObject.x, playerObject.y);
@@ -1162,7 +1166,7 @@ function newConnetcion(socket){
         }
         else{
             worldsData[data.worldId].projectiles.splice(projectile.index, 1);
-            io.to(data.worldId).emit('destroyProjectile', {id: data.projectileId});
+            io.to(data.worldId).emit('destroyProjectiles', [{id: data.projectileId}]);
         }
 
     });
@@ -1834,7 +1838,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
     var target = findObjectWithId(worldHittableObjects, id);
     
     if(!target){
-        console.log('\x1b[31m%s\x1b[0m', "[ERROR]","target not found.");
+        console.log('\x1b[31m%s\x1b[0m', "[ERROR]","target not found. Id of: " + id);
         return;
     }
 
@@ -2130,17 +2134,15 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
         console.log(id, " is not accounted for on the sever");
 }
 
-var playerRepultionDist = 200;
+var playerRepultionDist = 100;
 
-var attractDistance = 400;
-var attractionForce = .5;
+var attractDistance = 550;
+var attractionForce = 30;
 
-var leewayZone = 20;
+var repultionDistance = 100;
+var repultionForce = 1;
 
-var repultionDistance = 70;
-var repultionForce = .2;
-
-var accelSpeed = .3;
+var accelerationSpeed = .5;
 
 var iterationsBeforeSend = 20;
 var sendi = iterationsBeforeSend;
@@ -2159,10 +2161,12 @@ function updateEnemies(){
 
     worldIds.forEach(worldId => {
         
+        var destryoedProjs = [];
+
         for (let i = worldsData[worldId].projectiles.length - 1; i >= 0; i--) {
             
             const proj = worldsData[worldId].projectiles[i];
-    
+
             if(proj == null)
             {
                 console.log('\x1b[31m%s\x1b[0m', "[ERROR]","Projectile not found");
@@ -2197,11 +2201,13 @@ function updateEnemies(){
                     if(dist < proj.size + obj.radius)
                     {
                         worldsData[worldId].projectiles.splice(proj.index, 1);
-                        io.to(worldId).emit('destroyProjectile', {id: proj.id});
-    
+                        destryoedProjs.push({id: proj.id});
+
                         var dropItems = false;
     
-                        if(worldsData[worldId].clients.contains(obj.id))
+                        if(obj.id == undefined)
+                            continue;
+                        else if(worldsData[worldId].clients.contains(obj.id))
                         {
                             var player = findObjectWithId(worldsData[worldId].hittableObjects, obj.id);
                             if(player && proj.damage > player.object.health)
@@ -2217,6 +2223,9 @@ function updateEnemies(){
             
         }
 
+
+        io.to(worldId).emit('destroyProjectiles', destryoedProjs);
+
     });
 
     for (let index = 0; index < worldIds.length; index++) {
@@ -2230,6 +2239,8 @@ function updateEnemies(){
             var player = findClosestPlayer(enemy.x, enemy.y, worldId, [worldsData[worldId].master]);
             var distanceToPlayer = Math.sqrt(Math.pow(player.x - enemy.x, 2) + Math.pow(player.y - enemy.y, 2));
             var force = enemy.speed;
+            var speed = enemy.speed;
+            var accelSpeed = accelerationSpeed;
 
             playerRepultionDist = player.radius * 3 + 50;
 
@@ -2247,6 +2258,8 @@ function updateEnemies(){
                     var projVelocity = {x: projVelX, y: projVelY};
                     var data = {x: enemy.x, y: enemy.y, vel: projVelocity, size: enemy.radius / 10, color: "#89f442", bulletPenetration: 0, id: "ep-" + uniqueId()}
 
+                    console.log("shoot");
+
                     io.to(worldId).emit('spawnProj', data);
                     worldsData[worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, enemy.damage, enemy.bulletRange, 0, worldId, data.id));
                     enemy.shootTimer = enemy.fireRate;
@@ -2255,22 +2268,15 @@ function updateEnemies(){
                 targetRot = -Math.atan2(enemy.x - player.x, enemy.y - player.y) - Math.PI / 180 * 90;
                 enemy.rotation = targetRot;
 
-                //Stop Ship - In target zone
-                if(distanceToPlayer < playerRepultionDist + leewayZone && distanceToPlayer > playerRepultionDist)
-                    force = 0;
-                else //Attraction to player
-                    force = attractionForce * (distanceToPlayer - playerRepultionDist) / (attractDistance - playerRepultionDist);
+                //Attraction to player
+                force = attractionForce * (distanceToPlayer - playerRepultionDist) / (attractDistance - playerRepultionDist);
             }
-
-            //Rebounding off Walls
-            if (enemy.x + enemy.velocity.x > gridSize || enemy.x + enemy.velocity.x < 0)
-                enemy.rotation = (Math.PI - enemy.rotation) * -2 + enemy.rotation;
-
-            if (enemy.y + enemy.velocity.y > gridSize || enemy.y + enemy.velocity.y < 0)
-                enemy.rotation = (Math.PI - enemy.rotation) * -2 + enemy.rotation;
 
             var targetX = Math.cos(enemy.rotation) * force;
             var targetY = Math.sin(enemy.rotation) * force;
+
+            enemy.velocity.x = (targetX - enemy.velocity.x) * accelSpeed;
+            enemy.velocity.y = (targetY - enemy.velocity.y) * accelSpeed;
             
             //Pushing Other Enemies Away
             for (var z = 0; z < enemies.length; z++) {
@@ -2282,35 +2288,45 @@ function updateEnemies(){
 
                     if (distanceToOtherEnemy < repultionDistance)
                     {
+
+                        var repforce = repultionForce *  1 / distanceToOtherEnemy;
+
                         targetX -= (otherEnemy.x - enemy.x) / Math.abs(otherEnemy.x - enemy.x) * repultionForce;
                         targetY -= (otherEnemy.y - enemy.y) / Math.abs(otherEnemy.y - enemy.y) * repultionForce;
                     }
                 }
             }
 
-            enemy.velocity.x = targetX;
-            enemy.velocity.y = targetY;
+            enemy.velocity.x = (targetX - enemy.velocity.x) * accelSpeed;
+            enemy.velocity.y = (targetY - enemy.velocity.y) * accelSpeed;
             
-            //Cap velocity at speed
-            var mag = Math.sqrt(Math.pow(enemy.velocity.x, 2) + Math.pow(enemy.velocity.y, 2));
+            // //Cap velocity at speed
+            // var mag = Math.sqrt(Math.pow(enemy.velocity.x, 2) + Math.pow(enemy.velocity.y, 2));
 
-            if(mag != 0)
+            // if(mag != 0)
+            // {
+            //     enemy.velocity.x *= speed / mag;
+            //     enemy.velocity.y *= speed / mag;    
+            // }
+
+            //Rebounding off Walls
+            if (enemy.x + enemy.velocity.x > gridSize || enemy.x + enemy.velocity.x < 0)
             {
-                enemy.velocity.x *= enemy.speed / mag;
-                enemy.velocity.y *= enemy.speed / mag;    
+                enemy.rotation = (Math.PI - enemy.rotation) * -2 + enemy.rotation;
+                enemy.velocity.x = 0;
+            }
+                
+            if (enemy.y + enemy.velocity.y > gridSize || enemy.y + enemy.velocity.y < 0)
+            {
+                enemy.rotation = (Math.PI - enemy.rotation) * -2 + enemy.rotation;
+                enemy.velocity.y = 0;
             }
             
             enemy.x += enemy.velocity.x;
             enemy.y += enemy.velocity.y;
                     
-            if(sendi == iterationsBeforeSend)
-            {
-                data = {x: enemy.x, y: enemy.y, rot: enemy.rotation, id: enemy.id};
-                io.to(worldId).emit('playerPos', data);
-                sendi = 0;
-            }
-            else
-                sendi++;
+            data = {x: enemy.x, y: enemy.y, rot: enemy.rotation, id: enemy.id};
+            io.to(worldId).emit('playerPos', data);
         }        
     }
 }
@@ -2328,6 +2344,10 @@ function updateItems(){
         
             var player = findClosestPlayer(item.x, item.y, worldId);
 
+            var velX = 0;
+            var velY = 0;
+            var merged = false;
+
             if(player)
             {
                 var distanceToPlayer = Math.sqrt(Math.pow(player.x - item.x, 2) + Math.pow(player.y - item.y, 2));
@@ -2340,8 +2360,8 @@ function updateItems(){
                     continue;
                 }
     
-                var velX = (item.x - player.x) * .5;
-                var velY = (item.y - player.y) * .5;
+                velX = (item.x - player.x) * .5;
+                velY = (item.y - player.y) * .5;
             
                 var mag = Math.sqrt(Math.pow(velX, 2) + Math.pow(velY, 2));
                 var itemSpeed = item.speed / distanceToPlayer;
@@ -2354,15 +2374,64 @@ function updateItems(){
                     velX = 0;
                     velY = 0;
                 }
-    
+            }
+
+            var velMergeX = 0;
+            var velMergeY = 0;
+
+            for (let x = 0; x < items.length; x++) {
+                const _item = items[x];
+                
+                if(_item != item && _item.type == item.type){
+
+                    var distanceToOtherItem = Math.sqrt(Math.pow(_item.x - item.x, 2) + Math.pow(_item.y - item.y, 2));
+                    if(distanceToOtherItem < itemMergeRange)
+                    {
+                        velMergeX = (_item.x - item.x) * .5;
+                        velMergeY = (_item.y - item.y) * .5;
+
+                        var mergeMag = Math.sqrt(Math.pow(velMergeX, 2) + Math.pow(velMergeY, 2));
+                        var itemMergeSpeed = item.mergeSpeed / distanceToOtherItem;
+
+                        velMergeX *= itemMergeSpeed / mergeMag;
+                        velMergeY *= itemMergeSpeed / mergeMag;
+
+                        item.x += velMergeX;
+                        item.y += velMergeY;
+
+                        distanceToOtherItem = Math.sqrt(Math.pow(_item.x - item.x, 2) + Math.pow(_item.y - item.y, 2));
+
+                        if(distanceToOtherItem < itemMergeDist)
+                        {
+                            _item.amount += item.amount;
+
+                            data.push({collected: true, id: item.id});
+                            items.splice(i, 1);
+                            merged = true;
+                            break;
+                        }
+                    }
+
+                }
+
+            }
+
+            if(!merged)
+            {
                 item.x -= velX + item.iVel.x;
                 item.y -= velY + item.iVel.y;
             
                 item.iVel.x *= .9;
                 item.iVel.y *= .9;
+    
+                var size =  Math.round(Math.sqrt(item.amount) + 8);
+    
+                if(size > 30)
+                    size = 30;
+    
+                data.push({x: item.x, y: item.y, rot: item.rotation, size: size, type: item.type, id: item.id});
             }
-
-            data.push({x: item.x, y: item.y, rot: item.rotation, type: item.type, id: item.id})
+            
         }
 
         io.to(worldId).emit('updateItems', data);
@@ -2409,30 +2478,32 @@ function sunDamage()
 function oxygenDamage()
 {
     var syncWorldIds = {};
-
     var spliced = [];
 
     for (let i = 0; i < worldIds.length; i++) {
         const worldId = worldIds[i];
 
         for (let x = worldsData[worldId].noOxygen.length - 1; x >= 0; x--) {
-            const client = worldsData[worldId].noOxygen[x];
+            const clientId = worldsData[worldId].noOxygen[x];
 
-            var hittableObj = findObjectWithId(worldsData[worldId].hittableObjects, client);
+            var hittableObj = findObjectWithId(worldsData[worldId].hittableObjects, clientId);
             if(!hittableObj)
                 continue;
 
-            var damage = Math.floor(hittableObj.maxHealth / 5);
+            var damage = Math.floor(hittableObj.object.maxHealth / 5);
 
             if(damage >= hittableObj.object.health)
-                worldsData[worldId].noOxygen.splice(worldsData[worldId].noOxygen.indexOf(client), 1);
+                worldsData[worldId].noOxygen.splice(worldsData[worldId].noOxygen.indexOf(clientId), 1);
 
-            damageObject(worldId, client, damage, true, client.x, client.y);
+            var player = findObjectWithId(worldsData[worldId].clients, clientId);
+
+            if(player)
+                damageObject(worldId, clientId, damage, true, player.object.x, player.object.y);
 
             if(syncWorldIds[worldId])
-                syncWorldIds[worldId].push(client);
+                syncWorldIds[worldId].push(clientId);
             else
-                syncWorldIds[worldId] = [client];
+                syncWorldIds[worldId] = [clientId];
 
         }
     }
@@ -2441,7 +2512,6 @@ function oxygenDamage()
         if (syncWorldIds.hasOwnProperty(syncWorldId)) 
             syncDamage(syncWorldId, syncWorldIds[syncWorldId]);
     }
-
 }
 
 function shieldHeal()
@@ -2478,25 +2548,33 @@ function shieldHeal()
 
 function despawnProjectiles()
 {
-    allProjectiles().forEach(projectile => {
-        if(projectile.time != null){
-            if(projectile.time > projectile.bulletRange){
-                var data = {id: projectile.id}
+    for (let i = 0; i < worldIds.length; i++) {
+        var projectiles = worldsData[worldIds[i]].projectiles;
+
+        var destroyedProjs = [];
+
+        projectiles.forEach(projectile => {
+            if(projectile.time != null){
+                if(projectile.time > projectile.bulletRange){ 
+                    var hitProj = findObjectWithId(worldsData[projectile.worldId].projectiles, projectile.id);
+                    if(hitProj)
+                        worldsData[projectile.worldId].projectiles.splice(hitProj.index, 1);
+
+                    var data = {id: projectile.id}  
+                    destroyedProjs.push(data);
+                }
     
-                var hitProj = findObjectWithId(worldsData[projectile.worldId].projectiles, projectile.id);
-                if(hitProj)
-                    worldsData[projectile.worldId].projectiles.splice(hitProj.index, 1);
-
-                io.sockets.to(projectile.worldId).emit('destroyProjectile', data);
+                projectile.time++;
             }
+            else{
+                projectile.time = 0;
+            }
+        });
 
-            projectile.time++;
-        }
-        else{
-            projectile.time = 0;
-        }
+        io.sockets.to(worldIds[i]).emit('destroyProjectiles', destroyedProjs);
+    }
 
-    });
+    
 }
 
 function mineProduce()

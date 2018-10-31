@@ -319,7 +319,7 @@ function setup(){
     socket.on('damageSync', receiveDamageSync);
     socket.on('spawnProj', spawnNetworkedProjectile);
     socket.on('spawnStructure', spawnNetworkedStructure);
-    socket.on('destroyProjectile', destroyNetworkedProjectile);
+    socket.on('destroyProjectiles', destroyNetworkedProjectiles);
     socket.on("items", onAquiredItems);
     socket.on("updateItems", updateItems);
     socket.on("upgradeInfo", receiveUpgradeInfo)
@@ -694,14 +694,21 @@ function updatePlayerPosition(data){
 function spawnNetworkedProjectile(data){
     otherProjectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, data.bulletPenetration, true, data.id));
 }
-function destroyNetworkedProjectile(data){
-    var deadProjOther = findObjectWithId(otherProjectiles, data.id);
-    var deadProjOwn = findObjectWithId(projectiles, data.id);
+function destroyNetworkedProjectiles(data){
 
-    if(deadProjOther)
-        otherProjectiles.splice(deadProjOther.index, 1);
-    else if(deadProjOwn)
-        projectiles.splice(deadProjOwn.index, 1);
+    data.forEach(proj => {
+        
+        var deadProjOther = findObjectWithId(otherProjectiles, proj.id);
+        var deadProjOwn = findObjectWithId(projectiles, proj.id);
+    
+        if(deadProjOther)
+            otherProjectiles.splice(deadProjOther.index, 1);
+        else if(deadProjOwn)
+            projectiles.splice(deadProjOwn.index, 1);
+
+    });
+
+    
 }
 function updatePlanetOccupier(data){
      worldObjects.planets.forEach(planet => {
@@ -876,7 +883,7 @@ function updateItems(data){
         }
 
         if(!localItem)
-            localItem = worldItems[item.id] = new Item(item.x, item.y, item.type, item.id);
+            localItem = worldItems[item.id] = new Item(item.x, item.y, item.size, item.type, item.id);
         
         localItem.coordX = item.x;
         localItem.coordY = item.y;
@@ -1977,13 +1984,13 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
 
 }
 
-function Item(coordX, coordY, type, id) {
+function Item(coordX, coordY, size, type, id) {
     this.speed = 10;
     this.x;
     this.y;
     this.type = type;
     this.id = id;
-    this.size = 10;
+    this.size = size;
 
     this.targetRotation = 0;
     this.rotation = 0;
@@ -2559,6 +2566,7 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
 
         if(distance > jumpDistance)
         {
+            console.log("jumped");
             this.lastCoordX = coords.x;
             this.lastCoordY = coords.y
             this.displayPos = coords;
