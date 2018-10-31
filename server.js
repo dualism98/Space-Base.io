@@ -26,7 +26,7 @@ var gridBoxScale = 200;
 var spawnTries = 5;
 
 var numOfasteroids = 20;
-var numOfPlanets = 5;
+var numOfPlanets = 0;
 var numOfMoons = 0;
 var numOfSuns = 0;
 var numOfCrystals = 0;
@@ -52,6 +52,7 @@ var itemCollectDist = 10;
 var itemMergeDist = 5;
 var itemMergeRange = 200;
 var itemAttractDist = 1000;
+var itemDespawnTime = 2000;
 
 var unspawnedObjects = [];
 
@@ -205,9 +206,9 @@ function generateWorld(){
     generatedWorldObjects.shops.push(shop1, shop2, shop3, shop4);
     generatedHittableObjects.push(shop1, shop2, shop3, shop4);
 
-    // var hive = new Planet(gridSize / 2, gridSize / 2, 180, [], "#84f74f", 1000, {}, "hive");
-    // generatedWorldObjects.planets.push(hive);
-    // generatedHittableObjects.push(hive);
+    var hive = new Planet(gridSize / 2, gridSize / 2, 180, [], "#84f74f", 1000, {}, "hive");
+    generatedWorldObjects.planets.push(hive);
+    generatedHittableObjects.push(hive);
 
 
     for(var i = 0; i < numOfSuns; i++){
@@ -422,6 +423,7 @@ function Item(x, y, initialVelocity, type, amount, id) {
     this.type = type;
     this.amount = amount;
     this.id = id;
+    this.despawnTime = 0;
 }
  
 var playerUpgrades = [
@@ -2161,7 +2163,7 @@ function updateEnemies(){
 
     worldIds.forEach(worldId => {
         
-        var destryoedProjs = [];
+        var destroyedProjs = [];
 
         for (let i = worldsData[worldId].projectiles.length - 1; i >= 0; i--) {
             
@@ -2200,31 +2202,29 @@ function updateEnemies(){
                     //Projectile hit something
                     if(dist < proj.size + obj.radius)
                     {
-                        worldsData[worldId].projectiles.splice(proj.index, 1);
-                        destryoedProjs.push({id: proj.id});
-
                         var dropItems = false;
     
-                        if(obj.id == undefined)
+                        if(obj.id == undefined || obj.id == "hive")
                             continue;
                         else if(worldsData[worldId].clients.contains(obj.id))
                         {
                             var player = findObjectWithId(worldsData[worldId].hittableObjects, obj.id);
                             if(player && proj.damage > player.object.health)
                                 dropItems = true;
+
+                            worldsData[worldId].projectiles.splice(proj.index, 1);
+                            destroyedProjs.push({id: proj.id});
                         }
     
                         damageObject(worldId, obj.id, proj.damage, dropItems);
                         break;
                     }   
                 }
-    
-            }
-            
+            }            
         }
 
-
-        io.to(worldId).emit('destroyProjectiles', destryoedProjs);
+        if(destroyedProjs.length > 0)
+            io.to(worldId).emit('destroyProjectiles', destroyedProjs);
 
     });
 
@@ -2258,8 +2258,6 @@ function updateEnemies(){
                     var projVelocity = {x: projVelX, y: projVelY};
                     var data = {x: enemy.x, y: enemy.y, vel: projVelocity, size: enemy.radius / 10, color: "#89f442", bulletPenetration: 0, id: "ep-" + uniqueId()}
 
-                    console.log("shoot");
-
                     io.to(worldId).emit('spawnProj', data);
                     worldsData[worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, enemy.damage, enemy.bulletRange, 0, worldId, data.id));
                     enemy.shootTimer = enemy.fireRate;
@@ -2288,7 +2286,6 @@ function updateEnemies(){
 
                     if (distanceToOtherEnemy < repultionDistance)
                     {
-
                         var repforce = repultionForce *  1 / distanceToOtherEnemy;
 
                         targetX -= (otherEnemy.x - enemy.x) / Math.abs(otherEnemy.x - enemy.x) * repultionForce;
@@ -2342,8 +2339,21 @@ function updateItems(){
 
             var item = items[i];
         
-            var player = findClosestPlayer(item.x, item.y, worldId);
+            if(item.type != "crown")
+            {
+                if(item.despawnTime > itemDespawnTime)
+                {
+                    data.push({collected: true, id: item.id});
+                    items.splice(i, 1);
+                    continue;
+                }
+                else
+                    item.despawnTime++;
+            }
 
+            
+
+            var player = findClosestPlayer(item.x, item.y, worldId);
             var velX = 0;
             var velY = 0;
             var merged = false;
@@ -2555,6 +2565,7 @@ function despawnProjectiles()
 
         projectiles.forEach(projectile => {
             if(projectile.time != null){
+
                 if(projectile.time > projectile.bulletRange){ 
                     var hitProj = findObjectWithId(worldsData[projectile.worldId].projectiles, projectile.id);
                     if(hitProj)
@@ -2571,7 +2582,11 @@ function despawnProjectiles()
             }
         });
 
-        io.sockets.to(worldIds[i]).emit('destroyProjectiles', destroyedProjs);
+        if(destroyedProjs.length > 0)
+        {
+            io.sockets.to(worldIds[i]).emit('destroyProjectiles', destroyedProjs);
+        }
+            
     }
 
     
