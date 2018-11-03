@@ -44,7 +44,7 @@ var despawnProjectilesRate = 100;
 var shieldHealRate = 1000;
 var sunDamageRate = 1000;
 var oxygenDamageRate = 2000;
-var enemySpawnRate = 500;
+var enemySpawnRate = 10000;
 var updateEnemiesRate = 10;
 var updateItemsRate = 10;
 
@@ -61,7 +61,7 @@ var crystalColors = ["#5b94ef", "#d957ed", "#f9f454", "#85f954"];
 var moonColors = ["#929aa8", "#758196", "#758196", "#2d3c56"];
 
 var clientsPerWorld = 30;
-var maxEnemiesPerWorld = 1;
+var maxEnemiesPerWorld = 30;
 var numberOfWorlds = 0;
 
 var levelsLostOnDeath = 2;
@@ -73,7 +73,10 @@ var maxPlanetObjects = {
     shield: 1,
     landingPad: 1,
     electricity: 3,
-    satellite: 1
+    satellite: 1,
+    spawnerDefender: 1,
+    spawnerScout: 1,
+    spawnerGuard: 1
 };
 
 function positonAviable(size, x, y, hittableObjectsRef) {
@@ -1052,7 +1055,7 @@ function newConnetcion(socket){
 
         var lobbyClient = findObjectWithId(worldsData[data.worldId].lobbyClients, socket.id);
 
-        var level = 0;
+        var level = 15;
         var position = {x: 0, y: 0};
         var structures = [];
         var playerShopUpgrades = false;
@@ -1372,6 +1375,10 @@ function newConnetcion(socket){
                 if(data.type == "landingPad"){
                     planet.owner = socket.id;
                 }
+                else if(data.type.substring(0, 7) == "spawner"){
+                    structure.enemyType = data.enemyType;
+                    structure.type = "spawner";
+                }
 
                 socket.emit("spawnStructure", data);
                 data.isFacade = true;
@@ -1406,8 +1413,7 @@ function newConnetcion(socket){
 
                         syncDamage(data.worldId, [data.id]);
                     }
-        
-                    if(data.type == "mine"){
+                    else if(data.type == "mine"){
                         structure.amount = upgrades.amount;
                     }
                 }
@@ -1861,7 +1867,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
         if(possibleClient)
         {
             worldsData[worldId].worldObjects.planets.forEach(planet => {
-                if(planet.occupiedBy == target.object.id)
+                if(planet.occupiedBy == target.object.id && planet.id != "hive")
                 {
                     var shieldRef = false;
 
@@ -1998,7 +2004,6 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
                         var hittableEnemy = findObjectWithId(worldsData[worldId].hittableObjects, id);
 
                         if(hittableEnemy){
-                            console.log("bye");
                             worldsData[worldId].hittableObjects.splice(hittableEnemy.index, 1);
                         }
                     }    
@@ -2139,10 +2144,10 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
 var playerRepultionDist = 100;
 
 var attractDistance = 550;
-var attractionForce = 30;
+var attractionForce = 20;
 
 var repultionDistance = 100;
-var repultionForce = 1;
+var repultionForce = .5;
 
 var accelerationSpeed = .5;
 
@@ -2211,12 +2216,11 @@ function updateEnemies(){
                             var player = findObjectWithId(worldsData[worldId].hittableObjects, obj.id);
                             if(player && proj.damage > player.object.health)
                                 dropItems = true;
-
-                            worldsData[worldId].projectiles.splice(proj.index, 1);
-                            destroyedProjs.push({id: proj.id});
                         }
-    
+
                         damageObject(worldId, obj.id, proj.damage, dropItems);
+                        destroyedProjs.push({id: proj.id});
+                        worldsData[worldId].projectiles.splice(i, 1);
                         break;
                     }   
                 }
@@ -2322,7 +2326,7 @@ function updateEnemies(){
             enemy.x += enemy.velocity.x;
             enemy.y += enemy.velocity.y;
                     
-            data = {x: enemy.x, y: enemy.y, rot: enemy.rotation, id: enemy.id};
+            data = {x: enemy.x, y: enemy.y, rot: enemy.rotation + Math.PI / 2, id: enemy.id};
             io.to(worldId).emit('playerPos', data);
         }        
     }
@@ -2648,20 +2652,21 @@ function spawnEnemies()
 
             if(worldsData[worldId].enemies.length < maxEnemiesPerWorld)
             {
-                spawnEnemy(spawner.x, spawner.y, spawner.level * 4, worldId);
+                spawnEnemy(spawner.x, spawner.y, spawner.enemyType, (spawner.level + 1) * 3, worldId);
             }
         }
     }
-
-    
 }
 
 // ----------------------------------------------------------------------------------------------------------------
 
-function spawnEnemy(x, y, level, worldId)
+function spawnEnemy(x, y, type, level, worldId)
 {
     var enemy = new Player(x, y, 1, level, "enemy-" + uniqueId(), worldId); 
     enemy.speed /= 10;
+
+    enemy.username = type;
+    enemy.drops = {iron: level};
 
     var velX = Math.random() - 0.5;
     var velY = Math.random() - 0.5;

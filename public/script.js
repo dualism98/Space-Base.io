@@ -292,10 +292,10 @@ var structureSpawnRotation = null;
 
 var checklist = {
     fly:{
-        isActive: true
+        isActive: false
     },
     shoot:{
-        isActive: true
+        isActive: false
     },
     landingPad:{
         isActive: false
@@ -1182,6 +1182,7 @@ $(document).keypress(function(e){
     }
     else if(spaceShip){
 
+
         if(e.keyCode == 99 && !cloaked && cloakCoolDownTime >= cloakCoolDown) //C
         {
             if(spaceShip.shopUpgrades["cloakTime"].level > 0){
@@ -1318,7 +1319,7 @@ $(document).on('keyup', function(e){
     }
 });
 
-function requestStructureSpawn(type){
+function requestStructureSpawn(type, enemyType){
 
     var globalPos;
 
@@ -1335,10 +1336,11 @@ function requestStructureSpawn(type){
         type: type,
         ownerId: clientId,
         isFacade: false,
+        enemyType: enemyType,
         worldId: worldId
     }
 
-    socket.emit("requestSpawnStructure", spawnData)
+    socket.emit("requestSpawnStructure", spawnData);
 }
 
 //------------------------------------------------------- Constructor Objects  ------------------------------------------------------
@@ -1441,7 +1443,7 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
 
             powerlessStructures.forEach(structure => {
 
-                if(structure.type == "landingPad" || structure.type == "electricity")
+                if(structure.type == "landingPad" || structure.type == "electricity" || structure.type == "spawner")
                     return;
 
                 var size = 30;
@@ -1527,7 +1529,7 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
             if(!isFacade)
                 producingMines.push(mine);
         }
-        else if(type === "spawner"){
+        else if(type.substring(0,7) == "spawner"){
             var spawner = new Spawner(planet, x, y, rotation, level, type, ownerId, id);
             this.structures.push(spawner);
         }
@@ -1740,7 +1742,7 @@ function Spawner(planet, x, y, rotation, level, type, ownerId, id){
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate((this.rotation - 90) / -57.2958);
-        ctx.drawImage(getImage(type + 'Spawner' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.drawImage(getImage(this.spawnerType + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
         ctx.restore();
     }
     this.update = function(){ 
@@ -2519,7 +2521,7 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
         if(this.image == null)
         {
             if(this.isEnemy)
-                this.image = getImage('enemyScout' + (this.level / 4));
+                this.image = getImage('enemy' + this.username + ((this.level / 3) - 1));
             else
                 this.image = getImage('spaceship' + this.level);
         }
@@ -3345,6 +3347,17 @@ function animate() {
             return checkItemY + (checkPadding + height) * index;
         }
 
+        if(currentPlanet)
+        {
+            checklist.shoot.isActive = false;
+            checklist.fly.isActive = false;
+        }
+        else
+        {
+            checklist.shoot.isActive = true;
+            checklist.fly.isActive = true;
+        }
+
         for (var check in checklist) {
 
             c.globalAlpha = 1;
@@ -3482,7 +3495,16 @@ function animate() {
                 if(structureSpawnPoint(50 * scale, structureImage + "0", addedDist)){
                     if(mouse.clickDown)
                     {
-                        requestStructureSpawn(boughtStructure);
+                        var spawnerType = "nope";
+
+                        if(boughtStructure.substring(0, 7) == "spawner")
+                        {
+                            spawnerType = (boughtStructure.substring(7, boughtStructure.legnth));
+                            spawnerType = spawnerType.charAt(0).toLowerCase() + spawnerType.substring(1, spawnerType.legnth);
+                        }
+                            
+
+                        requestStructureSpawn(boughtStructure, spawnerType);
                         boughtStructure = null;
 
                         structureSpawnPosition = null;
@@ -3614,9 +3636,7 @@ function animate() {
 
                 var buttonTypes = ["spaceShip", "landingPad", "mine", "turret", "shield", "electricity", "satellite"];
 
-                if(currentPlanet.id == "hive")
-                    buttonTypes = ["spawner"];
-                
+                buttonTypes = ["spawnerScout", "spawnerDefender", "spawnerGuard"];
 
                 var typeI = 0;
 
@@ -3753,8 +3773,6 @@ function animate() {
 
                     if(type == "shield")
                         imageName = "shieldGenerator" + imageLevel;
-
-                    
 
                     c.drawImage(getImage(imageName), panelX + pannelWidth / 2 - selectedStructureImageSize / 2, panelY + padding, selectedStructureImageSize, selectedStructureImageSize);
 
