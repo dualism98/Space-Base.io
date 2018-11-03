@@ -327,6 +327,7 @@ function setup(){
     socket.on("returnMsg", returnMsg);
     socket.on("serverDisconect", forceDisconnect);
     socket.on("planetOccupancy", updatePlanetOccupier);
+    socket.on("ejectPlayer", ejectPlayer);
     socket.on("mineProduce", mineProduce);
     socket.on("respawn", respawn);
     socket.on("respawnPlanet", respawnPlanet);
@@ -715,6 +716,12 @@ function updatePlanetOccupier(data){
         if(planet.id == data.planetId)
             planet.occupiedBy = data.playerId;
     });
+}
+function ejectPlayer()
+{
+    currentPlanet.occupiedBy = null;
+    currentPlanet = null;
+    landed = false;
 }
 function spawnNetworkedStructure(data)
 {
@@ -1225,7 +1232,8 @@ $(document).keypress(function(e){
 
                 if(shootBullet)
                 {
-                    shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, spaceShip.projectileSpeed, spaceShip.radius / 4, spaceShip.shopUpgrades.bulletPenetration.value + 1, "#f45c42", clientId, 1 - playerReloadTimer / 1000);
+                    var damagePercent = 1 - playerReloadTimer / spaceShip.fireRate;
+                    shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, spaceShip.projectileSpeed, spaceShip.radius / 4 * damagePercent, spaceShip.shopUpgrades.bulletPenetration.value + 1, "#f45c42", clientId, damagePercent);
                     shootCooldownTimer = 0;
                     playerReloadTimer = spaceShip.fireRate;
                 }
@@ -3691,8 +3699,9 @@ function animate() {
 
                     var type = planetShopSelection;
                     var level = 0;
-        
-                    if(typeof planetShopSelection == "object")
+                    var upgrading = typeof planetShopSelection == "object";
+
+                    if(upgrading)
                     {
                         type = planetShopSelection.type;
                         level = planetShopSelection.level;
@@ -3710,7 +3719,6 @@ function animate() {
 
                     var panelX = xVal + backgroundWidth
                     var panelY = canvas.height - pannelHeight - padding;
-
 
                     //Header
                     var headerX = panelX;
@@ -3731,9 +3739,18 @@ function animate() {
                     c.font = fontsize + "px Helvetica";
                     c.textAlign = "center";
 
-                    var upperasedType = type.charAt(0).toUpperCase() + type.slice(1);
+                    var uppercasedType = type.charAt(0).toUpperCase() + type.slice(1);
 
-                    c.fillText(upperasedType, headerX + pannelWidth / 2, yVal - padding);
+                    if(type.substring(0,7) == "spawner")
+                    {
+
+                        var typeString = upgrading ? planetShopSelection.spawnerType : type;
+
+                        var spawnerType = typeString.substring(7, typeString.legnth);
+                        uppercasedType = spawnerType.charAt(0).toUpperCase() + spawnerType.slice(1) + " Spawner";
+                    }
+
+                    c.fillText(uppercasedType, headerX + pannelWidth / 2, yVal - padding);
 
                     //Background
                     c.globalAlpha = .2;
@@ -3747,7 +3764,6 @@ function animate() {
                     c.globalAlpha = 1;
 
                     var fullyUpgraded = false;
-                    var upgrading = typeof planetShopSelection == "object";
 
                     if(type == "spaceShip")
                     {
@@ -3768,6 +3784,9 @@ function animate() {
 
                     if(upgrading && !fullyUpgraded)
                         imageLevel = level + 1;
+
+                    if(type == "spawner" && upgrading)
+                        type = planetShopSelection.spawnerType;
 
                     var imageName = type + imageLevel;
 
@@ -4062,6 +4081,13 @@ function drawLeaderBoard(){
     var IMAGE_SIZE =  windowHeight / 35;
 
     var topPlayers = otherPlayers.concat(spaceShip);
+
+    for (let i = topPlayers.length - 1; i >= 0; i--) {
+        if(topPlayers[i].id.substring(0,5) == "enemy")
+        {
+            topPlayers.splice(i,1) ;
+        }
+    }
 
     topPlayers.sort(function (player1, player2) {
         if (player1.level > player2.level) return -1;
@@ -4915,6 +4941,9 @@ function findClosestUnoccupiedPlanet() {
     for(var i = 0; i < planetArray.length; i++){
 
         if(planetArray[i].owner && planetArray[i].owner != clientId)
+            continue;
+        
+        if(planetArray[i].id == "hive" && !playerItems["crown"] > 0)
             continue;
 
         var distance = Math.sqrt(Math.pow(centerX - planetArray[i].x, 2) + Math.pow(centerY - planetArray[i].y, 2));

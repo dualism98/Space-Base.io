@@ -156,7 +156,7 @@ function addWorld(){
         noOxygen: [],
         items: [],
         spawners: [],
-        master: []
+        master: null
     }
 
     
@@ -1621,10 +1621,18 @@ function newConnetcion(socket){
     }
 
     socket.on('planetOccupancy', function(data){
-
         worldsData[data.worldId].worldObjects.planets.forEach(planet => {
             if(planet.id == data.planetId)
-                planet.occupiedBy = data.playerId;
+            {
+                if(planet.id == "hive" && worldsData[data.worldId].master != data.playerId)
+                {
+                    io.sockets.connected[socket.id].emit('ejectPlayer');
+                    return;
+                }
+                else
+                    planet.occupiedBy = data.playerId;
+               
+            }
         });
 
         socket.broadcast.to(data.worldId).emit('planetOccupancy', data);
@@ -2980,12 +2988,9 @@ function newPlayerData(id, x, y) {
     var playerPlanet = false;
 
     worldsData[id].worldObjects.planets.forEach(planet => {
-        if(planet.occupiedBy == null && planet.owner == null)
+        if(planet.occupiedBy == null && planet.owner == null && planet.id != "hive")
             playerPlanet = planet;
     });
-
-    // if(!playerPlanet)
-    //     return false;
 
     var data = {
         existingPlayers: worldsData[id].clients.concat(worldsData[id].enemies),
