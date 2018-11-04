@@ -3924,7 +3924,7 @@ function animate() {
 
         }
         
-        var miniMapSize = windowHeight / 8;
+        var miniMapSize = windowHeight / 5;
         var minimapPadding = windowHeight / 60;
 
         minimap(miniMapSize, windowWidth - miniMapSize - minimapPadding, windowHeight - miniMapSize - minimapPadding);
@@ -4757,6 +4757,19 @@ function minimap(size, x, y){
         c.fill();
 
     });
+
+    var crownSize = size / 10;
+
+    for (var worldItem in worldItems) {
+        if (worldItems.hasOwnProperty(worldItem)) {
+            if(worldItems[worldItem].type == "crown")
+            {
+                var crown = worldItems[worldItem];
+                c.drawImage(getImage("crown"), x + crown.coordX / gridSize * size, y + crown.coordY / gridSize * size, crownSize, crownSize);
+            }
+        }
+    }
+    
 
     c.globalAlpha = 0.75; 
     c.beginPath();

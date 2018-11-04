@@ -161,8 +161,8 @@ function addWorld(){
 
     
 
-    // var crown = new Item(gridSize / 2, gridSize / 2, {x: 0, y: 0}, "crown", 1, "item-" + uniqueId());
-    // worldsData[worldId].items.push(crown);
+    var crown = new Item(gridSize / 4, gridSize / 4, {x: 0, y: 0}, "crown", 1, "item-" + uniqueId());
+    worldsData[worldId].items.push(crown);
     
     worldIds.push(worldId);
 
@@ -2281,6 +2281,8 @@ function updateEnemies(){
                 //Attraction to player
                 force = attractionForce * (distanceToPlayer - playerRepultionDist) / (attractDistance - playerRepultionDist);
             }
+            else
+                enemy.rotation = Math.atan2(enemy.velocity.y, enemy.velocity.x);
 
             var targetX = Math.cos(enemy.rotation) * force;
             var targetY = Math.sin(enemy.rotation) * force;
@@ -2298,7 +2300,10 @@ function updateEnemies(){
 
                     if (distanceToOtherEnemy < repultionDistance)
                     {
-                        var repforce = repultionForce *  1 / distanceToOtherEnemy;
+                        var repforce = repultionForce / 100000 *  1 / distanceToOtherEnemy;
+
+                        if(distanceToPlayer < attractDistance) //Also Being Attracted By Player
+                            repforce = repultionForce *  1 / distanceToOtherEnemy;
 
                         targetX -= (otherEnemy.x - enemy.x) / Math.abs(otherEnemy.x - enemy.x) * repultionForce;
                         targetY -= (otherEnemy.y - enemy.y) / Math.abs(otherEnemy.y - enemy.y) * repultionForce;
@@ -2321,14 +2326,14 @@ function updateEnemies(){
             //Rebounding off Walls
             if (enemy.x + enemy.velocity.x > gridSize || enemy.x + enemy.velocity.x < 0)
             {
-                enemy.rotation = (Math.PI - enemy.rotation) * -2 + enemy.rotation;
-                enemy.velocity.x = 0;
+                //enemy.rotation = (Math.PI - enemy.rotation) * -2 + enemy.rotation;
+                enemy.velocity.x *= -1;
             }
                 
             if (enemy.y + enemy.velocity.y > gridSize || enemy.y + enemy.velocity.y < 0)
             {
-                enemy.rotation = (Math.PI - enemy.rotation) * -2 + enemy.rotation;
-                enemy.velocity.y = 0;
+                //enemy.rotation = (Math.PI - enemy.rotation) * -2 + enemy.rotation;
+                enemy.velocity.y *= -1;
             }
             
             enemy.x += enemy.velocity.x;
@@ -2670,7 +2675,7 @@ function spawnEnemies()
 
 function spawnEnemy(x, y, type, level, worldId)
 {
-    var enemy = new Player(x, y, 1, level, "enemy-" + uniqueId(), worldId); 
+    var enemy = new Player(x, y, Math.random() * Math.PI * 2, level, "enemy-" + uniqueId(), worldId); 
     enemy.speed /= 10;
 
     enemy.username = type;
