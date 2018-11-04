@@ -26,7 +26,7 @@ var gridBoxScale = 200;
 var spawnTries = 5;
 
 var numOfasteroids = 20;
-var numOfPlanets = 0;
+var numOfPlanets = 2;
 var numOfMoons = 0;
 var numOfSuns = 0;
 var numOfCrystals = 0;
@@ -1716,22 +1716,52 @@ function disconnectPlayer(id, socket, worldId){
 
     var lobbyClient = findObjectWithId(worldsData[worldId].lobbyClients, id);
     var client = findObjectWithId(worldsData[worldId].clients, id);
-    var structureIds = [];
-
 
     if(lobbyClient)
+    {
+        lobbyStructureIds = [];
+
+        if(lobbyClient.object.structures)
+        {
+            lobbyClient.object.structures.forEach(structure => {
+                var planet = findObjectWithId(worldsData[worldId].worldObjects.planets, structure.planetId);
+
+                if(planet){
+                    planet = planet.object;
+
+                    planet.owner = null;
+                    planet.occupiedBy = null;
+
+                    lobbyStructureIds.push(structure.id);
+                    var planetStructure = findObjectWithId(planet.structures, structure.id);
+
+                    if(planetStructure){
+                        if(planetStructure.object.type == "shield")
+                        {
+                            var shield = findObjectWithId(worldsData[worldId].hittableObjects, structure.id);
+
+                            if(shield)
+                            {
+                                worldsData[worldId].hittableObjects.splice(shield.index, 1);
+                                syncDamage(worldId, [structure.id]);
+                            }
+                        }
+
+                        planet.structures.splice(planetStructure.index, 1);
+                    }   
+                }
+            });
+        }
+
+        io.to(worldId).emit('playerExited', {structureIds: lobbyStructureIds});
         worldsData[worldId].lobbyClients.splice(lobbyClient.index, 1);
+    }
     else if(client)
     {
         worldsData[worldId].worldObjects.planets.forEach(planet => {
             if(planet.occupiedBy == client.object.id)
                 planet.occupiedBy = null;
         });
-    
-        var data = {
-            clientId: client.object.id,
-            structureIds: structureIds
-        }
      
         worldsData[worldId].worldObjects.planets.forEach(planet => {
             if(planet.owner == client.object.id)
@@ -1740,48 +1770,60 @@ function disconnectPlayer(id, socket, worldId){
             }
         });
 
+        if(worldsData[worldId].master == client.object.id){
+            worldsData[worldId].master = null;
+        }
+
+        itemDropped(client.object.x, client.object.y, client.object.drops, worldId, 1);
+
         var noOxygen = worldsData[worldId].noOxygen;
 
         if(noOxygen.contains(id))
             noOxygen.splice(noOxygen.indexOf(id), 1);
     
-        if((!respawnPlanet || id == socket.id))
-        {
-            //destroy players structures on planets
-            if(client.object.structures){
-                client.object.structures.forEach(structure => {
-                    structureIds.push(structure.id);
-    
-                    var planet = findObjectWithId(worldsData[worldId].worldObjects.planets, structure.planetId);
-    
-                    if(planet){
-                        planet = planet.object;
-    
+
+        var data = {
+            clientId: client.object.id,
+            structureIds: []
+        }
+
+        //destroy players structures on planets if disconnected or planet was the hive
+        if(client.object.structures){
+            client.object.structures.forEach(structure => {
+
+                var planet = findObjectWithId(worldsData[worldId].worldObjects.planets, structure.planetId);
+
+                if(planet){
+                    planet = planet.object;
+
+                    if((!respawnPlanet || id == socket.id) || planet.id == "hive")
+                    {
                         planet.owner = null;
                         planet.occupiedBy = null;
-    
+
+                        data.structureIds.push(structure.id);
+                        
                         var planetStructure = findObjectWithId(planet.structures, structure.id);
-    
+
                         if(planetStructure){
                             if(planetStructure.object.type == "shield")
                             {
                                 var shield = findObjectWithId(worldsData[worldId].hittableObjects, structure.id);
-    
+
                                 if(shield)
                                 {
                                     worldsData[worldId].hittableObjects.splice(shield.index, 1);
                                     syncDamage(worldId, [structure.id]);
                                 }
                             }
-    
+
                             planet.structures.splice(planetStructure.index, 1);
                         }
                     }
-                    
-                });
-            }
+                }
+            });
         }
-
+        
         if(id != socket.id){ //Player was killed
 
             if(!io.sockets.connected[id]){
@@ -1789,9 +1831,9 @@ function disconnectPlayer(id, socket, worldId){
                 return;
             }
 
-            data.forGood = false;
             io.sockets.connected[id].broadcast.to(worldId).emit('playerExited', data);
-            
+            io.sockets.connected[id].emit("setupLocalWorld", newPlayerData(worldId,  gridSize / 2 - client.object.x,  gridSize / 2 - client.object.y));
+
             var level = 0;
 
             if(client.object.level - levelsLostOnDeath > 0)
@@ -1802,7 +1844,7 @@ function disconnectPlayer(id, socket, worldId){
             var respawnPlanet = false;
 
             worldsData[worldId].worldObjects.planets.forEach(planet => {
-                if(planet.owner == client.object.id)
+                if(planet.owner == client.object.id && planet.id != "hive")
                 {
                     respawnPlanet = planet;
                 }
@@ -1825,10 +1867,8 @@ function disconnectPlayer(id, socket, worldId){
 
         } 
         else //Player disconneted
-        {
-            data.forGood = true;
             socket.broadcast.to(worldId).emit('playerExited', data);
-        }
+        
     
         var hittableClient = findObjectWithId(worldsData[worldId].hittableObjects, id);
     
@@ -1990,14 +2030,11 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
             }
             else {
                 if(possibleClient){
-                    disconnectPlayer(target.object.id, socket, worldId);
 
                     if(!target.object.drops["gem"])
                         target.object.drops["gem"] = 1;
 
-                    if(target.object.drops && spawnItems)
-                        itemDropped(xHit, yHit, target.object.drops, worldId, 1); 
-                    
+                    disconnectPlayer(target.object.id, socket, worldId);
                 }
                 else if(possibleEnemy)
                 {
@@ -2005,8 +2042,10 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
 
                     if(enemy.object)
                     {
-                        var enemyData = {clientId: enemy.object.id, forGood: false};
+                        var enemyData = {clientId: enemy.object.id};
                         io.to(worldId).emit('playerExited', enemyData);
+
+                        itemDropped(xHit, yHit, enemy.object.drops, worldId, 1); 
 
                         worldsData[possibleEnemy.object.worldId].enemies.splice(enemy.index, 1);
                         var hittableEnemy = findObjectWithId(worldsData[worldId].hittableObjects, id);
@@ -2679,7 +2718,7 @@ function spawnEnemy(x, y, type, level, worldId)
     enemy.speed /= 10;
 
     enemy.username = type;
-    enemy.drops = {iron: level};
+    enemy.drops = {iron: level * 10, circut: level * 2};
 
     var velX = Math.random() - 0.5;
     var velY = Math.random() - 0.5;
@@ -2769,12 +2808,13 @@ function itemCollected(item, playerRecivingId, worldId) {
         data.drops[item.type] = item.amount;
 
         if(item.type == "crown")
+        {
             worldsData[worldId].master = playerRecivingId;
+            io.sockets.connected[playerRecivingId].broadcast.to(worldId).emit('master', playerRecivingId);
+        }
 
         io.sockets.connected[playerRecivingId].emit('items', data);
     }
-
-    
 }
 
 function syncDamage(worldId, changedIds){
@@ -3004,6 +3044,7 @@ function newPlayerData(id, x, y) {
         planet: playerPlanet.id,
         gridBoxScale: gridBoxScale,
         worldId: id,
+        master: worldsData[id].master,
         x: x,
         y: y
     };

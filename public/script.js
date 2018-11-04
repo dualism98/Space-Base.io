@@ -290,6 +290,8 @@ var electricityTimer = {time: 0, duration: 50, on: false};
 var structureSpawnPosition = null;
 var structureSpawnRotation = null;
 
+var master = null;
+
 var checklist = {
     fly:{
         isActive: false
@@ -335,6 +337,7 @@ function setup(){
     socket.on("syncItem", syncItem);
     socket.on('shopUpgrade', shopUpgrade);
     socket.on('cloak', cloak);
+    socket.on('master', setMaster);
 
     centerX = (canvas.width / 2 / scale);
     centerY = (canvas.height / 2 / scale);
@@ -345,7 +348,7 @@ function setupLocalWorld(data){
 
     worldId = data.worldId;
     clientId = socket.io.engine.id;
-
+    master = data.master;
     gridSize = data.gridSize;
     gridBoxScale = data.gridBoxScale;
 
@@ -526,12 +529,9 @@ function receiveDamageSync(data){
                     {
                         delete hittableObjects[hittableObject.id];
     
-                        var isStructure = false;
-    
                         for (let i = 0; i < structureUpgradeables.length; i++) {
                             if(structureUpgradeables[i] == hittableObject.id){
                                 structureUpgradeables.splice(i, 1);
-                                isStructure = true;
                             }
                         }
                     }
@@ -669,6 +669,7 @@ function respawn(){
     upgradeables = [];
     structureUpgradeables = [];
     ownedPlanets = [];
+    currentPlanet = null;
     shopOpen = {shopRef: null, type: null, open: false};
 
     caughtInBlackHole = false;
@@ -923,6 +924,12 @@ function cloak(data){
         }
     }
 }
+
+function setMaster(data)
+{
+    master = data;
+}
+
 function playerExited(data){
 
     otherPlayer = findObjectWithId(otherPlayers, data.clientId);
@@ -940,25 +947,22 @@ function playerExited(data){
 
         if(otherPlayerHittableObj)
             delete hittableObjects[data.clientId];
+    }
 
-
-        if(data.forGood)
-        {
-            var structureObejcts = [];
-    
-            allStructures.forEach(structure => {
-                data.structureIds.forEach(id => {
-                    if(id == structure.id){
-                        planet = findObjectWithId(worldObjects.planets, structure.planet.id);
-                        planet.object.owner = null;
-                        planetStructureIndex = findObjectWithId(planet.object.structures, structure.id).index;
-                        planet.object.structures.splice(planetStructureIndex, 1);
-                    }
-                });
+    if(data.structureIds)
+    {
+        allStructures.forEach(structure => {
+            data.structureIds.forEach(id => {
+                if(id == structure.id){
+                    planet = findObjectWithId(worldObjects.planets, structure.planet.id);
+                    planet.object.owner = null;
+                    planetStructureIndex = findObjectWithId(planet.object.structures, structure.id).index;
+                    planet.object.structures.splice(planetStructureIndex, 1);
+                }
             });
-    
-            allStructures = getAllStructures();
-        }
+        });
+
+        allStructures = getAllStructures();
     }
 }
 function forceDisconnect(data){
@@ -2154,6 +2158,9 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
 
                 var hittableObj = hittableObjects[id];
 
+                if(hittableObj.id.substring(0,5) == "enemy" && playerItems["crown"] >= 1)
+                    continue;
+
                 if(this.isFriendly(hittableObj.id) || this.hitObjects.contains(hittableObj.id) || !hittableObj.active)
                     continue;
 
@@ -2165,10 +2172,9 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
                     var hitWorldObject = findObjectWithId(allWorldObjects, id);
 
                     if(hitWorldObject && (hitWorldObject.object.type == "blackHole" || hitWorldObject.object.id == "hive"))
-                        return;
+                        continue;
 
                     sendProjectileHit(this.id, id, this.coord.x, this.coord.y);
-
 
                     if(hitWorldObject)
                     {
@@ -3644,7 +3650,8 @@ function animate() {
 
                 var buttonTypes = ["spaceShip", "landingPad", "mine", "turret", "shield", "electricity", "satellite"];
 
-                buttonTypes = ["spawnerScout", "spawnerDefender", "spawnerGuard"];
+                if(currentPlanet.id == "hive")
+                    buttonTypes = ["spawnerScout", "spawnerDefender", "spawnerGuard"];
 
                 var typeI = 0;
 
