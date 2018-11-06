@@ -156,7 +156,8 @@ function addWorld(){
         noOxygen: [],
         items: [],
         spawners: [],
-        master: null
+        master: null,
+        hive: objects.worldObjects.hive
     }
 
     
@@ -211,6 +212,7 @@ function generateWorld(){
 
     var hive = new Planet(gridSize / 2, gridSize / 2, 180, [], "#84f74f", 1000, {}, "hive");
     generatedWorldObjects.planets.push(hive);
+    generatedWorldObjects.hive = hive;
     generatedHittableObjects.push(hive);
 
 
@@ -1292,7 +1294,7 @@ function newConnetcion(socket){
         planet = findObjectWithId(worldsData[data.worldId].worldObjects.planets, data.planetId).object;
         
         //Check if planet has a landing pad first
-        if(data.type != "landingPad"){
+        if(data.type != "landingPad" && data.planetId != "hive"){
             var hasLandingPad = false;
 
             planet.structures.forEach(structure => {
@@ -1656,11 +1658,13 @@ function newConnetcion(socket){
                 playerId: socket.id,
                 cloaked: true
             }
-
+            
+            player.object.cloaked = true;
             socket.broadcast.to(data.worldId).emit('cloak', rtrnData);
 
             setTimeout(function() {
                 rtrnData.cloaked = false;
+                player.object.cloaked = false;
                 io.to(data.worldId).emit('cloak', rtrnData);
 
             }, player.object.shopUpgrades["cloakTime"].value);
@@ -2194,7 +2198,7 @@ var attractDistance = 550;
 var attractionForce = 20;
 
 var repultionDistance = 100;
-var repultionForce = .5;
+var repultionForce = 10;
 
 var accelerationSpeed = .5;
 
@@ -2214,7 +2218,7 @@ setInterval(updateItems, updateItemsRate);
 function updateEnemies(){
 
     worldIds.forEach(worldId => {
-        
+
         var destroyedProjs = [];
 
         for (let i = worldsData[worldId].projectiles.length - 1; i >= 0; i--) {
@@ -2282,106 +2286,214 @@ function updateEnemies(){
     for (let index = 0; index < worldIds.length; index++) {
         const worldId = worldIds[index];
 
+        var enemyMaster = findObjectWithId(worldsData[worldId].clients, worldsData[worldId].master);
         var enemies = worldsData[worldId].enemies;
         
         for (let i = 0; i < enemies.length; i++) {
             const enemy = enemies[i];
-            
-            var player = findClosestPlayer(enemy.x, enemy.y, worldId, [worldsData[worldId].master]);
-            var distanceToPlayer = Math.sqrt(Math.pow(player.x - enemy.x, 2) + Math.pow(player.y - enemy.y, 2));
-            var force = enemy.speed;
-            var speed = enemy.speed;
-            var accelSpeed = accelerationSpeed;
 
-            playerRepultionDist = player.radius * 3 + 50;
-
-            //In Range Of Player
-            if (distanceToPlayer < attractDistance)
-            { 
-                //Shoot
-                if(enemy.shootTimer > 0)
-                    enemy.shootTimer--;
-                else{
-
-                    var projVelX = Math.cos(enemy.rotation) * enemy.projectileSpeed;
-                    var projVelY = Math.sin(enemy.rotation) * enemy.projectileSpeed;
-                    
-                    var projVelocity = {x: projVelX, y: projVelY};
-                    var data = {x: enemy.x, y: enemy.y, vel: projVelocity, size: enemy.radius / 10, color: "#89f442", bulletPenetration: 0, id: "ep-" + uniqueId()}
-
-                    io.to(worldId).emit('spawnProj', data);
-                    worldsData[worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, enemy.damage, enemy.bulletRange, 0, worldId, data.id));
-                    enemy.shootTimer = enemy.fireRate;
-                }
-
-                targetRot = -Math.atan2(enemy.x - player.x, enemy.y - player.y) - Math.PI / 180 * 90;
-                enemy.rotation = targetRot;
-
-                //Attraction to player
-                force = attractionForce * (distanceToPlayer - playerRepultionDist) / (attractDistance - playerRepultionDist);
-            }
-            else
-                enemy.rotation = Math.atan2(enemy.velocity.y, enemy.velocity.x);
-
-            var targetX = Math.cos(enemy.rotation) * force;
-            var targetY = Math.sin(enemy.rotation) * force;
-
-            enemy.velocity.x = (targetX - enemy.velocity.x) * accelSpeed;
-            enemy.velocity.y = (targetY - enemy.velocity.y) * accelSpeed;
-            
-            //Pushing Other Enemies Away
-            for (var z = 0; z < enemies.length; z++) {
-                var otherEnemy = enemies[z];
-                
-                if(otherEnemy != enemy)
-                {
-                    var distanceToOtherEnemy = Math.sqrt(Math.pow(otherEnemy.x - enemy.x, 2) + Math.pow(otherEnemy.y - enemy.y, 2));
-
-                    if (distanceToOtherEnemy < repultionDistance)
-                    {
-                        var repforce = repultionForce / 100000 *  1 / distanceToOtherEnemy;
-
-                        if(distanceToPlayer < attractDistance) //Also Being Attracted By Player
-                            repforce = repultionForce *  1 / distanceToOtherEnemy;
-
-                        targetX -= (otherEnemy.x - enemy.x) / Math.abs(otherEnemy.x - enemy.x) * repultionForce;
-                        targetY -= (otherEnemy.y - enemy.y) / Math.abs(otherEnemy.y - enemy.y) * repultionForce;
-                    }
-                }
-            }
-
-            enemy.velocity.x = (targetX - enemy.velocity.x) * accelSpeed;
-            enemy.velocity.y = (targetY - enemy.velocity.y) * accelSpeed;
-            
-            // //Cap velocity at speed
-            // var mag = Math.sqrt(Math.pow(enemy.velocity.x, 2) + Math.pow(enemy.velocity.y, 2));
-
-            // if(mag != 0)
-            // {
-            //     enemy.velocity.x *= speed / mag;
-            //     enemy.velocity.y *= speed / mag;    
-            // }
-
-            //Rebounding off Walls
-            if (enemy.x + enemy.velocity.x > gridSize || enemy.x + enemy.velocity.x < 0)
+            switch(enemy.username)
             {
-                //enemy.rotation = (Math.PI - enemy.rotation) * -2 + enemy.rotation;
-                enemy.velocity.x *= -1;
+                case "scout":
+                    scoutAI(enemy, worldId);
+                break;
+                case "defender":
+                    pointAI(enemy, worldId, worldsData[worldId].hive.x, worldsData[worldId].hive.y, enemyOptimalDistanceFromHive + worldsData[worldId].hive.radius);
+                break;   
+                case "guard":
+                    if(enemyMaster)
+                        pointAI(enemy, worldId, enemyMaster.object.x, enemyMaster.object.y, enemyOptimalDistanceFromPlayer);
+                    else
+                        scoutAI(enemy, worldId);
+                break;   
+
             }
-                
-            if (enemy.y + enemy.velocity.y > gridSize || enemy.y + enemy.velocity.y < 0)
-            {
-                //enemy.rotation = (Math.PI - enemy.rotation) * -2 + enemy.rotation;
-                enemy.velocity.y *= -1;
-            }
-            
-            enemy.x += enemy.velocity.x;
-            enemy.y += enemy.velocity.y;
-                    
-            data = {x: enemy.x, y: enemy.y, rot: enemy.rotation + Math.PI / 2, id: enemy.id};
-            io.to(worldId).emit('playerPos', data);
-        }        
+        }
     }
+}
+
+var ventureDistance = 1000;
+var enemyOptimalDistanceFromHive = 100;
+var enemyOptimalDistanceFromPlayer = 200;
+var maxDist = 500;
+function pointAI(enemy, worldId, pointX, pointY, optimalDistance)
+{
+    var enemies = worldsData[worldId].enemies;
+    var player = findClosestPlayer(enemy.x, enemy.y, worldId, [worldsData[worldId].master], true);
+    var distanceToPlayer = Math.sqrt(Math.pow(player.x - enemy.x, 2) + Math.pow(player.y - enemy.y, 2));
+    var distanceToPoint = Math.sqrt(Math.pow(pointX - enemy.x, 2) + Math.pow(pointY - enemy.y, 2));
+    var distanceFromPlayerToHive = Math.sqrt(Math.pow(pointX - player.x, 2) + Math.pow(pointY - player.y, 2));
+    
+    playerRepultionDist = player.radius * 3 + 50;
+
+    //In Range Of Player
+    if (distanceToPlayer < attractDistance && distanceFromPlayerToHive < ventureDistance)
+    { 
+        //Shoot
+        if(enemy.shootTimer > 0)
+            enemy.shootTimer--;
+        else{
+
+            var projVelX = Math.cos(enemy.rotation) * enemy.projectileSpeed;
+            var projVelY = Math.sin(enemy.rotation) * enemy.projectileSpeed;
+            
+            var projVelocity = {x: projVelX, y: projVelY};
+            var data = {x: enemy.x, y: enemy.y, vel: projVelocity, size: enemy.radius / 10, color: "#89f442", bulletPenetration: 0, id: "ep-" + uniqueId()}
+
+            io.to(worldId).emit('spawnProj', data);
+            worldsData[worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, enemy.damage, enemy.bulletRange, 0, worldId, data.id));
+            enemy.shootTimer = enemy.fireRate;
+        }
+
+        var targetRot = -Math.atan2(enemy.x - player.x, enemy.y - player.y) - Math.PI / 180 * 90; // target player
+        enemy.rotation = targetRot;
+
+        //Attraction to player
+        enemy.currentSpeed = attractionForce * (distanceToPlayer - playerRepultionDist) / (attractDistance - playerRepultionDist);
+    }
+    else
+    {
+        enemy.currentSpeed = enemy.speed;
+
+        var dist = distanceToPoint - optimalDistance;
+
+        if(dist > maxDist)
+            dist = maxDist;
+
+        var correctionFactor = dist / maxDist;
+        enemy.rotation = -Math.atan2(enemy.x - pointX, enemy.y - pointY) - (Math.PI / 2) * correctionFactor;
+    }
+        
+    var targetX = Math.cos(enemy.rotation) * enemy.currentSpeed;
+    var targetY = Math.sin(enemy.rotation) * enemy.currentSpeed;
+
+    enemy.velocity.x = (targetX - enemy.velocity.x) * accelerationSpeed;
+    enemy.velocity.y = (targetY - enemy.velocity.y) * accelerationSpeed;
+    
+
+    var repulsionTargetForceX = 0;
+    var repulsionTargetForceY = 0;
+
+    //Pushing Other Enemies Away
+    for (var z = 0; z < enemies.length; z++) {
+        var otherEnemy = enemies[z];
+        
+        if(otherEnemy != enemy)
+        {
+            var distanceToOtherEnemy = Math.sqrt(Math.pow(otherEnemy.x - enemy.x, 2) + Math.pow(otherEnemy.y - enemy.y, 2));
+
+            if (distanceToOtherEnemy < repultionDistance)
+            {
+                var repforce = repultionForce * 2 / distanceToOtherEnemy;
+
+                if(distanceToPlayer < attractDistance) //Also Being Attracted By Player
+                    repforce = repultionForce / distanceToOtherEnemy;
+
+                repulsionTargetForceX -= (otherEnemy.x - enemy.x) / Math.abs(otherEnemy.x - enemy.x) * repforce;
+                repulsionTargetForceY -= (otherEnemy.y - enemy.y) / Math.abs(otherEnemy.y - enemy.y) * repforce;
+            }
+        }
+    }
+
+    enemy.velocity.x += repulsionTargetForceX;
+    enemy.velocity.y += repulsionTargetForceY;
+
+    //Rebounding off Walls
+    if (enemy.x + enemy.velocity.x > gridSize || enemy.x + enemy.velocity.x < 0)
+        enemy.velocity.x *= -1;
+    
+    if (enemy.y + enemy.velocity.y > gridSize || enemy.y + enemy.velocity.y < 0)
+        enemy.velocity.y *= -1;
+    
+    
+    enemy.x += enemy.velocity.x;
+    enemy.y += enemy.velocity.y;
+            
+    data = {x: enemy.x, y: enemy.y, rot: enemy.rotation + Math.PI / 2, id: enemy.id};
+    io.to(worldId).emit('playerPos', data);
+}
+
+function scoutAI(enemy, worldId)
+{
+    var enemies = worldsData[worldId].enemies;
+    var player = findClosestPlayer(enemy.x, enemy.y, worldId, [worldsData[worldId].master], true);
+    var distanceToPlayer = Math.sqrt(Math.pow(player.x - enemy.x, 2) + Math.pow(player.y - enemy.y, 2));
+
+    playerRepultionDist = player.radius * 3 + 50;
+
+    //In Range Of Player
+    if (distanceToPlayer < attractDistance)
+    { 
+        //Shoot
+        if(enemy.shootTimer > 0)
+            enemy.shootTimer--;
+        else{
+
+            var projVelX = Math.cos(enemy.rotation) * enemy.projectileSpeed;
+            var projVelY = Math.sin(enemy.rotation) * enemy.projectileSpeed;
+            
+            var projVelocity = {x: projVelX, y: projVelY};
+            var data = {x: enemy.x, y: enemy.y, vel: projVelocity, size: enemy.radius / 10, color: "#89f442", bulletPenetration: 0, id: "ep-" + uniqueId()}
+
+            io.to(worldId).emit('spawnProj', data);
+            worldsData[worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, enemy.damage, enemy.bulletRange, 0, worldId, data.id));
+            enemy.shootTimer = enemy.fireRate;
+        }
+
+        targetRot = -Math.atan2(enemy.x - player.x, enemy.y - player.y) - Math.PI / 180 * 90;
+        enemy.rotation = targetRot;
+
+        //Attraction to player
+        enemy.currentSpeed = attractionForce * (distanceToPlayer - playerRepultionDist) / (attractDistance - playerRepultionDist);
+    }
+    else
+        enemy.rotation = Math.atan2(enemy.velocity.y, enemy.velocity.x);
+
+    var targetX = Math.cos(enemy.rotation) * enemy.currentSpeed;
+    var targetY = Math.sin(enemy.rotation) * enemy.currentSpeed;
+
+    enemy.velocity.x = (targetX - enemy.velocity.x) * accelerationSpeed;
+    enemy.velocity.y = (targetY - enemy.velocity.y) * accelerationSpeed;
+    
+    var repulsionTargetForceX = 0;
+    var repulsionTargetForceY = 0;
+
+    //Pushing Other Enemies Away
+    for (var z = 0; z < enemies.length; z++) {
+        var otherEnemy = enemies[z];
+        
+        if(otherEnemy != enemy)
+        {
+            var distanceToOtherEnemy = Math.sqrt(Math.pow(otherEnemy.x - enemy.x, 2) + Math.pow(otherEnemy.y - enemy.y, 2));
+
+            if (distanceToOtherEnemy < repultionDistance)
+            {
+                var repforce = repultionForce / 2 / distanceToOtherEnemy;
+
+                if(distanceToPlayer < attractDistance) //Also Being Attracted By Player
+                    repforce = repultionForce / distanceToOtherEnemy;
+
+                repulsionTargetForceX -= (otherEnemy.x - enemy.x) / Math.abs(otherEnemy.x - enemy.x) * repforce;
+                repulsionTargetForceY -= (otherEnemy.y - enemy.y) / Math.abs(otherEnemy.y - enemy.y) * repforce;
+            }
+        }
+    }
+
+    enemy.velocity.x += repulsionTargetForceX;
+    enemy.velocity.y += repulsionTargetForceY;
+
+    //Rebounding off Walls
+    if (enemy.x + enemy.velocity.x > gridSize || enemy.x + enemy.velocity.x < 0)
+        enemy.velocity.x *= -1;
+    
+    if (enemy.y + enemy.velocity.y > gridSize || enemy.y + enemy.velocity.y < 0)
+        enemy.velocity.y *= -1;
+    
+    enemy.x += enemy.velocity.x;
+    enemy.y += enemy.velocity.y;
+            
+    data = {x: enemy.x, y: enemy.y, rot: enemy.rotation + Math.PI / 2, id: enemy.id};
+    io.to(worldId).emit('playerPos', data);
 }
 
 function updateItems(){
@@ -2406,8 +2518,6 @@ function updateItems(){
                 else
                     item.despawnTime++;
             }
-
-            
 
             var player = findClosestPlayer(item.x, item.y, worldId);
             var velX = 0;
@@ -2477,9 +2587,7 @@ function updateItems(){
                             break;
                         }
                     }
-
                 }
-
             }
 
             if(!merged)
@@ -2497,7 +2605,6 @@ function updateItems(){
     
                 data.push({x: item.x, y: item.y, rot: item.rotation, size: size, type: item.type, id: item.id});
             }
-            
         }
 
         io.to(worldId).emit('updateItems', data);
@@ -2716,9 +2823,10 @@ function spawnEnemy(x, y, type, level, worldId)
 {
     var enemy = new Player(x, y, Math.random() * Math.PI * 2, level, "enemy-" + uniqueId(), worldId); 
     enemy.speed /= 10;
+    enemy.currentSpeed = enemy.speed;
 
     enemy.username = type;
-    enemy.drops = {iron: level * 10, circut: level * 2};
+    enemy.drops = {iron: level * 10, circuit: level * 2};
 
     var velX = Math.random() - 0.5;
     var velY = Math.random() - 0.5;
@@ -2739,7 +2847,7 @@ function spawnEnemy(x, y, type, level, worldId)
     
 }
 
-function findClosestPlayer(x, y, worldId, ignoreIds){
+function findClosestPlayer(x, y, worldId, ignoreIds = [], ignoreCloaked = false){
 
     var dist = null;
     var closestPlayer = false;
@@ -2749,8 +2857,8 @@ function findClosestPlayer(x, y, worldId, ignoreIds){
 
     for (let i = 0; i < worldsData[worldId].clients.length; i++) {
         const player = worldsData[worldId].clients[i];
-        
-        if(ignoreIds != null && ignoreIds.contains(player.id))
+
+        if(ignoreIds.contains(player.id) || (ignoreCloaked && player.cloaked))
             continue;
 
         var playerDist = Math.sqrt(Math.pow(player.x - x, 2) + Math.pow(player.y - y, 2));
