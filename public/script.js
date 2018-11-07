@@ -290,7 +290,7 @@ var electricityTimer = {time: 0, duration: 50, on: false};
 var structureSpawnPosition = null;
 var structureSpawnRotation = null;
 
-var master = null;
+var master = {id: null, obj: null};
 
 var checklist = {
     fly:{
@@ -348,7 +348,7 @@ function setupLocalWorld(data){
 
     worldId = data.worldId;
     clientId = socket.io.engine.id;
-    master = data.master;
+    master.id = data.master;
     gridSize = data.gridSize;
     gridBoxScale = data.gridBoxScale;
 
@@ -360,11 +360,14 @@ function setupLocalWorld(data){
 
     for(var i = 0; i < data.existingPlayers.length; i++){
         client = data.existingPlayers[i];
-
+            
         if(client.id != clientId){
             var player = new NetworkSpaceShip(client.x, client.y, client.maxHealth, client.health, 0, client.level, client.radius, client.username, client.id);
-            if(client.shipTurret){
 
+            if(client.id == master.id)
+            master.obj = player;
+
+            if(client.shipTurret){
                 var isFacade = player.id != clientId;
 
                 player.turret = new Turret(player, client.x, client.y, 0, client.shipTurret.level - 1, isFacade, player.id, client.shipTurret.id);
@@ -632,6 +635,7 @@ function respawnPlanet(){
     spaceShip = null;
     shopOpen = {shopRef: null, type: null, open: false};
     upgradeables = [];
+    planetShopSelection = null;
 
     caughtInBlackHole = false;
 
@@ -671,6 +675,7 @@ function respawn(){
     ownedPlanets = [];
     currentPlanet = null;
     shopOpen = {shopRef: null, type: null, open: false};
+    planetShopSelection = null;
 
     caughtInBlackHole = false;
 
@@ -867,6 +872,14 @@ function mineProduce(data){
 function onAquiredItems(data){
     for (var drop in data.drops) {
         if (data.drops.hasOwnProperty(drop)) {
+
+            if(drop == "crown")
+            {
+                master.id = clientId;
+                if(spaceShip)
+                    master.obj = spaceShip;
+            }
+               
             if(playerItems[drop])
                 playerItems[drop] += data.drops[drop];
             else
@@ -927,7 +940,22 @@ function cloak(data){
 
 function setMaster(data)
 {
-    master = data;
+    master.id = data;
+
+    if(data != null)
+    {
+        var searchArray = otherPlayers;
+    
+        if(spaceShip)
+            searchArray = searchArray.concat(spaceShip);
+    
+        player = findObjectWithId(searchArray, data);
+        master.obj = player.object;
+    }
+    else 
+        master.obj = null;
+    
+    
 }
 
 function playerExited(data){
@@ -1143,41 +1171,44 @@ $(document).keypress(function(e){
         return;
 
     if(currentPlanet && spaceShip){
-        if(e.keyCode == 104) // H
-        {
-            if(currentPlanet.health < currentPlanet.maxHealth)
-                socket.emit("heal", {id: currentPlanet.id, worldId: worldId});
-            else
-                socket.emit("heal", {id: clientId, worldId: worldId});
-        }
 
-        
-        if(structureSpawnPoint(50 * scale))
+        if(currentPlanet.id != "hive")
         {
-            switch (e.keyCode)
+            if(e.keyCode == 104) // H
             {
-                case 108 : // L
-                    requestStructureSpawn("landingPad");
-                    break;
-                case 115: // S
-                    requestStructureSpawn("shield");
-                    break;
-                case 109: // M
-                    requestStructureSpawn("mine");
-                    break;
-                case 116: // T
-                    requestStructureSpawn("turret");
-                    break;
-                case 101: // E
-                    requestStructureSpawn("electricity");
-                    break;
-                case 113: // Q
-                    requestStructureSpawn("satellite");
-                    break;
+                if(currentPlanet.health < currentPlanet.maxHealth)
+                    socket.emit("heal", {id: currentPlanet.id, worldId: worldId});
+                else
+                    socket.emit("heal", {id: clientId, worldId: worldId});
+            }
+    
+            
+            if(structureSpawnPoint(50 * scale))
+            {
+                switch (e.keyCode)
+                {
+                    case 108 : // L
+                        requestStructureSpawn("landingPad");
+                        break;
+                    case 115: // S
+                        requestStructureSpawn("shield");
+                        break;
+                    case 109: // M
+                        requestStructureSpawn("mine");
+                        break;
+                    case 116: // T
+                        requestStructureSpawn("turret");
+                        break;
+                    case 101: // E
+                        requestStructureSpawn("electricity");
+                        break;
+                    case 113: // Q
+                        requestStructureSpawn("satellite");
+                        break;
+                }
             }
         }
-        
-        
+
         if(e.keyCode == 32){ //SPACE
             socket.emit('planetOccupancy', {planetId: currentPlanet.id, playerId: null, worldId: worldId})
 
@@ -1185,6 +1216,8 @@ $(document).keypress(function(e){
                 
             landed = false;
             currentPlanet = null;
+
+            planetShopSelection = null;
 
             checklist.landingPad.isActive = false;
             checklist.structures.isActive = false;
@@ -2093,11 +2126,21 @@ function Item(coordX, coordY, size, type, id) {
 
     this.draw = function() {
      
+        if(type == "crown")
+        {
+            c.shadowBlur = 300;
+            c.shadowColor = "green";
+            
+        }
+            
+
         c.translate(this.x, this.y);
         c.rotate(this.rotation);
         c.drawImage(getImage(this.type), -this.size, -this.size, this.size * 2, this.size * 2);
         c.rotate(-this.rotation);
         c.translate(-this.x, -this.y);
+        c.shadowBlur = 0;
+        
 
     }
 }
@@ -2264,25 +2307,21 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
         {
             case "crystal":
                 c.beginPath();
-                spikyBall(c, this.x, this.y, this.radius, 20, 0, -Math.PI/2, .75);
-                c.fillStyle = this.color;
-                c.fill();
-
-                c.beginPath();
-                spikyBall(c, this.x, this.y, this.radius - 5, 20, 0, -Math.PI/2, .75);
+                spikyBall(c, this.x, this.y, this.radius - 3, 20, 0, -Math.PI/2, .75);
+                c.strokeStyle = this.color;
                 c.fillStyle = shadeColorHex(this.color, 10);
+                c.lineWidth = 3;
                 c.fill();
+                c.stroke();
             break;
             case "asteroid":
-                c.fillStyle = this.color;
-                c.beginPath();
-                c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-                c.fill();
-
-                c.beginPath();
                 c.fillStyle = shadeColorHex(this.color, 10);
-                c.arc(this.x, this.y, this.radius - 4, 0, Math.PI * 2, false);
+                c.strokeStyle = this.color;
+                c.lineWidth = 4;
+                c.beginPath();
+                c.arc(this.x, this.y, this.radius - 2, 0, Math.PI * 2, false);
                 c.fill();
+                c.stroke();
             break;
             case "sun":
                 c.shadowBlur = 200 * scale;
@@ -2431,7 +2470,7 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     }
     this.doOxygen = function(){
 
-        this.oxygenDispBarBGColor = null;
+        this.oxygenDispBarBGColor = "#bababa";
 
         if(this.oxygenRemaining == null)
             this.oxygenRemaining = this.oxygen;
@@ -2452,7 +2491,7 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
                         this.oxygenBarBlink.i++;
                     else if(this.oxygenBarBlink.i < this.oxygenBarBlink.time + this.oxygenBarBlink.legnth)
                     {
-                        dispBarBGColor = "red";
+                        this.oxygenDispBarBGColor = "red";
                         this.oxygenBarBlink.i++;
                     }
                     else
@@ -2474,7 +2513,10 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
                     socket.emit("oxygen", {has: true, worldId: worldId});
 
                 if (this.oxygenRemaining < this.oxygen)
-                    this.oxygenRemaining++
+                    this.oxygenRemaining += this.oxygen / 25;
+
+                if(this.oxygenRemaining > this.oxygen)
+                    this.oxygenRemaining = this.oxygen
 
                 if(this.oxygenVignetteFade.i > 0){
                     $("#vignetteOverlay").css("opacity", this.oxygenVignetteFade.i / this.oxygenVignetteFade.time);
@@ -2532,13 +2574,10 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
         var testpos = cordsToScreenPos(this.lastCoordX, this.lastCoordY);
         var testpostarget = cordsToScreenPos(this.coordX, this.coordY);
 
-        if(this.image == null)
-        {
-            if(this.isEnemy)
-                this.image = getImage('enemy' + this.username + ((this.level / 3) - 1));
-            else
-                this.image = getImage('spaceship' + this.level);
-        }
+        if(this.isEnemy)
+            this.image = getImage('enemy' + this.username + ((this.level / 3) - 1));
+        else
+            this.image = getImage('spaceship' + this.level);
 
 
         c.globalAlpha = this.alpha;
@@ -2615,6 +2654,10 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
 
             if(!this.isEnemy)
             {
+
+                if(this.id == master.id)
+                    c.drawImage(getImage("crown"), this.x - this.radius / 4, this.y - this.radius - 30 - this.radius / 2, this.radius / 2, this.radius / 2);
+
                 //Display username above person
                 c.font = "20px Arial";
                 c.fillStyle = "white";
@@ -3351,10 +3394,50 @@ function animate() {
         var yPositions = {};
         var i = 0;
         
-        var oxyWidth = windowWidth / 3;
-        var oxyHeight = windowHeight / 20;
+        if(!currentPlanet)
+        {
+            var oxyWidth = windowWidth / 3;
+            var oxyHeight = windowHeight / 20;
+    
+            oxygenSize = windowHeight / 3.5;
+    
+            var percentOxygenRemaining = spaceShip.oxygenRemaining / spaceShip.oxygen;
+            var oxyHeight = oxygenSize * .75 * percentOxygenRemaining;
+    
+            c.globalAlpha = .75;
+            c.fillStyle = spaceShip.oxygenDispBarBGColor;
+            c.fillRect(windowHeight / 34, windowHeight - oxygenSize * .75 - windowHeight / 24, oxygenSize / 7, oxygenSize * .75);
+    
+            c.globalAlpha = .75;
+            c.fillStyle =  "#a3e1ff";
+            c.fillRect(windowHeight / 34, windowHeight - oxyHeight - windowHeight / 24, oxygenSize / 7, oxyHeight);
+    
+            c.globalAlpha = 1;
+            
+            c.drawImage(getImage("oxygenTank"), -oxygenSize / 3.5 - windowHeight / 80, windowHeight - oxygenSize - windowHeight / 50, oxygenSize, oxygenSize)
 
-        displayBar(centerX * scale - oxyWidth / 2, centerY * scale + oxyHeight * 5, oxyWidth, oxyHeight, spaceShip.oxygenRemaining / spaceShip.oxygen, "#a3e1ff", spaceShip.oxyDispBarBGColor);
+            c.font = windowHeight / 30 + "px Helvetica";
+            c.fillStyle = "white";
+            c.textAlign = "center";
+            c.fillText("O²", oxygenSize / 5.2, windowHeight - oxygenSize - windowHeight / 30);
+
+            if(percentOxygenRemaining <= 0)
+            {
+                var warningWidth = (windowHeight + windowWidth) / 10;
+                var warningHeight = warningWidth * 11/21;
+        
+                c.globalAlpha = .8;
+                c.drawImage(getImage("warningSign"), windowWidth / 2 - warningWidth / 2, windowHeight / 2 - warningHeight /2, warningWidth, warningHeight);
+                var fontsize = warningHeight / 6;
+        
+                c.font = fontsize + "px Helvetica";
+                c.fillStyle = "white";
+        
+                wrapText(c, $('input#oxygenWarning').val(), windowWidth / 2, windowHeight / 2, warningWidth * .85, fontsize);
+            }
+            c.textAlign = "left";
+            
+        }
 
         function getCardYPos(index)
         {
@@ -3610,12 +3693,21 @@ function animate() {
                 var yVal = canvas.height - (buttonSizes + padding) * numYButtons - padding * 2;
                 var xVal = padding;
 
+                var buttonTypes = ["spaceShip", "landingPad", "mine", "turret", "shield", "electricity", "satellite"];
+
+                if(currentPlanet.id == "hive")
+                {
+                    numYButtons = 4;
+                    numXButtons = 1;
+                    buttonTypes = ["spawnerScout", "spawnerDefender", "spawnerGuard"];
+                }
+
                 //Box Label -----------------------------
                 var backgroundWidth = (buttonSizes + padding) * numXButtons + padding;
                 var backgroundHeight = (buttonSizes + padding) * numYButtons + padding;
 
                 var cornerRadius = Math.sqrt(canvas.height * canvas.width) / 70;
-                var fontsize = Math.sqrt(canvas.height * canvas.width) / 45;
+                var fontsize = Math.sqrt(canvas.height * canvas.width) / 45 * Math.sqrt(numXButtons) / Math.sqrt(3);
                 
                 var yTextSize = fontsize - padding / Math.sqrt(canvas.height * canvas.width);
 
@@ -3646,12 +3738,7 @@ function animate() {
                 var buttonX = xVal;
 
                 var mouseX = mouse.x * scale;
-                var mouseY = mouse.y * scale;
-
-                var buttonTypes = ["spaceShip", "landingPad", "mine", "turret", "shield", "electricity", "satellite"];
-
-                if(currentPlanet.id == "hive")
-                    buttonTypes = ["spawnerScout", "spawnerDefender", "spawnerGuard"];
+                var mouseY = mouse.y * scale;                    
 
                 var typeI = 0;
 
@@ -4086,14 +4173,11 @@ function drawLeaderBoard(){
     c.globalAlpha = .75;
 
     var IMAGE_SIZE =  windowHeight / 35;
-
     var topPlayers = otherPlayers.concat(spaceShip);
 
     for (let i = topPlayers.length - 1; i >= 0; i--) {
-        if(topPlayers[i].id.substring(0,5) == "enemy")
-        {
-            topPlayers.splice(i,1) ;
-        }
+        if(topPlayers[i].id == master.id || topPlayers[i].id.substring(0,5) == "enemy")
+            topPlayers.splice(i,1);
     }
 
     topPlayers.sort(function (player1, player2) {
@@ -4101,17 +4185,20 @@ function drawLeaderBoard(){
 	    if (player1.level < player2.level) return 1;
     });
 
+    if(master.obj)
+        topPlayers.unshift(master.obj);
+
     topPlayers = topPlayers.slice(0, PLAYERS_ON_BOARD);
 
     if(!topPlayers.includes(spaceShip))
         topPlayers.push(spaceShip);
 
     var num = 0;
-    var placement = {};
 
-    topPlayers.forEach(player => {
-
-        if(num >= PLAYERS_ON_BOARD)
+    for (let i = 0; i < topPlayers.length; i++) {
+        const player = topPlayers[i];
+        
+        if(i >= PLAYERS_ON_BOARD)
         {
             playerY = height + padding * 3.6;
 
@@ -4123,9 +4210,7 @@ function drawLeaderBoard(){
 
         var name;
         if(player == spaceShip)
-        {
             name = username;
-        }
         else
             name = player.username;
 
@@ -4140,41 +4225,20 @@ function drawLeaderBoard(){
         else 
             c.globalAlpha = .5;
 
+
         c.fillStyle = "#e0ecff";
-        c.fillText(num + 1 + ")", windowWidth - width, playerY);
+
+        if(player.id == master.id)
+            c.drawImage(getImage("crown"), windowWidth - width + padding / 4 + IMAGE_SIZE / -2, playerY + IMAGE_SIZE / -2, IMAGE_SIZE, IMAGE_SIZE);
+        else
+            c.fillText(i + 1 + ")", windowWidth - width, playerY);
+        
         c.fillText(name, windowWidth - width + padding * 2 + IMAGE_SIZE, playerY);
-        c.globalAlpha = 1;
         playerY += IMAGE_SIZE + padding;
         
-
-        placement[player.id] = num;
-
-        num++;
-    });
-
-    // if(!playerOnBoard)
-    // {
-
-        
-
-    //     c.globalAlpha = 1;
-        
-    //     c.save();
-    //     c.translate(windowWidth - width + padding * 1.4 + IMAGE_SIZE / 2, playerY);
-    //     c.rotate(Math.PI/2);
-    //     c.drawImage(getImage("spaceship" + player.level), IMAGE_SIZE / -2, IMAGE_SIZE / -2, IMAGE_SIZE, IMAGE_SIZE);
-    //     c.restore();
-        
-    //     c.globalAlpha = .5;
-    //     c.fillStyle = "white";
-    //     c.fillText(placement[clientId] + 1 + ")", windowWidth - width - padding / 1.3, playerY);
-    //     c.fillText(username, windowWidth - width + padding * 2.1, playerY);
-        
-
-    //     playerY += IMAGE_SIZE;
-
-    // }
-
+        c.globalAlpha = 1;
+    }
+    
     c.globalAlpha = 1;
 }
 
@@ -4766,23 +4830,39 @@ function minimap(size, x, y){
     });
 
     var crownSize = size / 10;
+    var crownDrawn = false;
 
-    for (var worldItem in worldItems) {
-        if (worldItems.hasOwnProperty(worldItem)) {
-            if(worldItems[worldItem].type == "crown")
-            {
-                var crown = worldItems[worldItem];
-                c.drawImage(getImage("crown"), x + crown.coordX / gridSize * size, y + crown.coordY / gridSize * size, crownSize, crownSize);
+    if(master.obj)
+    {
+        var crownX = master.obj.coordX;
+        var crownY = master.obj.coordY;
+
+        c.drawImage(getImage("crown"), x + crownX / gridSize * size, y + crownY / gridSize * size, crownSize, crownSize);
+        crownDrawn = true;
+    }
+
+    if(!crownDrawn)
+    {
+        for (var worldItem in worldItems) {
+            if (worldItems.hasOwnProperty(worldItem)) {
+                if(worldItems[worldItem].type == "crown")
+                {
+                    var crown = worldItems[worldItem];
+                    c.drawImage(getImage("crown"), x + crown.coordX / gridSize * size, y + crown.coordY / gridSize * size, crownSize, crownSize);
+                }
             }
         }
     }
     
-
-    c.globalAlpha = 0.75; 
-    c.beginPath();
-    c.arc(x + spaceShip.coordX / gridSize * size, y + spaceShip.coordY / gridSize * size, size / 30, 0, Math.PI * 2, false);
-    c.fillStyle = "white";
-    c.fill();    
+    if(master.id != clientId)
+    {
+        c.globalAlpha = 0.75; 
+        c.beginPath();
+        c.arc(x + spaceShip.coordX / gridSize * size, y + spaceShip.coordY / gridSize * size, size / 30, 0, Math.PI * 2, false);
+        c.fillStyle = "white";
+        c.fill();  
+    }
+      
 }
 
 function propertiesOverview(object, fill){
@@ -4930,9 +5010,7 @@ function displayResources(){
 
 function displayBar(x, y, width, height, fillPrecentage, color, backgroundColor) {
 
-
     var bg = backgroundColor == null ? "#bababa" : backgroundColor;
-
 
     c.globalAlpha = 0.55;
     c.fillStyle = bg;

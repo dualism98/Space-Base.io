@@ -29,7 +29,7 @@ var numOfasteroids = 20;
 var numOfPlanets = 2;
 var numOfMoons = 0;
 var numOfSuns = 0;
-var numOfCrystals = 0;
+var numOfCrystals = 20;
 var numOfBlackHoles = 0;
 var numOfWormHoles = 6;
 var gridSize = 2000;
@@ -157,7 +157,7 @@ function addWorld(){
         items: [],
         spawners: [],
         master: null,
-        hive: objects.worldObjects.hive
+        hive: objects.hive
     }
 
     
@@ -212,7 +212,6 @@ function generateWorld(){
 
     var hive = new Planet(gridSize / 2, gridSize / 2, 180, [], "#84f74f", 1000, {}, "hive");
     generatedWorldObjects.planets.push(hive);
-    generatedWorldObjects.hive = hive;
     generatedHittableObjects.push(hive);
 
 
@@ -298,7 +297,7 @@ function generateWorld(){
 
     console.log('world generation complete: /n', generatedWorldObjects.asteroids.length, ' asteroids spawned /n', generatedWorldObjects.planets.length, ' planets spawned');
 
-    return {worldObjects: generatedWorldObjects, hittableObjects: generatedHittableObjects};
+    return {worldObjects: generatedWorldObjects, hittableObjects: generatedHittableObjects, hive: hive};
 }
 
 function SpaceMatter(x, y, radius, color, maxHealth, drops, type, id){
@@ -1057,7 +1056,7 @@ function newConnetcion(socket){
 
         var lobbyClient = findObjectWithId(worldsData[data.worldId].lobbyClients, socket.id);
 
-        var level = 15;
+        var level = 0;
         var position = {x: 0, y: 0};
         var structures = [];
         var playerShopUpgrades = false;
@@ -1372,16 +1371,24 @@ function newConnetcion(socket){
 
             if(planet){
                 structure = new Structure(planet.id, data.x, data.y, data.rotation, data.type, data.ownerId, data.level, data.worldId, data.id);
-                planet.structures.push(structure);
 
+                if(data.type.substring(0, 7) == "spawner"){
+                    structure.enemyType = data.enemyType;
+                    structure.type = "spawner";
+
+                    if(planet.id != "hive")
+                        return;
+                }
+                else if (planet.id == "hive"){ // spawning structures other than spawners on the hive
+                    return;
+                
                 if(data.type == "landingPad"){
                     planet.owner = socket.id;
                 }
-                else if(data.type.substring(0, 7) == "spawner"){
-                    structure.enemyType = data.enemyType;
-                    structure.type = "spawner";
-                }
 
+                planet.structures.push(structure);
+
+                
                 socket.emit("spawnStructure", data);
                 data.isFacade = true;
                 socket.broadcast.to(data.worldId).emit("spawnStructure", data);
@@ -2663,7 +2670,7 @@ function oxygenDamage()
             if(!hittableObj)
                 continue;
 
-            var damage = Math.floor(hittableObj.object.maxHealth / 5);
+            var damage = Math.round(hittableObj.object.maxHealth / 10 + 1) - 1;
 
             if(damage >= hittableObj.object.health)
                 worldsData[worldId].noOxygen.splice(worldsData[worldId].noOxygen.indexOf(clientId), 1);
