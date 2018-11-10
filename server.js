@@ -1379,7 +1379,7 @@ function newConnetcion(socket){
                     if(planet.id != "hive")
                         return;
                 }
-                else if (planet.id == "hive"){ // spawning structures other than spawners on the hive
+                else if (planet.id == "hive") // spawning structures other than spawners on the hive
                     return;
                 
                 if(data.type == "landingPad"){
@@ -1388,7 +1388,6 @@ function newConnetcion(socket){
 
                 planet.structures.push(structure);
 
-                
                 socket.emit("spawnStructure", data);
                 data.isFacade = true;
                 socket.broadcast.to(data.worldId).emit("spawnStructure", data);
@@ -1441,7 +1440,6 @@ function newConnetcion(socket){
         else
             io.sockets.connected[data.ownerId].emit("returnMsg", "Not enough resources");
         
-
     });
 
     socket.on('upgradeInfo', function(data){
@@ -2330,12 +2328,12 @@ function pointAI(enemy, worldId, pointX, pointY, optimalDistance)
     var distanceToPlayer = Math.sqrt(Math.pow(player.x - enemy.x, 2) + Math.pow(player.y - enemy.y, 2));
     var distanceToPoint = Math.sqrt(Math.pow(pointX - enemy.x, 2) + Math.pow(pointY - enemy.y, 2));
     var distanceFromPlayerToHive = Math.sqrt(Math.pow(pointX - player.x, 2) + Math.pow(pointY - player.y, 2));
-    
-    playerRepultionDist = player.radius * 3 + 50;
 
     //In Range Of Player
-    if (distanceToPlayer < attractDistance && distanceFromPlayerToHive < ventureDistance)
+    if (!player || distanceToPlayer < attractDistance && distanceFromPlayerToHive < ventureDistance)
     { 
+        playerRepultionDist = player.radius * 3 + 50;
+
         //Shoot
         if(enemy.shootTimer > 0)
             enemy.shootTimer--;
@@ -2426,11 +2424,11 @@ function scoutAI(enemy, worldId)
     var player = findClosestPlayer(enemy.x, enemy.y, worldId, [worldsData[worldId].master], true);
     var distanceToPlayer = Math.sqrt(Math.pow(player.x - enemy.x, 2) + Math.pow(player.y - enemy.y, 2));
 
-    playerRepultionDist = player.radius * 3 + 50;
-
     //In Range Of Player
-    if (distanceToPlayer < attractDistance)
+    if (!player || distanceToPlayer < attractDistance)
     { 
+        playerRepultionDist = player.radius * 3 + 50;
+
         //Shoot
         if(enemy.shootTimer > 0)
             enemy.shootTimer--;
