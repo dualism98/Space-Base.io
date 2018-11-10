@@ -752,7 +752,21 @@ function receiveUpgradeInfo(data){
     shopUpgrades = data.shopUpgrades;
 }
 function returnMsg(data){
-    displayMessage(data, 35, 5);
+
+    var compiledString = "";
+
+    data.forEach(element => {
+        if(typeof element == "number")
+            compiledString += element.toString;
+        else{
+            if(compiledString != "" && element != "S")
+                compiledString += "";
+
+            compiledString += $('p#' + element).text();
+        }
+    });
+
+    displayMessage(compiledString, 35, 5);
 }
 function upgradeSync(data){
 
@@ -2128,18 +2142,22 @@ function Item(coordX, coordY, size, type, id) {
      
         if(type == "crown")
         {
-            c.shadowBlur = 300;
-            c.shadowColor = "green";
-            
+            c.globalAlpha = .5;
+            c.fillStyle = "#48f442"
+            c.shadowBlur = -1;
+            c.shadowColor = "#48f442";
+            c.beginPath();
+            c.arc(this.x,this.y, this.size * 2, 0,2*Math.PI);
+            c.fill(); 
+            c.shadowBlur = 0;
         }
-            
-
+        
+        c.globalAlpha = 1;
         c.translate(this.x, this.y);
         c.rotate(this.rotation);
         c.drawImage(getImage(this.type), -this.size, -this.size, this.size * 2, this.size * 2);
         c.rotate(-this.rotation);
         c.translate(-this.x, -this.y);
-        c.shadowBlur = 0;
         
 
     }
@@ -2719,7 +2737,7 @@ function Shop(coordX, coordY, radius, upgradeType){
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText($('input#openShop').val(), centerX, (windowHeight - 80) / scale);
+                c.fillText($('p#openShop').text(), centerX, (windowHeight - 80) / scale);
                 c.textAlign="left"; 
                 c.globalAlpha = 1;
             }
@@ -2728,7 +2746,7 @@ function Shop(coordX, coordY, radius, upgradeType){
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText($('input#closeShop').val(), centerX, (windowHeight - 80) / scale);
+                c.fillText($('p#closeShop').text(), centerX, (windowHeight - 80) / scale);
                 c.textAlign="left"; 
                 c.globalAlpha = 1;
             }
@@ -3288,7 +3306,7 @@ function animate() {
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText($('input#placeStructue').val() + boughtStructure, windowWidth / 2, (windowHeight - 80));
+                c.fillText($('p#placeStructue').text() + boughtStructure, windowWidth / 2, (windowHeight - 80));
                 c.textAlign="left"; 
                 c.globalAlpha = 1;
             }
@@ -3297,7 +3315,7 @@ function animate() {
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText($('input#takeOff').val(), windowWidth / 2, (windowHeight - 80));
+                c.fillText($('p#takeOff').text(), windowWidth / 2, (windowHeight - 80));
                 c.textAlign="left"; 
                 c.globalAlpha = 1;
             }
@@ -3318,7 +3336,7 @@ function animate() {
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText($('input#land').val(), windowWidth / 2, (windowHeight - 80));
+                c.fillText($('p#land').text(), windowWidth / 2, (windowHeight - 80));
                 c.textAlign="left"; 
     
                 c.globalAlpha = .5;
@@ -3433,7 +3451,7 @@ function animate() {
                 c.font = fontsize + "px Helvetica";
                 c.fillStyle = "white";
         
-                wrapText(c, $('input#oxygenWarning').val(), windowWidth / 2, windowHeight / 2, warningWidth * .85, fontsize);
+                wrapText(c, $('p#oxygenWarning').text(), windowWidth / 2, windowHeight / 2, warningWidth * .85, fontsize);
             }
             c.textAlign = "left";
             
@@ -3527,7 +3545,7 @@ function animate() {
                         c.fillStyle = "white";
                         c.font = fontsize + "px Helvetica";
         
-                        wrapText(c, $('input#' + check).val(), windowWidth / 2 - width * checkItem.size / 4, checkItem.yPos + fontsize * 2, width * .6, fontsize);
+                        wrapText(c, $('p#' + check).text(), windowWidth / 2 - width * checkItem.size / 4, checkItem.yPos + fontsize * 2, width * .6, fontsize);
                     }
                 
 
@@ -3538,7 +3556,6 @@ function animate() {
         }
         c.globalAlpha = 1;
 
-        
         if(spaceShip.health > 0){
 
             var xPadding = 10;
@@ -3574,10 +3591,8 @@ function animate() {
             c.textAlign = "left";
         }
         
-
         //Planet Structure Placement -----------------------------------------------
         if(currentPlanet){
-
             if(boughtStructure != null)
             {
                 var addedDist = 0;
@@ -3587,7 +3602,6 @@ function animate() {
                     addedDist = new Satellite().distance - new Satellite().size / 2;
                 else if(boughtStructure == "shield")
                     structureImage = "shieldGenerator"
-
 
                 if(structureSpawnPoint(50 * scale, structureImage + "0", addedDist)){
                     if(mouse.clickDown)
@@ -3615,14 +3629,12 @@ function animate() {
 
                 //Highlight Seleted Structures ----------------------------------------------------
 
-                ownedPlanets.forEach(planet => { 
-                    planet.structures.forEach(structure => {
-                        
-                        var distance = Math.sqrt(Math.pow(mouse.x - structure.x, 2) + Math.pow(mouse.y - structure.y, 2));
-                        
-                        if(distance < structure.size / 2)
-                            hoveredStructure = structure;
-                    });
+                currentPlanet.structures.forEach(structure => {
+                    
+                    var distance = Math.sqrt(Math.pow(mouse.x - structure.x, 2) + Math.pow(mouse.y - structure.y, 2));
+                    
+                    if(distance < structure.size / 2)
+                        hoveredStructure = structure;
                 });
 
                 var selectedNew = false;
@@ -3833,16 +3845,16 @@ function animate() {
                     c.font = fontsize + "px Helvetica";
                     c.textAlign = "center";
 
-                    var uppercasedType = type.charAt(0).toUpperCase() + type.slice(1);
+                    var name = $('p#' + type).text();
 
-                    if(type.substring(0,7) == "spawner")
-                    {
+                    var uppercasedType = name.charAt(0).toUpperCase() + name.slice(1);
 
-                        var typeString = upgrading ? planetShopSelection.spawnerType : type;
-
-                        var spawnerType = typeString.substring(7, typeString.legnth);
-                        uppercasedType = spawnerType.charAt(0).toUpperCase() + spawnerType.slice(1) + " Spawner";
-                    }
+                    // if(type.substring(0,7) == "spawner")
+                    // {
+                    //     var typeString = upgrading ? planetShopSelection.spawnerType : type;
+                    //     var spawnerType = typeString.substring(7, typeString.legnth);
+                    //     uppercasedType = spawnerType.charAt(0).toUpperCase() + spawnerType.slice(1) + " Spawner";
+                    // }
 
                     c.fillText(uppercasedType, headerX + pannelWidth / 2, yVal - padding);
 
@@ -4009,7 +4021,7 @@ function animate() {
                         c.textAlign = "left";
                         c.fillStyle = "white";
                         c.font = fontsize + "px Helvetica";
-                        wrapText(c, $('input#' + type).val(), descBoxX + padding / 2, descBoxY + fontsize + padding / 5, descBoxWidth - padding / 2, fontsize);
+                        wrapText(c, $('p#' + type + "Desc").text(), descBoxX + padding / 2, descBoxY + fontsize + padding / 5, descBoxWidth - padding / 2, fontsize);
                     } 
                 }
 
@@ -4160,7 +4172,7 @@ function drawLeaderBoard(){
     c.textAlign = "center";
     c.font = height / 10 + "px Helvetica";
     c.fillStyle = "white";
-    c.fillText($('input#leaderboard').val(), windowWidth - width / 2 - padding, padding * 2.8);
+    c.fillText($('p#leaderboard').text(), windowWidth - width / 2 - padding, padding * 2.8);
     c.textAlign = "left";
 
     c.globalAlpha = .25;
@@ -4287,20 +4299,20 @@ function drawShopPanel(type){
 
     switch (type) {
         case "bulletPenetration":
-            name = $('input#bulletPenetration').val();
-            description = $('input#bulletPenetrationDescription').val();
+            name = $('p#bulletPenetration').text();
+            description = $('p#bulletPenetrationDescription').text();
         break;
         case "boost":
-            name = $('input#boost').val();
-            description = $('input#boostDescription').val();
+            name = $('p#boost').text();
+            description = $('p#boostDescription').text();
         break;
         case "cloakTime":
-            name = $('input#cloakTime').val();
-            description = $('input#cloakTimeDescription').val();
+            name = $('p#cloakTime').text();
+            description = $('p#cloakTimeDescription').text();
         break;
         case "shipTurret":
-            name = $('input#shipTurret').val();
-            description = $('input#shipTurretDescription').val();
+            name = $('p#shipTurret').text();
+            description = $('p#shipTurretDescription').text();
         break;
     }
 
@@ -4837,7 +4849,7 @@ function minimap(size, x, y){
         var crownX = master.obj.coordX;
         var crownY = master.obj.coordY;
 
-        c.drawImage(getImage("crown"), x + crownX / gridSize * size, y + crownY / gridSize * size, crownSize, crownSize);
+        c.drawImage(getImage("crown"), x + crownX / gridSize * size - crownSize / 2, y + crownY / gridSize * size - crownSize / 2, crownSize, crownSize);
         crownDrawn = true;
     }
 
@@ -4848,7 +4860,7 @@ function minimap(size, x, y){
                 if(worldItems[worldItem].type == "crown")
                 {
                     var crown = worldItems[worldItem];
-                    c.drawImage(getImage("crown"), x + crown.coordX / gridSize * size, y + crown.coordY / gridSize * size, crownSize, crownSize);
+                    c.drawImage(getImage("crown"), x + crown.coordX / gridSize * size - crownSize / 2, y + crown.coordY / gridSize * size - crownSize / 2, crownSize, crownSize);
                 }
             }
         }
@@ -5142,7 +5154,6 @@ function drawGrid(x, y, width, height, gridScale){
         c.stroke();
 
     }
-
 } 
 
 function spikyBall(ctx, x, y, radius, sides, startAngle, anticlockwise, spikyAmount) {
@@ -5163,7 +5174,6 @@ function spikyBall(ctx, x, y, radius, sides, startAngle, anticlockwise, spikyAmo
         inSpike = 1;
     else
         inSpike = spikyAmount;
-
     }
     ctx.closePath();
     ctx.restore();
@@ -5187,7 +5197,6 @@ function polygon(ctx, x, y, radius, sides, startAngle, anticlockwise) {
 function structureSpawnPoint(structureSize, img, addedDist){
 
     var positionAviable = true;
-
     var rad = Math.atan2(mouse.y - currentPlanet.y, mouse.x - currentPlanet.x) * -57.2958;
     structureSpawnRotation = rad;
 

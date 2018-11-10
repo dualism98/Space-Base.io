@@ -378,6 +378,10 @@ body{
     filter: blur(5px);
 }
 
+#hiddenFields p{
+    float: left;
+}
+
 #vignetteOverlay {
     -webkit-box-align: center;
     -webkit-box-pack: center;
