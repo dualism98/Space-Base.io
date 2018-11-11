@@ -188,7 +188,7 @@ var dropDict = {};
 var playerItems = {};
 
 var images = {};
-var imageArray = ["NF", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "charge", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "mineGray", "S", "satellite0", "satellite1", "satellite2", "satellite3", "satelliteGray", "shieldGenerator0", "shieldGenerator1", "shieldGenerator2", "shieldGenerator3", "shieldGenerator4", "shieldGenerator5", "shieldGenerator6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "shop", "spaceship0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "spaceShipGray", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "turretGray", "water"];
+var imageArray = ["NF", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "charge", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "mineGray", "S", "satellite0", "satellite1", "satellite2", "satellite3", "satelliteGray", "shieldGenerator0", "shieldGenerator1", "shieldGenerator2", "shieldGenerator3", "shieldGenerator4", "shieldGenerator5", "shieldGenerator6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "spaceship0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "spaceShipGray", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "turretGray", "water"];
 
 function getImage(item){
     for (var image in images) {
@@ -762,7 +762,13 @@ function returnMsg(data){
             if(compiledString != "" && element != "S")
                 compiledString += "";
 
-            compiledString += $('p#' + element).text();
+            var text = $('p#' + element).text();
+
+            if(text == "")
+                text = element;
+
+            compiledString += text;
+
         }
     });
 
@@ -2725,7 +2731,7 @@ function Shop(coordX, coordY, radius, upgradeType){
         c.beginPath();
         c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
         c.stroke();
-        c.drawImage(getImage("shop"), this.x - this.radius / 2, this.y - this.radius / 2, this.radius, this.radius); 
+        c.drawImage(getImage("shop" + this.upgradeType), this.x - this.radius / 2, this.y - this.radius / 2, this.radius, this.radius); 
 
         if(this.isInRange){
 
@@ -4284,6 +4290,7 @@ function drawShopPanel(type){
     //Background pane
     c.globalAlpha = .5;
     c.fillStyle = "#516689";
+    c.strokeStyle = "#516689";
     c.fillRect((windowWidth - width) / 2, (windowHeight - height) / 2, width, height);
     
     c.strokeRect((windowWidth - width) / 2, (windowHeight - height) / 2, width, height);
