@@ -754,15 +754,14 @@ function receiveUpgradeInfo(data){
     shopUpgrades = data.shopUpgrades;
 }
 function returnMsg(data){
-
     var compiledString = "";
 
     data.forEach(element => {
         if(typeof element == "number")
-            compiledString += element.toString;
+            compiledString += " " + element.toString();
         else{
             if(compiledString != "" && element != "S")
-                compiledString += "";
+                compiledString += " ";
 
             var text = $('p#' + element).text();
 
@@ -1319,21 +1318,13 @@ $(document).keypress(function(e){
 
         } 
     }
-    
-    if(!showUpgradesPannel && !clickedUpgrade)
-        showUpgradesPannel = e.keyCode == 102; //F
 
 
     if(e.keyCode == 59) // ;
         statsView = !statsView; 
     
 
-}).keyup(function(e){
-
-    showUpgradesPannel = false;
-    clickedUpgrade = false;
-});
-
+})
 $(document).on('keydown', function(e){
     
     if(spaceShip){
@@ -2229,7 +2220,7 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
 
                 var hittableObj = hittableObjects[id];
 
-                if(hittableObj.id.substring(0,5) == "enemy" && playerItems["crown"] >= 1)
+                if((hittableObj.id.substring(0,5) == "enemy" || hittableObj.id == "hiveObj") && playerItems["crown"] >= 1)
                     continue;
 
                 if(this.isFriendly(hittableObj.id) || this.hitObjects.contains(hittableObj.id) || !hittableObj.active)
@@ -2395,7 +2386,7 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
                 c.arc(this.x, this.y, this.radius - 1, 0, Math.PI * 2, false);
                 c.fill();
             break;
-            case "hive":
+            case "hiveObj":
                 c.drawImage(getImage('hive'), this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
             break;
         }
@@ -3579,9 +3570,6 @@ function animate() {
             c.font = " 30px Helvetica";
             c.fillText(Math.round(spaceShip.health)+  "/" + Math.round(spaceShip.maxHealth), xPadding + 10, yPadding + 35);  
         }
-
-        if(showUpgradesPannel && !clickedUpgrade)
-            showUpgrades();
     
         if(playerDisplayMessage != ""){
             if(playerMessageTimer > 0)
@@ -4189,6 +4177,8 @@ function drawLeaderBoard(){
 
     c.globalAlpha = .25;
     c.fillStyle = "#898989";
+
+
     c.fillRect(windowWidth - width - padding, padding, width, height);
 
     var playerY = padding * 4.5;
@@ -4456,359 +4446,7 @@ function drawShopPanel(type){
     c.globalAlpha = 1;
 }
 
-var expandedUpgrades = [];
 var canClickArrow = true;
-
-function showUpgrades(){
-
-    if(currentPlanet)
-    {
-        currentPlanet.structures.forEach(structure => {
-            if(!structureUpgradeables.contains(structure.id))
-                structureUpgradeables.push(structure.id);
-        });
-    }
-
-    numberOfUpgrades = upgradeableObjects().length;
-    size = windowHeight / 10;
-    padding = windowHeight / 10;
-
-    var groupedUpgrades = {};
-    var numberOfGroups = 0;
-
-    for(var i = 0; i < numberOfUpgrades; i++){
-    
-        var upgradeeId = upgradeableObjects()[i];
-        var upgrade = Object.assign({}, findUpgrade(upgradeeId));
-
-        if(!upgrade || upgrade.identifier == "landingPad")
-            continue;
-
-        upgrade.id = upgradeeId;
-
-        var alreadyInside = false;
-
-        for (var group in groupedUpgrades) {
-
-            if (groupedUpgrades.hasOwnProperty(group)) {
-
-                if(group == upgrade.identifier){
-                    groupedUpgrades[group].push(upgrade);
-                    alreadyInside = true;
-                }
-            }
-        }
-
-        if(!alreadyInside){
-            if(upgrade.identifier){
-                groupedUpgrades[upgrade.identifier] = [upgrade];
-                numberOfGroups++;
-            }
-        }
-
-    }
-
-    var width = numberOfGroups * size + (numberOfGroups - 1) * padding;
-    var x = 0;
-
-    for (var group in groupedUpgrades) {
-        if (groupedUpgrades.hasOwnProperty(group)) {
-
-            var buttonX = x / scale + (centerX - width / scale / 2)
-            var buttonY = centerY - size / scale / 2;
-    
-            var drawx = x + (centerX * scale - .5 * width)
-            var drawy = scale + size;
-
-            var upgrade = null;
-            var upgradeCosts = {};
-            var groupIndex = 0;
-            
-            var costSize = windowHeight / 40;
-            var costPadding = windowHeight / 100;
-            var costX = 0;
-            var costY = size + 10;
-
-            var upgradeButtons = [];
-
-            var mouseX = mouse.x * scale;
-            var mouseY = mouse.y * scale;
-
-            var numberInGroup = groupedUpgrades[group].length;
-
-            if(numberInGroup == 1){
-                upgrade = groupedUpgrades[group][0];
-
-                if(!upgrade.fullyUpgraded)
-                    upgradeCosts = upgrade.costs;
-            }
-            else
-            {
-                upgrade = groupedUpgrades[group][groupIndex];
-
-                while(upgrade.fullyUpgraded && groupIndex < numberInGroup)
-                {
-                    upgrade = groupedUpgrades[group][groupIndex];
-                    groupIndex++;
-                }
-            }
-
-            if(numberInGroup == 1){
-                c.globalAlpha = .5;
-                c.fillStyle = planetColors[0];
-                c.fillRect(drawx, drawy, size, size);
-                c.globalAlpha = 1;
-
-                c.drawImage(getImage(upgrade.identifier + upgrade.upgradeToLevel), drawx, drawy, size, size);
-
-                if(!upgrade.fullyUpgraded){
-
-                    for (var cost in upgradeCosts) {
-                        if (upgradeCosts.hasOwnProperty(cost)) {
-
-                            var color = "white";
-                            if(!playerItems[cost] || playerItems[cost] < upgradeCosts[cost])
-                                color = "#ff9696";
-
-                            c.drawImage(getImage(cost), drawx + costX, drawy + costY, costSize, costSize);
-                            c.font = size / 4 + "px Helvetica";
-                            c.fillStyle = color;
-                            c.fillText(upgradeCosts[cost], drawx + costX + costSize * 1.2, drawy + costY + costSize / 1.3);
-            
-                            costY += costSize + costPadding;
-                        }
-                    }
-
-                    upgradeButtons.push({x: drawx, y: drawy, upgrades: [upgrade.id]});
-                }
-                else{
-                    c.font = size / 7 + "px Helvetica";
-                    c.fillStyle = "white"; 
-                    c.fillText("Fully Upgraded", drawx, drawy - costPadding);
-                }
-            } 
-            else{
-                var arrowSize = size / 8;
-                var arrowX = drawx + size / 2;
-                var arrowY = drawy - arrowSize - costPadding * 3;
-
-                var arrowButtonSize = size / 2;
-
-                var arrowbuttonX = arrowX - arrowButtonSize / 2;
-                var arrowbuttonY = arrowY - arrowButtonSize / 2;
-
-                c.fillStyle = planetColors[1];
-                c.fillRect(arrowbuttonX, arrowbuttonY, arrowButtonSize, arrowButtonSize);
-
-                if(expandedUpgrades.contains(upgrade.identifier)){
-
-                    var groupY = drawy;
-                    var groupCostY = size + costPadding + drawy;
-
-                    for (let i = 0; i < numberInGroup; i++) {
-
-                        var upgradeInGroup = groupedUpgrades[group][i];
-                        var numberOfCosts = 0;
-
-                        for (var cost in upgradeInGroup.costs) {
-                            if (upgradeInGroup.costs.hasOwnProperty(cost)) {
-
-                                var color = "white";
-                                if(!playerItems[cost] || playerItems[cost] < upgradeInGroup.costs[cost])
-                                    color = "#ff9696";
-
-                                c.drawImage(getImage(cost), drawx + costX, groupCostY, costSize, costSize);
-                                c.font = size / 4 + "px Helvetica";
-                                c.fillStyle = color;
-                                c.fillText(upgradeInGroup.costs[cost], drawx + costX + costSize * 1.2, groupCostY + costSize / 1.3);
-                
-                                groupCostY += costSize + costPadding;
-                                numberOfCosts++;
-                            }
-                        }
-
-                        c.globalAlpha = .5;
-                        c.fillStyle = planetColors[0];
-                        c.fillRect(drawx, groupY, size, size);
-                        c.globalAlpha = 1;
-
-                        c.globalAlpha = .8;
-                        c.drawImage(getImage(upgradeInGroup.identifier + upgradeInGroup.upgradeToLevel), drawx, groupY, size, size);
-
-                        if(upgradeInGroup.fullyUpgraded){
-                            c.globalAlpha = 1;
-                            c.font = size / 7 + "px Helvetica";
-                            c.fillStyle = "white"; 
-                            c.fillText("Fully Upgraded", drawx, groupY + size / 2);
-                        }
-                        else{
-                            upgradeButtons.push({x: drawx, y: groupY, upgrades: [upgradeInGroup.id]});
-                        }
-
-                        numberOfUpgrades++;
-                        groupCostY += size + costPadding;
-                        groupY += numberOfCosts * (costPadding + costSize) + size + costPadding;
-                    }
-                    
-                }
-                else
-                {
-                    var insertedCosts = [];
-                    var buttonUpgrades = [];
-                    var numFullyUpgraded = 0;
-
-                    for(var i = 0; i < numberInGroup; i++){
-    
-                        var upgradeInGroup = groupedUpgrades[group][i];
-
-                        if(!upgradeInGroup.fullyUpgraded){
-                            
-                            buttonUpgrades.push(upgradeInGroup.id);
-
-                            for (var cost in upgradeInGroup.costs) {
-                                if (upgradeInGroup.costs.hasOwnProperty(cost)) {
-                                    if(!insertedCosts.contains(cost)){
-                                        insertedCosts.push(cost);
-                                        upgradeCosts[cost] = upgradeInGroup.costs[cost];
-                                    }
-                                    else{
-                                        upgradeCosts[cost] += upgradeInGroup.costs[cost];
-                                    }
-                                
-                                }
-                            }
-                        }
-                        else
-                            numFullyUpgraded++;
-                    }
-
-                    c.globalAlpha = .5;
-                    c.fillStyle = planetColors[0];
-                    c.fillRect(drawx, drawy, size, size);
-
-                    c.drawImage(getImage(upgrade.identifier + upgrade.upgradeToLevel), drawx, drawy, size, size);
-                    c.globalAlpha = 1;
-
-                    if(numFullyUpgraded < numberInGroup)
-                    {
-                        upgradeButtons.push({x: drawx, y: drawy, upgrades: buttonUpgrades});
-
-                        for (var cost in upgradeCosts) {
-                            if (upgradeCosts.hasOwnProperty(cost)) {
-
-                                var color = "white";
-                                if(!playerItems[cost] || playerItems[cost] < upgradeCosts[cost])
-                                    color = "#ff9696";
-
-                                c.drawImage(getImage(cost), drawx + costX, drawy + costY, costSize, costSize);
-                                c.font = size / 4 + "px Helvetica";
-                                c.fillStyle = color;
-                                c.fillText(upgradeCosts[cost], drawx + costX + costSize * 1.2, drawy + costY + costSize / 1.3);
-                
-                                costY += costSize + costPadding;
-                            }
-                        }
-                        
-                        c.font = size / 7 + "px Helvetica";
-                        c.textAlign = "center";
-                        c.fillStyle = "white";
-                        c.fillText("Upgrade all (" + (numberInGroup - numFullyUpgraded) + ")", drawx + size / 2, drawy + size  / 2);
-                        c.textAlign = "left";
-                    }
-                    else{
-                        c.font = size / 7 + "px Helvetica";
-                        c.fillStyle = "white"; 
-                        c.fillText("Fully Upgraded", drawx, drawy - costPadding);
-                    }
-
-                    
-                }
-                
-                var arrowRotation = Math.PI * 1.25;
-                arrowY = drawy - arrowSize - costPadding * 3;
-
-                if(expandedUpgrades.contains(upgrade.identifier))
-                {
-                    arrowRotation = Math.PI / 4;
-                    arrowY = drawy - arrowSize * 3.5 - costPadding * 3;
-                }
-
-                if (mouseY > arrowbuttonY && mouseY < arrowbuttonY + arrowButtonSize && mouseX > arrowbuttonX && mouseX < arrowbuttonX + arrowButtonSize) {
-
-                    var arrowIncreasedSize = arrowSize * 1.2;
-
-                    c.globalAlpha = 1;
-                    drawArrow(arrowX, arrowY + arrowIncreasedSize, arrowRotation, "white", arrowIncreasedSize);
-
-                    if(mouse.clicked && canClickArrow){
-                        canClickArrow = false;
-
-                        if(expandedUpgrades.contains(upgrade.identifier))
-                        {
-                            for (let i = 0; i < expandedUpgrades.length; i++) {
-                                const identifier = expandedUpgrades[i];
-                                
-                                if(expandedUpgrades[i] == upgrade.identifier){
-                                    expandedUpgrades.splice(i, 1);
-                                    break;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            expandedUpgrades.push(upgrade.identifier);
-                        }
-                    }
-                }
-                else
-                {
-                    c.globalAlpha = 1;
-                    drawArrow(arrowX, arrowY + arrowSize, arrowRotation, "white", arrowSize);
-                }
-            }
-
-            for (let i = 0; i < upgradeButtons.length; i++) {
-                const button = upgradeButtons[i];
-
-                if (mouseY > button.y && mouseY < button.y + size && mouseX > button.x && mouseX < button.x + size) {
-
-                    c.globalAlpha = .5;
-                    c.fillStyle = "fffffff";
-                    c.fillRect(button.x, button.y, size, size);
-                    c.globalAlpha = 1;
-
-                    button.upgrades.forEach(upgradeId => {
-                        var object = findObjectWithId(allStructures.concat(spaceShip), upgradeId).object;
-    
-                        var circleX = object.x * scale;
-                        var circleY = object.y * scale;
-        
-                        if(object != spaceShip){
-                            c.beginPath();
-                            c.lineWidth = 3;
-                            c.strokeStyle = "#9ef442";
-                            c.arc(circleX, circleY, 10,0,2*Math.PI);
-                            c.stroke();
-                        }
-                        if(mouse.clicked){
-                            var data = {id: upgradeId, worldId: worldId}
-                            socket.emit('upgradeRequest', data);
-                            clickedUpgrade = true;
-                        }
-                    });
-                }
-                
-            }
-        
-            x += size + padding;
-            
-        }
-
-        if (!mouse.clicked)
-            canClickArrow = true;
-    }
-    
-}
 
 function playerHasResources(costs)
 {
@@ -5311,41 +4949,6 @@ CanvasRenderingContext2D.prototype.wavy = function(from, to, frequency, amplitud
         if(i > 0)
             this.lineTo(cx, cy);
 	}
-}
-
-function findUpgrade(id){
-
-        var upgrade = {};
-        var upgrades;
-
-        var upgradee = findObjectWithId(allWorldObjects.concat(allStructures).concat(spaceShip), id);
-            
-        if(upgradee){
-            upgradee = upgradee.object;
-        }
-        else
-            return false;
-
-        if(upgradee.type){
-            upgrades = structureUpgrades[upgradee.type];
-        }
-        else
-        {
-            upgrades = playerUpgrades;
-        }
-
-        if(upgrades.length > upgradee.level + 1){
-            upgrade = upgrades[upgradee.level + 1];
-            upgrade.upgradeToLevel = upgradee.level + 1;
-            upgrade.fullyUpgraded = false;
-        }
-        else {
-            upgrade = {identifier: upgrades[upgradee.level].identifier};
-            upgrade.upgradeToLevel = upgradee.level;
-            upgrade.fullyUpgraded = true;
-        }
-        
-        return upgrade;
 }
 
 setup();

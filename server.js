@@ -26,7 +26,7 @@ var gridBoxScale = 200;
 var spawnTries = 5;
 
 var numOfasteroids = 20;
-var numOfPlanets = 2;
+var numOfPlanets = 4;
 var numOfMoons = 0;
 var numOfSuns = 0;
 var numOfCrystals = 20;
@@ -66,8 +66,8 @@ var clientsPerWorld = 30;
 var maxEnemiesPerWorld = 30;
 var numberOfWorlds = 0;
 
-var levelsLostOnDeath = 2;
-var maxNumberOwnedPlanets = 1;
+var levelsLostOnDeath = 1;
+var maxNumberOwnedPlanets = 3;
 
 var maxPlanetObjects = {
     mine: 5,
@@ -226,7 +226,7 @@ function generateWorld(){
         var type = "sun";
         var size = getRndInteger(500, 700);
         var health = size / 4;
-        var drops = {stardust: 25};
+        var drops = {stardust: 50};
         generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
         
     }
@@ -311,7 +311,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000, stardust: 10000000};
+    this.drops = {gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000, stardust: 10000000, circuit: 10000};
 
     this.shipTurret;
 
@@ -428,11 +428,11 @@ var playerUpgrades = [
             fireRate: 20,
             maxHealth: 5,
             damage: 1,
-            radius: 6,
+            radius: 8,
             turningSpeed: .05,
             bulletRange: .5,
             projectileSpeed: 6,
-            oxygen: 100,
+            oxygen: 2000,
             identifier: "spaceship"
         },
         {   
@@ -445,7 +445,7 @@ var playerUpgrades = [
             turningSpeed: .1,
             bulletRange: 1,
             projectileSpeed: 20,
-            oxygen: 2000,
+            oxygen: 3000,
             identifier: "spaceship"
         },
         {   
@@ -458,7 +458,7 @@ var playerUpgrades = [
             turningSpeed: .1,
             bulletRange: 1,
             projectileSpeed: 20,
-            oxygen: 2200,
+            oxygen: 3200,
             identifier: "spaceship"
         },
         {   
@@ -471,7 +471,7 @@ var playerUpgrades = [
             turningSpeed: .1,
             bulletRange: 2,
             projectileSpeed: 19,
-            oxygen: 2400,
+            oxygen: 3400,
             identifier: "spaceship"
         },
         {   
@@ -484,7 +484,7 @@ var playerUpgrades = [
             turningSpeed: .09,
             bulletRange: 2,
             projectileSpeed: 19,
-            oxygen: 2600,
+            oxygen: 3600,
             identifier: "spaceship"
         },
         {   
@@ -497,7 +497,7 @@ var playerUpgrades = [
             turningSpeed: .085,
             bulletRange: 3,
             projectileSpeed: 18,
-            oxygen: 2800,
+            oxygen: 3800,
             identifier: "spaceship"
         },
         {   
@@ -510,7 +510,7 @@ var playerUpgrades = [
             turningSpeed: .08,
             bulletRange: 4,
             projectileSpeed: 18,
-            oxygen: 3000,
+            oxygen: 4000,
             identifier: "spaceship"
         },
         {   
@@ -523,7 +523,7 @@ var playerUpgrades = [
             turningSpeed: .075,
             bulletRange: 5,
             projectileSpeed: 17,
-            oxygen: 3200,
+            oxygen: 4200,
             identifier: "spaceship"
         },
         {   
@@ -536,7 +536,7 @@ var playerUpgrades = [
             turningSpeed: .07,
             bulletRange: 6,
             projectileSpeed: 17,
-            oxygen: 3400,
+            oxygen: 4400,
             identifier: "spaceship"
         },
         {   
@@ -549,7 +549,7 @@ var playerUpgrades = [
             turningSpeed: .065,
             bulletRange: 7,
             projectileSpeed: 16,
-            oxygen: 3600,
+            oxygen: 4600,
             identifier: "spaceship"
         },
         {   
@@ -562,7 +562,7 @@ var playerUpgrades = [
             turningSpeed: .06,
             bulletRange: 8,
             projectileSpeed: 16,
-            oxygen: 3800,
+            oxygen: 4800,
             identifier: "spaceship"
         },
         {   
@@ -575,7 +575,7 @@ var playerUpgrades = [
             turningSpeed: .055,
             bulletRange: 9,
             projectileSpeed: 15,
-            oxygen: 4000,
+            oxygen: 5000,
             identifier: "spaceship"
         },
         {   
@@ -588,11 +588,11 @@ var playerUpgrades = [
             turningSpeed: .05,
             bulletRange: 10,
             projectileSpeed: 15,
-            oxygen: 4200,
+            oxygen: 5200,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 100000, iron: 10000, earth: 1200, crystal: 75, gem: 5},
+            costs: {asteroidBits: 100000, iron: 10000, earth: 1200, circuit: 75, gem: 5},
             speed: 26,
             fireRate: 40,
             maxHealth: 3000,
@@ -601,11 +601,11 @@ var playerUpgrades = [
             turningSpeed: .045,
             bulletRange: 11,
             projectileSpeed: 14,
-            oxygen: 4400,
+            oxygen: 5400,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 250000, iron: 20000, earth: 2500, crystal: 100, gem: 10},
+            costs: {asteroidBits: 250000, iron: 20000, earth: 2500, circuit: 100, gem: 10},
             speed: 24,
             fireRate: 35,
             maxHealth: 4000,
@@ -614,11 +614,11 @@ var playerUpgrades = [
             turningSpeed: .04,
             bulletRange: 12,
             projectileSpeed: 14,
-            oxygen: 4600,
+            oxygen: 5600,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 500000, iron: 50000, earth: 5000, crystal: 130, gem: 25},
+            costs: {asteroidBits: 500000, iron: 50000, earth: 5000, circuit: 130, gem: 25},
             speed: 22,
             fireRate: 30,
             maxHealth: 5000,
@@ -627,7 +627,7 @@ var playerUpgrades = [
             turningSpeed: .035,
             bulletRange: 13,
             projectileSpeed: 13,
-            oxygen: 4800,
+            oxygen: 5800,
             identifier: "spaceship"
         }
         
@@ -760,58 +760,58 @@ var structureUpgrades = {
     ],
     mine: [
         {
-            costs: {asteroidBits: 50},
+            costs: {asteroidBits: 25},
             amount: 2,
             identifier: "mine"
         },
         {
-            costs: {asteroidBits: 100},
+            costs: {asteroidBits: 50},
             amount: 5,
             identifier: "mine"
         } ,
         {
-            costs:  {asteroidBits: 200},
+            costs:  {asteroidBits: 120},
             amount: 10,
             identifier: "mine"
         },
         {
-            costs: {asteroidBits: 400},
+            costs: {asteroidBits: 250},
             amount: 15,
             identifier: "mine"
         },
         {
-            costs: {asteroidBits: 1000},
+            costs: {asteroidBits: 750},
             amount: 20,
             identifier: "mine"
         } ,
         {
-            costs: {asteroidBits: 2000},
+            costs: {asteroidBits: 1500},
             amount: 50,
             identifier: "mine"
         }  ,
         {
-            costs: {asteroidBits: 4000},
+            costs: {asteroidBits: 3500},
             amount: 100,
             identifier: "mine"
         },
         {
-            costs: {asteroidBits: 10000},
+            costs: {asteroidBits: 8000},
             amount: 200,
             identifier: "mine"
         },
         {
-            costs: {asteroidBits: 20000},
+            costs: {asteroidBits: 17500},
             amount: 500,
             identifier: "mine"
         },
         {
-            costs: {asteroidBits: 50000},
+            costs: {asteroidBits: 30000},
             amount: 1000,
             identifier: "mine"
         },
         {
-            costs: {asteroidBits: 100000},
-            amount: 2500,
+            costs: {asteroidBits: 75000},
+            amount: 1500,
             identifier: "mine"
         } 
     ],
@@ -859,19 +859,19 @@ var structureUpgrades = {
             identifier: "shield"
         },
         {
-            costs: {water: 3000, crystal: 50},
+            costs: {water: 3000, crystal: 50, circuit: 25},
             maxHealth: 10000,
             drops: {crystal: 1000, iron: 1000, water: 1000},
             identifier: "shield"
         },
         {
-            costs: {water: 5000, crystal: 75},
+            costs: {water: 5000, crystal: 75, circuit: 50},
             maxHealth: 15000,
             drops: {crystal: 1500, iron: 1500, water: 1500},
             identifier: "shield"
         },
         {
-            costs: {water: 10000, crystal: 100},
+            costs: {water: 10000, crystal: 100, circuit: 125},
             maxHealth: 25000,
             drops: {crystal: 2500, iron: 2500, water: 2500},
             identifier: "shield"
@@ -879,11 +879,11 @@ var structureUpgrades = {
     ],
     spawner: [
         {
-            costs: {water: 20},
+            costs: {crystal: 20, water: 20, iron: 200},
             identifier: "spawner"
         },
         {
-            costs: {water: 20},
+            costs: {crystal: 50, water: 20, iron: 1000},
             identifier: "spawner"
         }
     ]
@@ -1003,11 +1003,8 @@ function newConnetcion(socket){
     var spawnSize = (gridSize - edgeSpawnPadding) / 2;
     //var playerPosition = {x: getRndInteger(-spawnSize, spawnSize), y: getRndInteger(-spawnSize, spawnSize)};
     var playerPosition = playerSpawnPoint(-spawnSize, spawnSize, -spawnSize, spawnSize, worldId);
-    
-    //spawnEnemy(1000, 1000, 3, worldId);
 
-    playerObject = {id: socket.id, worldId: worldId, x: playerPosition.x, y: playerPosition.y};
-
+    var playerObject = {id: socket.id, worldId: worldId, x: playerPosition.x, y: playerPosition.y};
     var playerData = newPlayerData(worldId, playerObject.x, playerObject.y);
     
     if(!playerData)
@@ -1016,8 +1013,6 @@ function newConnetcion(socket){
         playerObject.worldId = worldId;
         playerData = newPlayerData(worldId, playerObject.x, playerObject.y);
     }
-
-    playerObject.planet = playerData.planet;
 
     socket.join(worldId);
         
@@ -1085,6 +1080,44 @@ function newConnetcion(socket){
         worldsData[data.worldId].hittableObjects.push(player);
 
         socket.emit("setupLocalWorld", newPlayerData(data.worldId, player.x, player.y));
+
+        //SPAWN PLAYER ON A PLANET AN MAKE A LANDING PAD ON THAT PLANET ----
+
+        if(!lobbyClient.object.planet)
+        {
+            var playerPlanet = false;
+
+            for (let i = 0; i < worldsData[worldId].worldObjects.planets.length; i++) {
+                const planet = worldsData[worldId].worldObjects.planets[i];
+                if(planet.occupiedBy == null && planet.owner == null && planet.id != "hive")
+                {
+                    playerPlanet = planet;
+                    planet.occupiedBy = player.id;
+                    planet.owner = player.id;
+                    break;
+                }
+            }
+        
+            var landindPadData = {};
+        
+            if(playerPlanet)
+            {
+                landingPad = new Structure(playerPlanet.id, playerPlanet.x, playerPlanet.y, 0, "landingPad", player.id, 0, worldId, uniqueId());
+                playerPlanet.structures.push(landingPad);
+                playerPlanet.owner = player.id;
+        
+                var landindPadData = landingPad;
+                landindPadData.costs = [];
+            }
+
+            lobbyClient.object.planet = playerPlanet.id;
+        
+            socket.emit("spawnStructure", landindPadData);
+            landindPadData.isFacade = true;
+            socket.broadcast.to(worldId).emit("spawnStructure", landindPadData);
+        }
+
+        // -----------------------------------------------------------------
 
         socket.broadcast.to(data.worldId).emit('newPlayer', player);
         socket.emit("newPlayerStart", {player: player, planet: lobbyClient.object.planet});
@@ -1636,12 +1669,10 @@ function newConnetcion(socket){
                 }
                 else
                     planet.occupiedBy = data.playerId;
-               
             }
         });
 
         socket.broadcast.to(data.worldId).emit('planetOccupancy', data);
-
     });
 
     socket.on('cloak', function(data){
@@ -1828,7 +1859,7 @@ function disconnectPlayer(id, socket, worldId){
                 }
             });
         }
-        
+
         if(id != socket.id){ //Player was killed
 
             if(!io.sockets.connected[id]){
@@ -1872,7 +1903,7 @@ function disconnectPlayer(id, socket, worldId){
 
         } 
         else //Player disconneted
-            socket.broadcast.to(worldId).emit('playerExited', data);
+            io.to(worldId).emit('playerExited', data);
         
     
         var hittableClient = findObjectWithId(worldsData[worldId].hittableObjects, id);
@@ -2024,7 +2055,6 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
 
         if(target.object.id == "hiveObj" || target.object.id == worldsData.master)
         {
-
             var oppositeId = target.object.id == "hiveObj" ? worldsData[worldId].master : "hiveObj";
             var opposite = findObjectWithId(worldsData[worldId].hittableObjects, oppositeId);
 
@@ -2140,7 +2170,16 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
                         
                         newObject = possibleSpaceMatter.object;
 
-                        disconnectPlayer(worldsData[worldId].master, disconnectPlayer, worldId);
+                        var player = findObjectWithId(worldsData[worldId].clients, worldsData[worldId].master);
+
+                        if(player){
+                            player.object.drops["crown"] = 0;
+                            disconnectPlayer(worldsData[worldId].master, socket, worldId);
+                        }
+                        else
+                            console.log('\x1b[31m%s\x1b[0m', "[ERROR]","Master not found on server. Can't be disconnected... :(");
+
+                        itemDropped(newObject.x, newObject.y, newObject.drops, worldId, 1); 
                     }
                     else{
                         newObject = generateSpaceMatter(radius, color, health, drops, worldWorldObjects, worldHittableObjects, type, target.object.id);
@@ -2488,6 +2527,7 @@ function updateItems(){
                 if(distanceToPlayer < itemCollectDist)
                 {
                     data.push({collected: true, id: item.id});
+                    
                     itemCollected({type: item.type, amount: item.amount}, player.id, worldId);
                     items.splice(i, 1);
                     continue;
@@ -2862,6 +2902,11 @@ function findClosestPlayer(x, y, worldId, ignoreIds = [], ignoreCloaked = false)
     for (let i = 0; i < worldsData[worldId].clients.length; i++) {
         const player = worldsData[worldId].clients[i];
 
+        var connectedClients = io.sockets.adapter.rooms[worldId].sockets;
+        
+        if(!connectedClients[player.id])
+            continue;
+
         if(ignoreIds.contains(player.id) || (ignoreCloaked && player.cloaked))
             continue;
 
@@ -2913,7 +2958,6 @@ function itemDropped(x, y, drops, worldId, precent){
 }
 
 function itemCollected(item, playerRecivingId, worldId) {
-
     var player = findObjectWithId(worldsData[worldId].clients, playerRecivingId);
 
     if(!player)
@@ -3164,23 +3208,15 @@ function allStructures(worldId){
     return structures;
 }
 
-function newPlayerData(id, x, y) {
-
-    var playerPlanet = false;
-
-    worldsData[id].worldObjects.planets.forEach(planet => {
-        if(planet.occupiedBy == null && planet.owner == null && planet.id != "hive")
-            playerPlanet = planet;
-    });
+function newPlayerData(worldId, x, y) {
 
     var data = {
-        existingPlayers: worldsData[id].clients.concat(worldsData[id].enemies),
-        worldObjects: worldsData[id].worldObjects,
+        existingPlayers: worldsData[worldId].clients.concat(worldsData[worldId].enemies),
+        worldObjects: worldsData[worldId].worldObjects,
         gridSize: gridSize,
-        planet: playerPlanet.id,
         gridBoxScale: gridBoxScale,
-        worldId: id,
-        master: worldsData[id].master,
+        worldId: worldId,
+        master: worldsData[worldId].master,
         x: x,
         y: y
     };
