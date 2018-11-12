@@ -116,7 +116,7 @@ var worldId;
 function getAllWorldObjects(){
     var objects = [];
 
-    objects = worldObjects.asteroids.concat(worldObjects.planets).concat(worldObjects.shops);
+    objects = worldObjects.planets.concat(worldObjects.spaceMatter).concat(worldObjects.shops);
 
     if(spaceShip)
         objects.push(spaceShip);
@@ -235,6 +235,7 @@ var scale = 1;
 var sunTint = {amount: 0, color: "#fffff"};
 
 var ownedPlanets = [];
+var hiveObj = {};
 
 var windowWidth;
 var windowHeight;
@@ -345,7 +346,6 @@ function setup(){
 
 //Receive Data Functions
 function setupLocalWorld(data){
-
     worldId = data.worldId;
     clientId = socket.io.engine.id;
     master.id = data.master;
@@ -382,7 +382,7 @@ function setupLocalWorld(data){
     }
 
     //Spawn World Objects
-    worldObjects = {asteroids: [], planets: [], shops: []};// = data.worldObjects;
+    worldObjects = {spaceMatter: [], planets: [], shops: []};// = data.worldObjects;
 
     //Shops
     for(var i = 0; i < data.worldObjects.shops.length; i++){
@@ -393,18 +393,20 @@ function setupLocalWorld(data){
         worldObjects.shops.push(shopObject);
     }
 
+    //Space Matter
+    for(var i = 0; i < data.worldObjects.spaceMatter.length; i++){
 
-    //asteroids
-    for(var i = 0; i < data.worldObjects.asteroids.length; i++){
+        var spaceMatter = data.worldObjects.spaceMatter[i];
 
-        var asteroid = data.worldObjects.asteroids[i];
-
-        if(!asteroid || asteroid.health <= 0)
+        if(!spaceMatter || spaceMatter.health <= 0)
             continue;
 
-        var asteroidObject = new SpaceMatter(asteroid.x, asteroid.y, asteroid.radius, asteroid.color, asteroid.maxHealth, asteroid.health, asteroid.type, asteroid.id);
-        worldObjects.asteroids.push(asteroidObject);
-        dropDict[asteroid.id] = asteroid.drops;
+        var spaceMatterObj = new SpaceMatter(spaceMatter.x, spaceMatter.y, spaceMatter.radius, spaceMatter.color, spaceMatter.maxHealth, spaceMatter.health, spaceMatter.type, spaceMatter.id);
+        worldObjects.spaceMatter.push(spaceMatterObj);
+        dropDict[spaceMatter.id] = spaceMatter.drops;
+
+        if(spaceMatterObj.id == "hiveObj")
+            hiveObj = spaceMatterObj;
     }
 
     //Planets
@@ -475,20 +477,20 @@ function newWorldObjectSync(data){
     }
     else{
 
-        var changedSpaceMatter = findObjectWithId(worldObjects.asteroids, data.id);
+        var changedSpaceMatter = findObjectWithId(worldObjects.spaceMatter, data.id);
 
         if(data.dead && changedSpaceMatter)
         {
-            worldObjects.asteroids.splice(changedSpaceMatter.index, 1);
+            worldObjects.spaceMatter.splice(changedSpaceMatter.index, 1);
             delete hittableObjects[data.id];
         }
         else{
             var newSpaceMatter = new SpaceMatter(data.newObject.x, data.newObject.y, data.newObject.radius, data.newObject.color, data.newObject.maxHealth, data.newObject.health, data.newObject.type, data.id);
 
             if(changedSpaceMatter)
-                worldObjects.asteroids[changedSpaceMatter.index] = newSpaceMatter;
+                worldObjects.spaceMatter[changedSpaceMatter.index] = newSpaceMatter;
             else
-                worldObjects.asteroids.push(newSpaceMatter);
+                worldObjects.spaceMatter.push(newSpaceMatter);
         }
 
     }
@@ -898,6 +900,8 @@ function onAquiredItems(data){
                 master.id = clientId;
                 if(spaceShip)
                     master.obj = spaceShip;
+
+                ownedPlanets.push(hiveObj);
             }
                
             if(playerItems[drop])
@@ -2391,6 +2395,9 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
                 c.arc(this.x, this.y, this.radius - 1, 0, Math.PI * 2, false);
                 c.fill();
             break;
+            case "hive":
+                c.drawImage(getImage('hive'), this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+            break;
         }
 
         if(this.health != this.maxHealth)
@@ -2934,7 +2941,7 @@ function animate() {
             ? new Vector()
             : new Vector(mousePullx, mousePully);
 
-        worldObjects.asteroids.forEach(function(spaceMatter){
+        worldObjects.spaceMatter.forEach(function(spaceMatter){
 
             if(spaceMatter.type == "blackHole" && !currentPlanet)
             {
@@ -3044,11 +3051,9 @@ function animate() {
     }
     
     drawGrid(gridPos.x + centerX, gridPos.y +  centerY, gridSize, gridSize, gridBoxScale);
-    
     var allMatter = allWorldObjects.concat(otherPlayers);
 
     allMatter.forEach(function(matter){
-
         var pos = cordsToScreenPos(matter.coordX, matter.coordY);
         var size = matter.radius + 50;
 
@@ -3182,7 +3187,8 @@ function animate() {
         proj.pos.y -= spaceshipVelocity.y;
         proj.update();
     }
-    
+
+
     if(spaceShip && ownedPlanets.length > 0){
 
         //Draw arrows pointing to owned planets
@@ -3283,7 +3289,7 @@ function animate() {
                 }
                 
                 if(flashingPlanetArrows[planet.id] && flashingPlanetArrows[planet.id].isFlashed)
-                    arrowColor = planetArrowFlashColor;
+                    arrowColor = planet.color;
                 else
                     arrowColor = "#ffffff";
 
@@ -3360,7 +3366,7 @@ function animate() {
         }
     }
 
-    worldObjects.asteroids.forEach(spaceMatter => {
+    worldObjects.spaceMatter.forEach(spaceMatter => {
         
         if(spaceMatter.type == "sun"){
 
@@ -4843,7 +4849,7 @@ function minimap(size, x, y){
         c.globalAlpha = 0.75;
         c.beginPath();
         c.arc(x + planet.coordX / gridSize * size, y + planet.coordY / gridSize * size, size / 40, 0, Math.PI * 2, false);
-        c.fillStyle = "#5fd867";
+        c.fillStyle = planet.color;
         c.fill();
 
     });
