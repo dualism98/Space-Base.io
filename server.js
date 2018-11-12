@@ -1106,6 +1106,8 @@ function newConnetcion(socket){
                 playerPlanet.structures.push(landingPad);
                 playerPlanet.owner = player.id;
         
+                player.structures.push(landingPad);
+
                 var landindPadData = landingPad;
                 landindPadData.costs = [];
             }
@@ -1177,7 +1179,7 @@ function newConnetcion(socket){
         if(target != null && (target.type == "blackHole" || target.type == "wormHole"))
             return;
 
-        damageObject(data.worldId, data.id, damageDealt, true, data.hitX, data.hitY);
+        damageObject(data.worldId, data.id, damageDealt, true, data.hitX, data.hitY, data.ignoreShield);
 
         if(projectile.object.hitObjects)
             projectile.object.hitObjects.push(data.id);
@@ -1662,7 +1664,7 @@ function newConnetcion(socket){
         worldsData[data.worldId].worldObjects.planets.forEach(planet => {
             if(planet.id == data.planetId)
             {
-                if(planet.id == "hive" && worldsData[data.worldId].master != data.playerId)
+                if(data.playerId != null && planet.id == "hive" && worldsData[data.worldId].master != data.playerId)
                 {
                     io.sockets.connected[socket.id].emit('ejectPlayer');
                     return;
@@ -1673,6 +1675,11 @@ function newConnetcion(socket){
         });
 
         socket.broadcast.to(data.worldId).emit('planetOccupancy', data);
+    });
+
+    socket.on('turretRot', function(data)
+    {
+        socket.broadcast.to(data.worldId).emit('turretRot', data.turrets);
     });
 
     socket.on('cloak', function(data){
@@ -1729,7 +1736,7 @@ function newConnetcion(socket){
                 worldId = client.worldId;
         });
 
-        disconnectPlayer(socket.id, socket, worldId);
+        disconnectPlayer(socket.id, false, worldId);
 
         if(worldsData[worldId])
         {
@@ -1743,7 +1750,7 @@ function newConnetcion(socket){
     });
 }
 
-function disconnectPlayer(id, socket, worldId){
+function disconnectPlayer(id, killed, worldId){
 
     if(!worldIds.contains(worldId)){
         console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "world Id not accounted for on server. (disconnectPlayer) most likely old session.");
@@ -1823,6 +1830,7 @@ function disconnectPlayer(id, socket, worldId){
             structureIds: []
         }
 
+
         //destroy players structures on planets if disconnected or planet was the hive
         if(client.object.structures){
             client.object.structures.forEach(structure => {
@@ -1832,8 +1840,9 @@ function disconnectPlayer(id, socket, worldId){
                 if(planet){
                     planet = planet.object;
 
-                    if((!respawnPlanet || id == socket.id) || planet.id == "hive")
+                    if(!killed || planet.id == "hive") //If the player disconects or they had control over hive with structures on it
                     {
+
                         planet.owner = null;
                         planet.occupiedBy = null;
 
@@ -1860,7 +1869,7 @@ function disconnectPlayer(id, socket, worldId){
             });
         }
 
-        if(id != socket.id){ //Player was killed
+        if(killed){ //Player was killed
 
             if(!io.sockets.connected[id]){
                 console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "Player killed not found");
@@ -1917,7 +1926,7 @@ function disconnectPlayer(id, socket, worldId){
     
 }
 
-function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
+function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield = false){
 
     if(!worldIds.contains(worldId)){
         console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "world Id not accounted for on server. (damageObject) most likely old session.");
@@ -1985,7 +1994,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
         });
     }
 
-    if(possiblePlanet)
+    if(possiblePlanet && !ignoreShield)
     {
         var shieldRef = false;
 
@@ -2053,7 +2062,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
     if(target.object.health - damage > 0){
         target.object.health -= damage;
 
-        if(target.object.id == "hiveObj" || target.object.id == worldsData.master)
+        if(target.object.id == "hiveObj" || target.object.id == worldsData[worldId].master)
         {
             var oppositeId = target.object.id == "hiveObj" ? worldsData[worldId].master : "hiveObj";
             var opposite = findObjectWithId(worldsData[worldId].hittableObjects, oppositeId);
@@ -2076,6 +2085,8 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
 
                 if(possibleStructure){
                     planet.structures.splice(possibleStructure.index, 1);
+                    worldHittableObjects.splice(target.index, 1);
+                    syncDamage(worldId, [possibleStructure.object.id]);
                 }
             });
         }
@@ -2085,7 +2096,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
                 if(!target.object.drops["gem"])
                     target.object.drops["gem"] = 1;
 
-                disconnectPlayer(target.object.id, socket, worldId);
+                disconnectPlayer(target.object.id, true, worldId);
             }
             else if(possibleEnemy)
             {
@@ -2174,7 +2185,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit){
 
                         if(player){
                             player.object.drops["crown"] = 0;
-                            disconnectPlayer(worldsData[worldId].master, socket, worldId);
+                            disconnectPlayer(worldsData[worldId].master, true, worldId);
                         }
                         else
                             console.log('\x1b[31m%s\x1b[0m', "[ERROR]","Master not found on server. Can't be disconnected... :(");

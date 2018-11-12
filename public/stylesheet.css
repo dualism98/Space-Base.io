@@ -30,7 +30,7 @@
 
 li {
     text-align: center;
-    display: table-row;
+    display: table-row !important;
 }
 
 #spacebase {
@@ -237,19 +237,8 @@ a:hover{
 }
 
 #controls {
-    display: table-row;
-    vertical-align: middle;
-
     border: none;
     width: 22.88vh;
-
-    display: "inline-block";
-
-    border: none;
-    margin-top: 1vh;
-    margin-left: auto;
-    margin-right: auto;
-    
     padding: 5px;
 }
 
@@ -351,15 +340,10 @@ a:hover{
 }
 
 #bottomAd{
-    display: table-row;
-    vertical-align: middle;
-    
-    border: none;
-    width: 23.04vh;
-    height: 5.76vh;
-    margin-top: 1vh;
-    margin-left: auto;
-    margin-right: auto;
+    width: 100%;
+    height: 10px;
+
+    background-color: red;
 }
 
 body{

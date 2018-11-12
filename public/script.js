@@ -265,6 +265,9 @@ var boostReady = false;
 
 var landed = false;
 
+var turretManualMode = false;
+var turretRotSendTimer = {time: 0, delay: 20};
+
 var propertiesTimer = {};
 var propertiesHoldTime = 80;
 var username = "unnamed";
@@ -337,6 +340,7 @@ function setup(){
     socket.on("newWorldObjectSync", newWorldObjectSync);
     socket.on("syncItem", syncItem);
     socket.on('shopUpgrade', shopUpgrade);
+    socket.on('turretRot', turretRot);
     socket.on('cloak', cloak);
     socket.on('master', setMaster);
 
@@ -503,7 +507,27 @@ function receiveDamageSync(data){
         var localObj = hittableObjects[data.deadObjects[i]];
 
         if(localObj)
+        {
             delete hittableObjects[data.deadObjects[i]];
+
+            for (let x = 0; x < allStructures.length; x++) {
+
+                var structure = allStructures[x]
+
+                if(structure.id == data.deadObjects[i])
+                {
+                    var planetStructure = findObjectWithId(structure.planet.structures, data.deadObjects[i]);
+                    structure.planet.structures.splice(planetStructure.index, 1);
+                }
+            }
+
+            for (let x = 0; x < structureUpgradeables.length; x++) {
+                if(structureUpgradeables[x] == data.deadObjects[i]){
+                    structureUpgradeables.splice(x, 1);
+                }
+            }
+        }
+            
     }
 
     for (var id in data.hittableObjects) {
@@ -531,15 +555,7 @@ function receiveDamageSync(data){
                     if(hittableObject.health > 0)
                         hittableObjects[hittableObject.id] = hittableObject;
                     else
-                    {
                         delete hittableObjects[hittableObject.id];
-    
-                        for (let i = 0; i < structureUpgradeables.length; i++) {
-                            if(structureUpgradeables[i] == hittableObject.id){
-                                structureUpgradeables.splice(i, 1);
-                            }
-                        }
-                    }
                 }
                 else{
                     if(hittableObject.health > 0)
@@ -554,10 +570,10 @@ function damagedOwnPlanet(attackOnShield, health, id){
 
     var ownedPlanet = findObjectWithId(ownedPlanets, id.object);
 
-    if(attackOnShield)
-        console.log("HALP WE ARE UNDER ATTACK. Shield Health Left: " + health);
-    else
-        console.log("HALP WE ARE UNDER ATTACK. Health Left: " + health);
+    // if(attackOnShield)
+    //     console.log("HALP WE ARE UNDER ATTACK. Shield Health Left: " + health);
+    // else
+    //     console.log("HALP WE ARE UNDER ATTACK. Health Left: " + health);
 
     attackedPlanets[id] = true;
     
@@ -936,6 +952,26 @@ function updateItems(data){
 
 }
 
+function turretRot(data)
+{
+    for (let i = 0; i < data.length; i++) {
+        const turret = data[i];
+
+        var localTurret = findObjectWithId(allStructures, turret.id);
+
+        if(localTurret)
+        {
+            if(turret.stop)
+                localTurret.object.rotControlled = false;
+            else{
+                localTurret.object.rotControlled = true;
+                localTurret.object.targetServerRot = turret.rot;
+            }
+        }
+        
+    }
+}
+
 function cloak(data){
     var player = findObjectWithId(otherPlayers.concat(spaceShip), data.playerId);
     var hittablePlayer = hittableObjects[data.playerId]
@@ -1046,13 +1082,14 @@ function sendProjectile(x, y, vel, size, color, id, shooterId, damagePercent){
 
     socket.emit('spawnProj', data);
 }
-function sendProjectileHit(projectileId, subjectId, hitX, hitY){
+function sendProjectileHit(projectileId, subjectId, hitX, hitY, ignoreShield = false){
     var data = {
         id: subjectId,
         projectileId: projectileId,
         hitX: Math.round(hitX),
         hitY: Math.round(hitY),
-        worldId: worldId
+        worldId: worldId,
+        ignoreShield: ignoreShield
     }
 
     socket.emit('projectileHit', data);
@@ -1440,8 +1477,6 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         c.fillStyle = shadeColorHex(this.color, 10);
         c.fill();
 
-        
-        
         var height = this.radius - this.stripeVars.ofsetY;
         var width = Math.sqrt(-8 * height * (height / 2 - this.radius)); 
 
@@ -1472,16 +1507,17 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         var powerAvailable = 0;
         var powerNeeded = 0;
 
-        this.structures.forEach(structure => {
-
+        for (let i = 0; i < this.structures.length; i++) {
+            const structure = this.structures[i];
+            
             if(structure.type == "landingPad")
-                return;
+                continue;
 
             if(structure.type == "electricity")
                 powerAvailable += structure.power;
             else
                 powerNeeded += structure.level + 1;
-        });
+        }
 
         this.powered = powerAvailable >= powerNeeded;
 
@@ -1542,6 +1578,9 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
     }
 
     this.updateStructures = function(){
+
+        var data = {turrets: [], worldId:worldId};
+
         for(var i = 0; i < this.structures.length; i++){
             if(this.powered)
                 this.structures[i].update();
@@ -1553,11 +1592,25 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
                     this.structures[i].update();
                     this.structures[i].isFacade = false;
                 }
-                else if(this.structures[i].isFacade == undefined)
+                else if((this.structures[i].isFacade != null && this.structures[i].isFacade) || this.structures[i].isFacade == undefined)
                     this.structures[i].update();
-                    
             }
+
+            if(this.powered && this.structures[i].type == "turret" && turretManualMode && !this.structures[i].isFacade)
+                data.turrets.push({id: this.structures[i].id, rot: this.structures[i].shootRotation});
         } 
+
+        if(data.turrets.length > 0)
+        {
+            if(turretRotSendTimer.time >= turretRotSendTimer.delay)
+            {
+                turretRotSendTimer.time = 0;
+                socket.emit("turretRot", data);
+            }
+            else
+                turretRotSendTimer.time++;
+        }
+            
     }
 
     this.addStructure = function (planet, x, y, rotation, type, level, isFacade, ownerId, id){
@@ -1642,7 +1695,6 @@ function Shield(planet, x, y, rotation, level, ownerId, id){
         var ctx = c;
         if(context != null)
             ctx = context;    
-
 
         //Draw Shield
         if(planet.powered)
@@ -1921,6 +1973,13 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
     this.coordX = x;
     this.coordY = y;
 
+    this.rotControlled = false;
+    this.lastSetverRot = 0;
+    this.targetServerRot = 0;
+    this.lastTargetServerRot = 0;
+    this.rotLerpAmount = 00;
+    this.rotLerpTime = 20;
+
     this.shootRotation;
     this.headDistanceFromBase = 10;
     this.bulletRange = 10;
@@ -1945,7 +2004,6 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
 
         if(ctx == c)
         {
-
             var l = this.x - this.planet.x;
             var h = this.y - this.planet.y;
 
@@ -1960,14 +2018,42 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
             var headY = this.planet.y + y;
 
             this.shootPoint = new Vector(headX, headY);
-            this.shootRotation = 0;
-
-       
+            if(!this.rotControlled)
+                this.shootRotation = 0;
 
             //Draw Head
-            if(this.target)
+            if(this.rotControlled)
             {
-                var playerPos = cordsToScreenPos(this.target.coordX, this.target.coordY);
+                if(this.lastTargetServerRot != this.targetServerRot)
+                {
+                    this.rotLerpTime = this.rotLerpAmount;
+                    this.rotLerpAmount = 0;
+                    this.lastTargetServerRot = this.targetServerRot;
+                }
+                
+                if(this.rotLerpAmount <= this.rotLerpTime)
+                    this.shootRotation = this.lastSetverRot + (this.targetServerRot - this.lastSetverRot) * this.rotLerpAmount / this.rotLerpTime;
+                else
+                    this.shootRotation = this.targetServerRot;
+
+                this.rotLerpAmount++;
+
+                this.headRotation = this.shootRotation * 180 / Math.PI;
+                this.lastSetverRot = this.shootRotation;
+            }
+            else if(turretManualMode && !this.isFacade)
+            {
+                this.shootRotation = Math.atan2(mouse.y - headY, mouse.x - headX);
+                this.headRotation = this.shootRotation * 180 / Math.PI;
+            }
+            else if(this.target)
+            {
+                var playerPos;
+
+                if(this.target.id != clientId)
+                    playerPos = cordsToScreenPos(this.target.displayPos.x, this.target.displayPos.y);
+                else
+                    playerPos = cordsToScreenPos(this.target.coordX, this.target.coordY);
 
                 this.shootRotation = Math.atan2(playerPos.y - headY, playerPos.x - headX);
                 this.headRotation = this.shootRotation * 180 / Math.PI;
@@ -1981,9 +2067,11 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
             ctx.translate(headX, headY);
             ctx.rotate(this.shootRotation);
             ctx.fillStyle = planetColors[1];
+            ctx.strokeStyle = "#636363";
+            ctx.lineWidth= 2;
             ctx.fillRect(-this.headLength / 2 + this.headLength / 4, -this.headWidth / 2, this.headLength, this.headWidth);
+            ctx.strokeRect(-this.headLength / 2 + this.headLength / 4, -this.headWidth / 2, this.headLength, this.headWidth);
             ctx.restore();
-
         }
 
         //Draw Base
@@ -2004,7 +2092,7 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
         this.updateTarget();
 
         this.draw();
-         if(this.target && !this.isFacade){
+         if((this.target || turretManualMode) && !this.isFacade){
             this.shootCounter += 1;
 
             if(this.shootCounter >= this.shootInterval){
@@ -2041,9 +2129,6 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
                 this.target = player;
         }
     }
-
-
-
 }
 
 function Item(coordX, coordY, size, type, id) {
@@ -2215,10 +2300,18 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
     }
 
     this.checkForCollisions = function(){   //Check for collisions in Hittable Objects
+
         for (var id in hittableObjects) {
             if (hittableObjects.hasOwnProperty(id)) {
 
                 var hittableObj = hittableObjects[id];
+                
+                var isShield = findObjectWithId(allStructures, id);
+                if(isShield && isShield.object.type == "shield" && !isShield.object.planet.powered)
+                {
+                    this.shieldIgnored = id;
+                    continue;
+                }
 
                 if((hittableObj.id.substring(0,5) == "enemy" || hittableObj.id == "hiveObj") && playerItems["crown"] >= 1)
                     continue;
@@ -2236,7 +2329,17 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
                     if(hitWorldObject && (hitWorldObject.object.type == "blackHole" || hitWorldObject.object.id == "hive"))
                         continue;
 
-                    sendProjectileHit(this.id, id, this.coord.x, this.coord.y);
+                    var ignoreShield = false;
+
+                    if(hitWorldObject && hitWorldObject.object.structures && this.shieldIgnored != null)
+                    {
+                        var possibleShield = findObjectWithId(hitWorldObject.object.structures, this.shieldIgnored);
+                        
+                        if(possibleShield)
+                            ignoreShield = true;
+                    }
+                        
+                    sendProjectileHit(this.id, id, this.coord.x, this.coord.y, ignoreShield);
 
                     if(hitWorldObject)
                     {
@@ -2836,17 +2939,10 @@ function animate() {
 
 
     otherPlayers.forEach(player => {
-        if(player.displayPos)
+        if(player.displayPos && player.displayPos.x && player.displayPos.y)
         { 
-            try{
-                hittableObjects[player.id].x = player.displayPos.x;
-                hittableObjects[player.id].y = player.displayPos.y;
-            }
-            catch(error)
-            {
-                console.log(error);
-            }
-            
+            hittableObjects[player.id].x = player.displayPos.x;
+            hittableObjects[player.id].y = player.displayPos.y;
         }
         else if(player.coordX && player.coordY){
             hittableObjects[player.id].x = player.coordX;
@@ -3041,10 +3137,9 @@ function animate() {
         }
     }
     
-    drawGrid(gridPos.x + centerX, gridPos.y +  centerY, gridSize, gridSize, gridBoxScale);
-    var allMatter = allWorldObjects.concat(otherPlayers);
+    drawGrid(gridPos.x + centerX, gridPos.y + centerY, gridSize, gridSize, gridBoxScale);
 
-    allMatter.forEach(function(matter){
+    allWorldObjects.forEach(function(matter){
         var pos = cordsToScreenPos(matter.coordX, matter.coordY);
         var size = matter.radius + 50;
 
@@ -3096,6 +3191,11 @@ function animate() {
 
     });
 
+    otherPlayers.forEach(function(player){
+        player.health = healthDict[player.id];
+        player.update();
+    });
+
     if(spaceShip)
     {
         for (var timer in propertiesTimer) {
@@ -3110,7 +3210,7 @@ function animate() {
                         propertiesTimer[timer].fill += .05;
                     }
     
-                    var matter = findObjectWithId(allMatter, timer);
+                    var matter = findObjectWithId(allWorldObjects.concat(allPlayers), timer);
     
                     if(!matter)
                         delete propertiesTimer[timer];
@@ -3694,6 +3794,8 @@ function animate() {
                 }
 
                 //Draw planet structure shop ------------------------------------------------------------
+                var turretButtonOffset = 0;
+
                 var numYButtons = 4;
                 var numXButtons = 2;
 
@@ -3802,7 +3904,6 @@ function animate() {
 
                 if(planetShopSelection != null)
                 {
-
                     var type = planetShopSelection;
                     var level = 0;
                     var upgrading = typeof planetShopSelection == "object";
@@ -3826,6 +3927,8 @@ function animate() {
                     var panelX = xVal + backgroundWidth
                     var panelY = canvas.height - pannelHeight - padding;
 
+                    turretButtonOffset += pannelWidth;
+
                     //Header
                     var headerX = panelX;
 
@@ -3848,13 +3951,6 @@ function animate() {
                     var name = $('p#' + type).text();
 
                     var uppercasedType = name.charAt(0).toUpperCase() + name.slice(1);
-
-                    // if(type.substring(0,7) == "spawner")
-                    // {
-                    //     var typeString = upgrading ? planetShopSelection.spawnerType : type;
-                    //     var spawnerType = typeString.substring(7, typeString.legnth);
-                    //     uppercasedType = spawnerType.charAt(0).toUpperCase() + spawnerType.slice(1) + " Spawner";
-                    // }
 
                     c.fillText(uppercasedType, headerX + pannelWidth / 2, yVal - padding);
 
@@ -4023,6 +4119,59 @@ function animate() {
                         c.font = fontsize + "px Helvetica";
                         wrapText(c, $('p#' + type + "Desc").text(), descBoxX + padding / 2, descBoxY + fontsize + padding / 5, descBoxWidth - padding / 2, fontsize);
                     } 
+                }
+
+                var drawManualTurretButton = false;
+
+                for (let x = 0; x < currentPlanet.structures.length; x++) {
+                    const structure = currentPlanet.structures[x];
+                    
+                    if(structure.type == "turret")
+                    {
+                        drawManualTurretButton = true;
+                        break;
+                    }
+                }
+
+                if(drawManualTurretButton)
+                {
+
+                    var mtButtonSize = windowHeight / 15;
+
+                    var mtButtonX = backgroundWidth + turretButtonOffset + padding * 2;
+                    var mtButtonY = windowHeight - padding - mtButtonSize;
+
+                    c.fillStyle = "#e2e2e2";
+                    c.globalAlpha = .3;
+
+                    if (mouseY > mtButtonY && mouseY < mtButtonY + mtButtonSize && mouseX > mtButtonX && mouseX < mtButtonX + mtButtonSize) 
+                    {
+                        if(mouse.clickDown) //initial click
+                        {
+                            turretManualMode = !turretManualMode;
+
+                            if (!turretManualMode)
+                            {
+                                var data = [];
+
+                                for(var i = 0; i < currentPlanet.structures.length; i++){
+                                    var structure = currentPlanet.structures[i];
+                                    if(structure.type == "turret" && turretManualMode)
+                                        data.push({id: structure.id, stop: true});
+                                } 
+    
+                                socket.emit("turretRot", data);
+                            }
+                        }
+                        else if(mouse.clicked) //mouse pressed down after initial click
+                            c.globalAlpha = .5; 
+                        else
+                            c.globalAlpha = .4; //just hovering
+                    }
+
+                    c.fillRect(mtButtonX, mtButtonY, mtButtonSize, mtButtonSize);
+                    c.globalAlpha = 1;
+                    c.drawImage(getImage("target"), mtButtonX + padding / 2, mtButtonY + padding / 2, mtButtonSize - padding, mtButtonSize - padding)
                 }
 
                 c.textAlign = "left";
