@@ -76,9 +76,7 @@ var maxPlanetObjects = {
     landingPad: 1,
     electricity: 3,
     satellite: 1,
-    spawnerDefender: 1,
-    spawnerScout: 1,
-    spawnerGuard: 1
+    spawner: 1
 };
 
 function positonAviable(size, x, y, hittableObjectsRef) {
@@ -148,6 +146,18 @@ function addWorld(){
     var objects = generateWorld();
     var worldId = uniqueId();
 
+    var hive = objects.hivePlanet;
+
+    spawnerDefender = new Structure(hive.id, hive.x + (hive.radius + 20), hive.y, 0, "spawner", "server", 0, worldId, uniqueId());
+    spawnerScout = new Structure(hive.id, hive.x - (hive.radius + 20), hive.y, -180, "spawner", "server", 0, worldId, uniqueId());
+    spawnerGuard = new Structure(hive.id, hive.x, hive.y + (hive.radius + 20), -90, "spawner", "server", 0, worldId, uniqueId());
+
+    spawnerDefender.enemyType = "defender";
+    spawnerScout.enemyType = "scout";
+    spawnerGuard.enemyType = "guard";
+
+    hive.structures.push(spawnerDefender, spawnerScout, spawnerGuard);
+
     worldsData[worldId] = {
         clients: [],
         lobbyClients: [],
@@ -159,7 +169,7 @@ function addWorld(){
         items: [],
         spawners: [],
         master: null,
-        hivePlanet: objects.hivePlanet
+        hivePlanet: hive
     }
 
     var crown = new Item(gridSize / 2, gridSize / 2, {x: 0, y: 0}, "crown", 1, "item-" + uniqueId());
@@ -216,6 +226,7 @@ function generateWorld(){
     generatedHittableObjects.push(hiveObj);
 
     var hive = new Planet(gridSize / 2, gridSize / 2, 180, [], "#84f74f", 1000, {}, "hive");
+
     generatedWorldObjects.planets.push(hive);
     generatedHittableObjects.push(hive);
 
@@ -857,25 +868,26 @@ var structureUpgrades = {
             maxHealth: 7500,
             drops: {crystal: 750, iron: 750, water: 750},
             identifier: "shield"
-        },
-        {
-            costs: {water: 3000, crystal: 50, circuit: 25},
-            maxHealth: 10000,
-            drops: {crystal: 1000, iron: 1000, water: 1000},
-            identifier: "shield"
-        },
-        {
-            costs: {water: 5000, crystal: 75, circuit: 50},
-            maxHealth: 15000,
-            drops: {crystal: 1500, iron: 1500, water: 1500},
-            identifier: "shield"
-        },
-        {
-            costs: {water: 10000, crystal: 100, circuit: 125},
-            maxHealth: 25000,
-            drops: {crystal: 2500, iron: 2500, water: 2500},
-            identifier: "shield"
-        },
+        }
+        //,
+        // {
+        //     costs: {water: 3000, crystal: 50, circuit: 25},
+        //     maxHealth: 10000,
+        //     drops: {crystal: 1000, iron: 1000, water: 1000},
+        //     identifier: "shield"
+        // },
+        // {
+        //     costs: {water: 5000, crystal: 75, circuit: 50},
+        //     maxHealth: 15000,
+        //     drops: {crystal: 1500, iron: 1500, water: 1500},
+        //     identifier: "shield"
+        // },
+        // {
+        //     costs: {water: 10000, crystal: 100, circuit: 125},
+        //     maxHealth: 25000,
+        //     drops: {crystal: 2500, iron: 2500, water: 2500},
+        //     identifier: "shield"
+        // },
     ],
     spawner: [
         {
@@ -1214,7 +1226,7 @@ function newConnetcion(socket){
         player.x = data.x;
         player.y = data.y;
 
-        socket.broadcast.to(data.worldId).emit('playerPos', data);
+        socket.broadcast.to(data.worldId).emit('playerPos', [data]);
     });
 
     socket.on('heal', function(data){
@@ -1594,7 +1606,7 @@ function newConnetcion(socket){
             upgrades = structureUpgrades[upgradee.type];
         else
             upgrades = playerUpgrades;
-        
+
         if(!upgrades[upgradee.level + 1]){
             console.log("upgrade not found");
             return;
@@ -2017,6 +2029,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
 
         if(possiblePlanet && possiblePlanet.object.structures)
         {
+
             possiblePlanet.object.structures.forEach(structure => {
                 var structureDrops = structureUpgrades[structure.type][structure.level].costs;
 
@@ -2032,9 +2045,10 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
                     }
                 }
             });
+            
         }
-
-        else if(target.object.type == 'crystal')
+        
+        if(target.object.type == 'crystal')
         {   
             if(target.object.health - damage <= 0)
                 itemDropped(xHit, yHit, target.object.drops, worldId, 1); 
@@ -2278,8 +2292,11 @@ var repultionForce = 10;
 
 var accelerationSpeed = .5;
 
-var iterationsBeforeSend = 20;
-var sendi = iterationsBeforeSend;
+var itterationsBeforeEnemySend = 20;
+var enemySendi = itterationsBeforeEnemySend;
+
+var itterationsBeforeItemsSend = 5;
+var itemSendi = itterationsBeforeItemsSend;
 
 //Recursive Functions --------------------------------------------------------------------------------------------------
 setInterval(sunDamage, sunDamageRate);
@@ -2291,8 +2308,8 @@ setInterval(spawnEnemies, enemySpawnRate);
 setInterval(updateEnemies, updateEnemiesRate);
 setInterval(updateItems, updateItemsRate);
 setInterval(respawnCrowns, respawnCrownRate)
-function updateEnemies(){
 
+function updateEnemies(){
     worldIds.forEach(worldId => {
 
         var destroyedProjs = [];
@@ -2365,6 +2382,8 @@ function updateEnemies(){
         var enemyMaster = findObjectWithId(worldsData[worldId].clients, worldsData[worldId].master);
         var enemies = worldsData[worldId].enemies;
         
+        var dataContainer = {};
+
         for (let i = 0; i < enemies.length; i++) {
             const enemy = enemies[i];
 
@@ -2384,8 +2403,27 @@ function updateEnemies(){
                 break;   
 
             }
+
+            var data = {x: enemy.x, y: enemy.y, rot: enemy.rotation + Math.PI / 2, id: enemy.id};
+            
+            if(!dataContainer[worldId])
+                dataContainer[worldId] = [data];
+            else
+                dataContainer[worldId].push(data);
+        }        
+    }
+
+    if(enemySendi >= itterationsBeforeEnemySend)
+    {
+        enemySendi = 0;
+
+        for (var worldId in dataContainer) {
+            if (dataContainer.hasOwnProperty(worldId)) 
+                io.to(worldId).emit('playerPos', dataContainer[worldId]);
         }
     }
+    else
+        enemySendi++;
 }
 
 var ventureDistance = 1000;
@@ -2498,9 +2536,6 @@ function enemyAI(enemy, worldId, pointX, pointY, optimalDistance){
     
     enemy.x += enemy.velocity.x;
     enemy.y += enemy.velocity.y;
-            
-    data = {x: enemy.x, y: enemy.y, rot: enemy.rotation + Math.PI / 2, id: enemy.id};
-    io.to(worldId).emit('playerPos', data);
 }
 
 function updateItems(){
@@ -2509,6 +2544,7 @@ function updateItems(){
 
         var items = worldsData[worldId].items;
         var data = [];
+        var dataUrgent = [];
 
         for (var i = items.length - 1; i >= 0; i--){
 
@@ -2518,7 +2554,7 @@ function updateItems(){
             {
                 if(item.despawnTime > itemDespawnTime)
                 {
-                    data.push({collected: true, id: item.id});
+                    dataUrgent.push({collected: true, id: item.id});
                     items.splice(i, 1);
                     continue;
                 }
@@ -2537,7 +2573,7 @@ function updateItems(){
             
                 if(distanceToPlayer < itemCollectDist)
                 {
-                    data.push({collected: true, id: item.id});
+                    dataUrgent.push({collected: true, id: item.id});
                     
                     itemCollected({type: item.type, amount: item.amount}, player.id, worldId);
                     items.splice(i, 1);
@@ -2589,7 +2625,7 @@ function updateItems(){
                         {
                             _item.amount += item.amount;
 
-                            data.push({collected: true, id: item.id});
+                            dataUrgent.push({collected: true, id: item.id});
                             items.splice(i, 1);
                             merged = true;
                             break;
@@ -2611,11 +2647,33 @@ function updateItems(){
                 if(size > 30)
                     size = 30;
     
-                data.push({x: item.x, y: item.y, rot: item.rotation, size: size, type: item.type, id: item.id});
+                if(item.new > 2)
+                    data.push({x: item.x, y: item.y, rot: item.rotation, size: size, type: item.type, id: item.id});
+                else
+                {
+
+                    if(!item.new)
+                        items[i].new = 1;
+                    else
+                        items[i].new++;
+
+                    dataUrgent.push({x: item.x, y: item.y, rot: item.rotation, size: size, type: item.type, id: item.id});
+                }
             }
         }
 
-        io.to(worldId).emit('updateItems', data);
+        if(itemSendi >= itterationsBeforeItemsSend)
+        {
+            itemSendi = 0;
+            io.to(worldId).emit('updateItems', data.concat(dataUrgent));
+        }
+        else
+        {
+            itemSendi++;
+            if(dataUrgent.length > 0)
+                io.to(worldId).emit('updateItems', dataUrgent);
+        }
+
     }
 }
 

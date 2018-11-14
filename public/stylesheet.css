@@ -371,7 +371,7 @@ body{
 }
 
 #moreIoGames{
-    cursor: pointer;
+    cursor: default;
 
     width: 14vh;
     height: 2vh;

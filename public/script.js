@@ -429,6 +429,13 @@ function setupLocalWorld(data){
         for (var s = 0; s < planet.structures.length; s++) {
             const structure = planet.structures[s];
             var isFacade = structure.ownerId != clientId;
+
+            if(structure.type == "spawner")
+            {
+                var uppercasedType = structure.enemyType.charAt(0).toUpperCase() + structure.enemyType.slice(1);
+                structure.type = "spawner" + uppercasedType;
+            }
+
             planetObject.addStructure(planetObject, structure.x, structure.y, structure.rotation, structure.type, structure.level, isFacade, structure.ownerId, structure.id);
         }
 
@@ -706,15 +713,17 @@ function respawn(){
     
 }
 function updatePlayerPosition(data){
-    otherPlayer = findObjectWithId(otherPlayers, data.id);
+    data.forEach(player => {
+        otherPlayer = findObjectWithId(otherPlayers, player.id);
 
-    if(otherPlayer){
-        var otherPlayerObj = otherPlayer.object;
-
-        otherPlayerObj.coordX = data.x;
-        otherPlayerObj.coordY = data.y;
-        otherPlayerObj.targetRotation = data.rot;
-    }
+        if(otherPlayer){
+            var otherPlayerObj = otherPlayer.object;
+    
+            otherPlayerObj.coordX = player.x;
+            otherPlayerObj.coordY = player.y;
+            otherPlayerObj.targetRotation = player.rot;
+        }
+    });
 }
 function spawnNetworkedProjectile(data){
     otherProjectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, data.bulletPenetration, true, data.id));
@@ -2114,6 +2123,9 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
             if(player.id == ownerId || player.alpha < 1)
                 continue;
 
+            if((player.id.substring(0,5) == "enemy") && playerItems["crown"] >= 1)
+                continue;
+
             var playerPos = cordsToScreenPos(player.coordX, player.coordY);
 
             var distance = Math.sqrt(Math.pow(this.x - playerPos.x, 2) + Math.pow(this.y - playerPos.y, 2));
@@ -2683,7 +2695,7 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
 
     this.displayPos = new Vector();
 
-    var jumpDistance = 5000;
+    var jumpDistance = 10000;
 
     this.turret;
 
