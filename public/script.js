@@ -1974,11 +1974,11 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
     this.coordY = y;
 
     this.rotControlled = false;
-    this.lastSetverRot = 0;
     this.targetServerRot = 0;
     this.lastTargetServerRot = 0;
     this.rotLerpAmount = 00;
     this.rotLerpTime = 20;
+    this.rotWatcher = 0;
 
     this.shootRotation;
     this.headDistanceFromBase = 10;
@@ -2024,22 +2024,23 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
             //Draw Head
             if(this.rotControlled)
             {
-                if(this.lastTargetServerRot != this.targetServerRot)
+                if(this.rotWatcher != this.targetServerRot)
                 {
+                    this.lastTargetServerRot = this.rotWatcher;
+                    this.rotWatcher = this.targetServerRot;
+
                     this.rotLerpTime = this.rotLerpAmount;
                     this.rotLerpAmount = 0;
-                    this.lastTargetServerRot = this.targetServerRot;
                 }
                 
                 if(this.rotLerpAmount <= this.rotLerpTime)
-                    this.shootRotation = this.lastSetverRot + (this.targetServerRot - this.lastSetverRot) * this.rotLerpAmount / this.rotLerpTime;
+                    this.shootRotation = this.lastTargetServerRot + (this.targetServerRot - this.lastTargetServerRot) * this.rotLerpAmount / this.rotLerpTime;
                 else
                     this.shootRotation = this.targetServerRot;
 
                 this.rotLerpAmount++;
 
                 this.headRotation = this.shootRotation * 180 / Math.PI;
-                this.lastSetverRot = this.shootRotation;
             }
             else if(turretManualMode && !this.isFacade)
             {
@@ -2202,19 +2203,16 @@ function Item(coordX, coordY, size, type, id) {
             var t = Math.round(this.lerpAmount / this.lerpTime * 100) / 100;
             var subCoord = Vector.prototype.subtract(coords, lastCoords);
             this.displayPos = Vector.prototype.addition(lastCoords, new Vector(subCoord.x * t, subCoord.y * t));
-            this.lerpAmount++;
-        }
-        else if(this.lerpAmount > this.lerpTime){
-            this.lerpAmount++;
         }
 
-        if(this.rotLerpAmount <= this.rotLerpTime){
-            this.rotLerpAmount++;
+        this.lerpAmount++;
+
+        if(this.rotLerpAmount <= this.rotLerpTime)
             this.rotation = this.lastRot + (this.targetRotation - this.lastRot) * this.rotLerpAmount / this.rotLerpTime;
-        }
-        else{
+        else
             this.rotation = this.targetRotation;
-        }
+
+        this.rotLerpAmount++;
 
         var pos = cordsToScreenPos(this.displayPos.x, this.displayPos.y);
 
@@ -2755,19 +2753,16 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
             var t = Math.round(this.lerpAmount / this.lerpTime * 100) / 100;
             var subCoord = Vector.prototype.subtract(coords, lastCoords);
             this.displayPos = Vector.prototype.addition(lastCoords, new Vector(subCoord.x * t, subCoord.y * t));
-            this.lerpAmount++;
-        }
-        else if(this.lerpAmount > this.lerpTime){
-            this.lerpAmount++;
         }
 
-        if(this.rotLerpAmount <= this.rotLerpTime){
-            this.rotLerpAmount++;
+        this.lerpAmount++;
+
+        if(this.rotLerpAmount <= this.rotLerpTime)
             this.rotation = this.lastRot + (this.targetRotation - this.lastRot) * this.rotLerpAmount / this.rotLerpTime;
-        }
-        else{
+        else
             this.rotation = this.targetRotation;
-        }
+
+        this.rotLerpAmount++;
 
         var pos = cordsToScreenPos(this.displayPos.x, this.displayPos.y);
 
@@ -4152,12 +4147,12 @@ function animate() {
 
                             if (!turretManualMode)
                             {
-                                var data = [];
+                                var data = {turrets: [], worldId:worldId};
 
                                 for(var i = 0; i < currentPlanet.structures.length; i++){
                                     var structure = currentPlanet.structures[i];
-                                    if(structure.type == "turret" && turretManualMode)
-                                        data.push({id: structure.id, stop: true});
+                                    if(structure.type == "turret")
+                                        data.turrets.push({id: structure.id, stop: true});
                                 } 
     
                                 socket.emit("turretRot", data);
