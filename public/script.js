@@ -305,9 +305,6 @@ var checklist = {
     },
     landingPad:{
         isActive: false
-    },
-    structures:{
-        isActive: false
     }
 }
 
@@ -903,7 +900,6 @@ function mineProduce(data){
                 added[mine.item] = mine.amount;
             }
         }
-
     });
     
     for (var item in added) {
@@ -1625,16 +1621,16 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
     this.addStructure = function (planet, x, y, rotation, type, level, isFacade, ownerId, id){
         var shieldRadius = this.radius + 100;
 
-        if(!isFacade)
-        {
-            if(checklist.landingPad.isActive && !checklist.landingPad.done)
-            {
-                checklist.landingPad.done = true;
-                checklist.structures.isActive = true;
-            }
-            else
-                checklist.structures.done = true;
-        }
+        // if(!isFacade)
+        // {
+        //     if(checklist.landingPad.isActive && !checklist.landingPad.done)
+        //     {
+        //         checklist.landingPad.done = true;
+        //         checklist.structures.isActive = true;
+        //     }
+        //     else
+        //         checklist.structures.done = true;
+        // }
 
         if(type === "electricity"){
             var electricity = new Electricity(planet, x, y, rotation, level, ownerId, id);
@@ -3847,7 +3843,7 @@ function animate() {
                 c.globalAlpha = 1;
                 c.font = fontsize + "px Helvetica";
                 c.textAlign = "center";
-                c.fillText("Structures", backgroundWidth / 2 + padding, yVal - padding);
+                c.fillText($('p#structures').text(), backgroundWidth / 2 + padding, yVal - padding);
 
                 c.globalAlpha = .2;
                 c.fillRect(xVal, yVal, backgroundWidth, backgroundHeight);
@@ -4011,18 +4007,18 @@ function animate() {
                     var shopButtonX = panelX + pannelWidth / 2 - shopButtonWidth / 2;
                     var shopButtonY = panelY + padding * 2 + selectedStructureImageSize;
 
-                    var label = "Buy";
+                    var label = $('p#buy').text();
 
                     fontsize = Math.sqrt(canvas.height * canvas.width) / 60;
 
                     if(upgrading)
                     {
                         if(fullyUpgraded){
-                            label = "Fully Upgraded";
+                            label = $('p#fullyUpgraded').text();
                             fontsize = Math.sqrt(canvas.height * canvas.width) / 80;
                         }
                         else{
-                            label = "Upgrade";
+                            label = $('p#upgrade').text();
                             upgrading = true;
                         }
                     }
@@ -4502,7 +4498,7 @@ function drawShopPanel(type){
         c.font = height / 40 + "px Helvetica";
         c.textAlign = "center";
         c.fillStyle = "white";
-        c.fillText("Fully Upgraded", windowWidth / 2, (windowHeight - height) / 2 + height * .8);
+        c.fillText($('p#fullyUpgraded').text(), windowWidth / 2, (windowHeight - height) / 2 + height * .8);
         c.textAlign = "left";
     }
     else{
@@ -4510,7 +4506,7 @@ function drawShopPanel(type){
 
             var arrowSize = height / 20;
 
-            label = "Upgrade";
+            label = $('p#upgrade').text();
             c.fillRect((windowWidth - width) / 2 + imageSize / 2 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
             c.drawImage(getImage(type + (currentLevel - 1)), (windowWidth - width) / 2 + imageSize / 2, imageY, imageSize, imageSize);
             
@@ -4522,7 +4518,7 @@ function drawShopPanel(type){
             c.globalAlpha = .9;
         }
         else{
-            label = "Buy";
+            label = $('p#buy').text();
             c.globalAlpha = .9;
             c.fillRect(windowWidth / 2 - imageSize / 2 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
             c.drawImage(getImage(type + currentLevel), windowWidth / 2 - imageSize / 2, imageY, imageSize, imageSize);
@@ -4754,7 +4750,7 @@ function propertiesOverview(object, fill){
 
         c.font = size / 5 + "px Arial";
         c.fillStyle = "white";
-        c.fillText("Owner: " + (name), pos.x + (size / 1.8) * flipX, pos.y - size / 2 - size / 20);
+        c.fillText($('p#owner').text() + ": " + (name), pos.x + (size / 1.8) * flipX, pos.y - size / 2 - size / 20);
 
         dropX += size * .8;
     }
