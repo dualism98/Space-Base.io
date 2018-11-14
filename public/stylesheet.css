@@ -366,6 +366,60 @@ body{
     float: left;
 }
 
+.nonDecoratedLink{
+    text-decoration: none;
+}
+
+#moreIoGames{
+    cursor: pointer;
+
+    width: 14vh;
+    height: 2vh;
+
+    margin-top: .5vh;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: .5vh;
+
+    padding: 5px;
+
+    color:white;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 1.2vh;
+    text-align: left;
+    text-decoration: none; 
+
+    background-color: #a3a498;
+    border: .3vh solid #ffffff;
+    outline: .3vh solid #707070;
+}
+
+#redditAnnouncement{
+    cursor: pointer;
+
+    width: 20vh;
+    height: 5vh;
+
+    margin-top: .5vh;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 2vh;
+
+    padding: 5px;
+
+    color:white;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 1.2vh;
+    text-align: left;
+    text-decoration: none; 
+
+    background-color: #a3a498;
+    border: .3vh solid #ffffff;
+    outline: .3vh solid #707070;
+
+    display:none;
+}
+
 #vignetteOverlay {
     -webkit-box-align: center;
     -webkit-box-pack: center;
