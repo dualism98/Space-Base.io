@@ -303,7 +303,10 @@ var checklist = {
     shoot:{
         isActive: false
     },
-    landingPad:{
+    landingPadDesc:{
+        isActive: false
+    },
+    aquiredCrown:{
         isActive: false
     }
 }
@@ -659,6 +662,8 @@ function respawnPlanet(){
     upgradeables = [];
     planetShopSelection = null;
 
+    checklist.aquiredCrown.isActive = false;
+
     caughtInBlackHole = false;
 
     allWorldObjects = getAllWorldObjects();
@@ -699,6 +704,8 @@ function respawn(){
     shopOpen = {shopRef: null, type: null, open: false};
     planetShopSelection = null;
 
+    checklist.aquiredCrown.isActive = false;
+
     caughtInBlackHole = false;
 
     allWorldObjects = getAllWorldObjects();
@@ -715,10 +722,19 @@ function updatePlayerPosition(data){
 
         if(otherPlayer){
             var otherPlayerObj = otherPlayer.object;
-    
+
             otherPlayerObj.coordX = player.x;
             otherPlayerObj.coordY = player.y;
             otherPlayerObj.targetRotation = player.rot;
+
+            if(player.instantSnap)
+            {
+                otherPlayerObj.rotLerpAmount = 0;
+                otherPlayerObj.rotLerpTime = 0;
+                otherPlayerObj.rotWatcher = otherPlayerObj.targetRotation;
+                otherPlayerObj.lastRot = otherPlayerObj.targetRotation;
+                otherPlayerObj.rotation = otherPlayerObj.targetRotation;
+            }
         }
     });
 }
@@ -918,8 +934,10 @@ function onAquiredItems(data){
             if(drop == "crown")
             {
                 master.id = clientId;
-                if(spaceShip)
+                if(spaceShip){
                     master.obj = spaceShip;
+                    checklist.aquiredCrown.isActive = true;
+                }
 
                 ownedPlanets.push(hiveObj);
             }
@@ -1281,17 +1299,13 @@ $(document).keypress(function(e){
                 
             landed = false;
             currentPlanet = null;
-
             planetShopSelection = null;
 
-            checklist.landingPad.isActive = false;
-            checklist.structures.isActive = false;
+            checklist.landingPadDesc.isActive = false;
 
         }
     }
     else if(spaceShip){
-
-
         if(e.keyCode == 99 && !cloaked && cloakCoolDownTime >= cloakCoolDown) //C
         {
             if(spaceShip.shopUpgrades["cloakTime"].level > 0){
@@ -1353,9 +1367,12 @@ $(document).keypress(function(e){
             currentPlanet.occupiedBy = clientId;
             closestAvailablePlanet = null;
 
-            if(playerHasResources(structureUpgrades["landingPad"][0].costs) && !ownedPlanets.contains(currentPlanet.id) && !checklist.landingPad.done)
+            if(currentPlanet.id == "hive" && checklist.aquiredCrown.isActive)
+                checklist.aquiredCrown.done = true;
+
+            if(playerHasResources(structureUpgrades["landingPad"][0].costs) && !ownedPlanets.contains(currentPlanet.id) && !checklist.landingPadDesc.done && !currentPlanet.id == "hive")
             {
-                checklist.landingPad.isActive = true;
+                checklist.landingPadDesc.isActive = true;
             }
 
         } 
@@ -1621,16 +1638,8 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
     this.addStructure = function (planet, x, y, rotation, type, level, isFacade, ownerId, id){
         var shieldRadius = this.radius + 100;
 
-        // if(!isFacade)
-        // {
-        //     if(checklist.landingPad.isActive && !checklist.landingPad.done)
-        //     {
-        //         checklist.landingPad.done = true;
-        //         checklist.structures.isActive = true;
-        //     }
-        //     else
-        //         checklist.structures.done = true;
-        // }
+        if(!isFacade && checklist.landingPadDesc.isActive && !checklist.landingPadDesc.done)
+            checklist.landingPadDesc.done = true;
 
         if(type === "electricity"){
             var electricity = new Electricity(planet, x, y, rotation, level, ownerId, id);
@@ -1681,6 +1690,7 @@ function Shield(planet, x, y, rotation, level, ownerId, id){
     this.x;
     this.y;
     this.rotation = rotation;
+    this.level = level;
     this.size = 50;
     this.id = id;
     this.ownerId = ownerId;
@@ -3512,7 +3522,7 @@ function animate() {
         var checkItemY = windowHeight * .7;
         var checkPadding = windowHeight * .02;
 
-        var width = windowHeight * .3;
+        var width = windowHeight * .4;
         var height = width * .25;
 
         var yPositions = {};
@@ -3651,7 +3661,7 @@ function animate() {
                         c.fillStyle = "white";
                         c.font = fontsize + "px Helvetica";
         
-                        wrapText(c, $('p#' + check).text(), windowWidth / 2 - width * checkItem.size / 4, checkItem.yPos + fontsize * 2, width * .6, fontsize);
+                        wrapText(c, $('p#' + check).text(), windowWidth / 2 - width * checkItem.size / 4, checkItem.yPos + fontsize * 2, width * .7, fontsize);
                     }
                 
 

@@ -66,6 +66,8 @@ var clientsPerWorld = 30;
 var maxEnemiesPerWorld = 30;
 var numberOfWorlds = 0;
 
+var spawnHiveWithSpawners = true;
+
 var levelsLostOnDeath = 1;
 var maxNumberOwnedPlanets = 3;
 
@@ -148,15 +150,18 @@ function addWorld(){
 
     var hive = objects.hivePlanet;
 
-    spawnerDefender = new Structure(hive.id, hive.x + (hive.radius + 20), hive.y, 0, "spawner", "server", 0, worldId, uniqueId());
-    spawnerScout = new Structure(hive.id, hive.x - (hive.radius + 20), hive.y, -180, "spawner", "server", 0, worldId, uniqueId());
-    spawnerGuard = new Structure(hive.id, hive.x, hive.y + (hive.radius + 20), -90, "spawner", "server", 0, worldId, uniqueId());
-
-    spawnerDefender.enemyType = "defender";
-    spawnerScout.enemyType = "scout";
-    spawnerGuard.enemyType = "guard";
-
-    hive.structures.push(spawnerDefender, spawnerScout, spawnerGuard);
+    if(spawnHiveWithSpawners)
+    {
+        spawnerDefender = new Structure(hive.id, hive.x + (hive.radius + 20), hive.y, 0, "spawner", "server", 0, worldId, uniqueId());
+        spawnerScout = new Structure(hive.id, hive.x - (hive.radius + 20), hive.y, -180, "spawner", "server", 0, worldId, uniqueId());
+        spawnerGuard = new Structure(hive.id, hive.x, hive.y + (hive.radius + 20), -90, "spawner", "server", 0, worldId, uniqueId());
+    
+        spawnerDefender.enemyType = "defender";
+        spawnerScout.enemyType = "scout";
+        spawnerGuard.enemyType = "guard";
+    
+        hive.structures.push(spawnerDefender, spawnerScout, spawnerGuard);
+    }
 
     worldsData[worldId] = {
         clients: [],
@@ -1353,7 +1358,6 @@ function newConnetcion(socket){
 
         if(planet.hasMaxStructure(data.type, maxPlanetObjects[data.type]))
         {
-            console.log(data.type);
             io.sockets.connected[data.ownerId].emit("returnMsg", ["AH", data.type, "S"]); //"Planet already has max " + data.type + 's'
             return;
         }
@@ -1842,7 +1846,6 @@ function disconnectPlayer(id, killed, worldId){
             structureIds: []
         }
 
-
         //destroy players structures on planets if disconnected or planet was the hive
         if(client.object.structures){
             client.object.structures.forEach(structure => {
@@ -1854,7 +1857,6 @@ function disconnectPlayer(id, killed, worldId){
 
                     if(!killed || planet.id == "hive") //If the player disconects or they had control over hive with structures on it
                     {
-
                         planet.owner = null;
                         planet.occupiedBy = null;
 
@@ -2383,34 +2385,50 @@ function updateEnemies(){
         var enemies = worldsData[worldId].enemies;
         
         var dataContainer = {};
-
+        var urgentDataContainer = {};
+        
         for (let i = 0; i < enemies.length; i++) {
             const enemy = enemies[i];
+
+            var instantSnap = false;
 
             switch(enemy.username)
             {
                 case "scout":
-                    enemyAI(enemy, worldId);
+                    instantSnap = enemyAI(enemy, worldId);
                 break;
                 case "defender":
-                    enemyAI(enemy, worldId, worldsData[worldId].hivePlanet.x, worldsData[worldId].hivePlanet.y, enemyOptimalDistanceFromHive + worldsData[worldId].hivePlanet.radius);
+                    instantSnap = enemyAI(enemy, worldId, worldsData[worldId].hivePlanet.x, worldsData[worldId].hivePlanet.y, enemyOptimalDistanceFromHive + worldsData[worldId].hivePlanet.radius);
                 break;   
                 case "guard":
                     if(enemyMaster)
-                        enemyAI(enemy, worldId, enemyMaster.object.x, enemyMaster.object.y, enemyOptimalDistanceFromPlayer);
+                        instantSnap = enemyAI(enemy, worldId, enemyMaster.object.x, enemyMaster.object.y, enemyOptimalDistanceFromPlayer);
                     else
-                        enemyAI(enemy, worldId);
+                        instantSnap = enemyAI(enemy, worldId);
                 break;   
-
             }
 
-            var data = {x: enemy.x, y: enemy.y, rot: enemy.rotation + Math.PI / 2, id: enemy.id};
+            var place = 10;
+            var data = {x: Math.round(enemy.x * place) / place, y: Math.round(enemy.y * place) / place, rot: Math.round((enemy.rotation + Math.PI / 2) * place * 10) / (place * 10), id: enemy.id, instantSnap: instantSnap};
             
-            if(!dataContainer[worldId])
-                dataContainer[worldId] = [data];
-            else
-                dataContainer[worldId].push(data);
+            if(instantSnap){
+                if(!urgentDataContainer[worldId])
+                    urgentDataContainer[worldId] = [data];
+                else
+                    urgentDataContainer[worldId].push(data);      
+            }
+            else{
+                if(!dataContainer[worldId])
+                    dataContainer[worldId] = [data];
+                else
+                    dataContainer[worldId].push(data);
+            }
         }        
+    }
+
+    for (var worldId in urgentDataContainer) {
+        if (urgentDataContainer.hasOwnProperty(worldId)) 
+            io.to(worldId).emit('playerPos', urgentDataContainer[worldId]);
     }
 
     if(enemySendi >= itterationsBeforeEnemySend)
@@ -2443,6 +2461,8 @@ function enemyAI(enemy, worldId, pointX, pointY, optimalDistance){
     var distanceToPoint = Math.sqrt(Math.pow(pointX - enemy.x, 2) + Math.pow(pointY - enemy.y, 2));
 
     var canVenture = true;
+
+    var instantSnap = false;
 
     if(pointAI)
         canVenture == distanceFromPlayerToHive < ventureDistance;
@@ -2528,14 +2548,21 @@ function enemyAI(enemy, worldId, pointX, pointY, optimalDistance){
 
     //Rebounding off Walls
     if (enemy.x + enemy.velocity.x > gridSize || enemy.x + enemy.velocity.x < 0)
+    {
         enemy.velocity.x *= -1;
-    
+        instantSnap = true;
+    }
+        
     if (enemy.y + enemy.velocity.y > gridSize || enemy.y + enemy.velocity.y < 0)
+    {
         enemy.velocity.y *= -1;
-    
-    
+        instantSnap = true;
+    }
+
     enemy.x += enemy.velocity.x;
     enemy.y += enemy.velocity.y;
+
+    return instantSnap;
 }
 
 function updateItems(){
