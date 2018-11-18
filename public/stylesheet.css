@@ -4,7 +4,6 @@
 
 
 #playerNameInput{
-    display: table-row;
     vertical-align: middle;
 
     background: url(images/username.png) no-repeat;
@@ -14,17 +13,14 @@
     font-size: 2vh;
     border: 3px dashed rgba(255,177,177,0);
     
-    width: 23.04vh;
+    width: 21.54vh;
     height: 5.76vh;
 
     margin-top: 2vh;
-    margin-left: -3px;
     margin-right: auto;
 
-    padding-top: 1.5vh;
-    padding-bottom: 1.5vh;
+    padding-top: -1.5vh;
     padding-left: 1.5vh;
-    padding-right: 1.5vh;
 
 }
 
@@ -63,6 +59,7 @@ li {
 
 #aboutButton{
     margin-top: 2vh;
+    margin-bottom: 2vh;
     opacity: 0.6;
     margin: 10vh;
     padding: 2px;
@@ -119,7 +116,6 @@ li {
     border: none;
     width: 23.04vh;
     height: 5.76vh;
-    margin-top: 1vh;
     margin-left: auto;
     margin-right: auto;
 }

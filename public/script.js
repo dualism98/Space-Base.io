@@ -1230,6 +1230,7 @@ $("#backAbout").click(function(){
 
 $(document).ready(function() {
 
+    $("#playerNameInput").attr("placeholder", $("#name").text());
     $("#mainContent").fadeIn(0);
     $("#helpContent").fadeOut(0);
     $("#aboutContent").fadeOut(0);
@@ -2607,7 +2608,7 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
         c.globalAlpha = this.alpha;
         c.translate(centerX, centerY);
         c.rotate(rad);
-        c.drawImage(getImage('spaceship' + this.level), -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+        c.drawImage(getImage('spaceShip' + this.level), -this.radius, -this.radius, this.radius * 2, this.radius * 2);
         c.rotate(-rad);
         c.translate(-centerX, -centerY);
         c.globalAlpha = 1;
@@ -3648,7 +3649,7 @@ function drawLeaderBoard(){
         c.save();
         c.translate(windowWidth - width + padding * 1.4 + IMAGE_SIZE / 2, playerY);
         c.rotate(Math.PI/2);
-        c.drawImage(getImage("spaceship" + player.level), IMAGE_SIZE / -2, IMAGE_SIZE / -2, IMAGE_SIZE, IMAGE_SIZE);
+        c.drawImage(getImage("spaceShip" + player.level), IMAGE_SIZE / -2, IMAGE_SIZE / -2, IMAGE_SIZE, IMAGE_SIZE);
         c.restore();
 
         if(player == spaceShip)
