@@ -63,6 +63,7 @@ li {
 
 #aboutButton{
     margin-top: 2vh;
+    margin-bottom: 2vh;
     opacity: 0.6;
     margin: 10vh;
     padding: 2px;
@@ -339,22 +340,10 @@ a:hover{
 }
 
 #bottomAd{
-<<<<<<< HEAD
-    display: table-row;
-    vertical-align: middle;
-
-    border: none;
-    width: 23.04vh;
-    height: 5.76vh;
-    margin-top: 1vh;
-    margin-left: auto;
-    margin-right: auto;
-=======
     width: 100%;
     height: 10px;
 
     background-color: red;
->>>>>>> development
 }
 
 #redditLink{

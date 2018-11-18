@@ -188,7 +188,7 @@ var dropDict = {};
 var playerItems = {};
 
 var images = {};
-var imageArray = ["NF", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "charge", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "mineGray", "S", "satellite0", "satellite1", "satellite2", "satellite3", "satelliteGray", "shieldGenerator0", "shieldGenerator1", "shieldGenerator2", "shieldGenerator3", "shieldGenerator4", "shieldGenerator5", "shieldGenerator6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "spaceship0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "spaceShipGray", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "turretGray", "water"];
+var imageArray = ["NF", "hive", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "circuit", "charge", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "enemyscout0", "enemyscout1", "enemydefender0", "enemydefender1", "enemyguard0", "enemyguard1", "spawnerScoutGray", "spawnerScout0", "spawnerScout1", "spawnerDefender0", "spawnerDefender1", "spawnerDefenderGray", "spawnerGuard0", "spawnerGuard1", "spawnerGuardGray", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "mineGray", "S", "satellite0", "satellite1", "satellite2", "satellite3", "satelliteGray", "shieldGenerator0", "shieldGenerator1", "shieldGenerator2", "shieldGenerator3", "shieldGenerator4", "shieldGenerator5", "shieldGenerator6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "spaceship0", "spaceship1", "spaceship2", "spaceship3", "spaceship4", "spaceship5", "spaceship6", "spaceship7", "spaceship8", "spaceship9", "spaceship10", "spaceship11", "spaceship12", "spaceship13", "spaceship14", "spaceship15", "spaceShipGray", "stardust", "startGameButton", "spaceShipGray", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "turretGray", "water", "warningSign"];
 
 function getImage(item){
     for (var image in images) {
@@ -2977,14 +2977,17 @@ function animate() {
 
 
     otherPlayers.forEach(player => {
-        if(player.displayPos && player.displayPos.x && player.displayPos.y)
-        { 
-            hittableObjects[player.id].x = player.displayPos.x;
-            hittableObjects[player.id].y = player.displayPos.y;
-        }
-        else if(player.coordX && player.coordY){
-            hittableObjects[player.id].x = player.coordX;
-            hittableObjects[player.id].y = player.coordY;
+        if(hittableObjects[player.id])
+        {
+            if(player.displayPos && player.displayPos.x && player.displayPos.y)
+            { 
+                hittableObjects[player.id].x = player.displayPos.x;
+                hittableObjects[player.id].y = player.displayPos.y;
+            }
+            else if(player.coordX && player.coordY){
+                hittableObjects[player.id].x = player.coordX;
+                hittableObjects[player.id].y = player.coordY;
+            }
         }
     });
     

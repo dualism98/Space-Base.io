@@ -452,7 +452,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {iron: 1},
+            costs: {asteroidBits: 5},
             speed: 50,
             fireRate: 100,
             maxHealth: 10,
@@ -465,7 +465,7 @@ var playerUpgrades = [
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 5},
+            costs: {asteroidBits: 15},
             speed: 48,
             fireRate: 95,
             maxHealth: 20,
@@ -658,7 +658,7 @@ var structureUpgrades = {
     ],
     electricity: [
         {
-            costs: {iron: 10},
+            costs: {asteroidBits: 10},
             identifier: "electricity",
             power: 5
         },
