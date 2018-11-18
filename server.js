@@ -668,12 +668,12 @@ var structureUpgrades = {
             power: 10
         },
         {
-            costs: {iron: 50, circuit: 50},
+            costs: {iron: 70, circuit: 50},
             identifier: "electricity",
             power: 20
         },
         {
-            costs: {iron: 75, circuit: 100, gem: 1},
+            costs: {iron: 85, circuit: 100, crystal: 20},
             identifier: "electricity",
             power: 50
         }
@@ -685,19 +685,19 @@ var structureUpgrades = {
             range: 25
         },
         {
-            costs: {iron: 20},
+            costs: {iron: 100,  circuit: 10},
             identifier: "satellite",
-            range: 50
+            range: 60
         },
         {
-            costs: {iron: 20},
+            costs: {iron: 500,  circuit: 50},
             identifier: "satellite",
-            range: 75
+            range: 95
         },
         {
-            costs: {iron: 20},
+            costs: {iron: 2000,  circuit: 100},
             identifier: "satellite",
-            range: 100
+            range: 120
         }
     ],
     turret: [
@@ -3048,6 +3048,8 @@ function resetMaster(worldId)
         hiveObj.object.health = hiveHealth;
         syncDamage(worldId, ["hiveObj"]);
     }
+
+    io.to(worldId).emit('master', null);
 }
 
 function itemDropped(x, y, drops, worldId, precent){

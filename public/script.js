@@ -1072,9 +1072,13 @@ function playerExited(data){
             data.structureIds.forEach(id => {
                 if(id == structure.id){
                     planet = findObjectWithId(worldObjects.planets, structure.planet.id);
-                    planet.object.owner = null;
-                    planetStructureIndex = findObjectWithId(planet.object.structures, structure.id).index;
-                    planet.object.structures.splice(planetStructureIndex, 1);
+
+                    if(planet.object)
+                    {
+                        planet.object.owner = null;
+                        planetStructureIndex = findObjectWithId(planet.object.structures, structure.id).index;
+                        planet.object.structures.splice(planetStructureIndex, 1);
+                    }
                 }
             });
         });
@@ -3331,7 +3335,7 @@ function animate() {
                 if(obj.radius && obj.active){
                     var pos = cordsToScreenPos(obj.x, obj.y);
     
-                    if(isOnScreen(pos.x, pos.y, size) || isClosestAvaiblePlanet || isOwnedPlanet != null){
+                    if(isOnScreen(pos.x, pos.y, size)){
                         c.beginPath();
                         c.arc(pos.x, pos.y, obj.radius, 0, Math.PI * 2, false);
                         c.lineWidth = 2;
