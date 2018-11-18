@@ -15,7 +15,7 @@ console.log("server started");
 
 //Server Config Options
 var numOfasteroids = 4000;
-var numOfPlanets = 50;
+var numOfPlanets = 55;
 var numOfMoons = 200;
 var numOfSuns = 10;
 var numOfCrystals = 150;
@@ -25,16 +25,16 @@ var gridSize = 15000;
 var gridBoxScale = 200;
 var spawnTries = 5;
 
-var numOfasteroids = 20;
-var numOfPlanets = 4;
-var numOfMoons = 0;
-var numOfSuns = 0;
-var numOfCrystals = 20;
-var numOfBlackHoles = 0;
-var numOfWormHoles = 6;
-var gridSize = 2000;
-var gridBoxScale = 10;
-var spawnTries = 5;
+// var numOfasteroids = 0;
+// var numOfPlanets = 0;
+// var numOfMoons = 0;
+// var numOfSuns = 0;
+// var numOfCrystals = 0;
+// var numOfBlackHoles = 0;
+// var numOfWormHoles = 0;
+// var gridSize = 1000;
+// var gridBoxScale = 10;
+// var spawnTries = 5;
 
 var edgeSpawnPadding = 2000;
 var precentItemKillBoost = .5;
@@ -47,7 +47,7 @@ var sunDamageRate = 1000;
 var oxygenDamageRate = 2000;
 var enemySpawnRate = 10000;
 var updateEnemiesRate = 10;
-var updateItemsRate = 10;
+var updateItemsRate = 20;
 var respawnCrownRate = 10000;
 
 var itemCollectDist = 10;
@@ -162,7 +162,7 @@ function addWorld(){
     
         hive.structures.push(spawnerDefender, spawnerScout, spawnerGuard);
     }
-
+        
     worldsData[worldId] = {
         clients: [],
         lobbyClients: [],
@@ -327,7 +327,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000, stardust: 10000000, circuit: 10000};
+    this.drops = {};//{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000, stardust: 10000000, circuit: 10000};
 
     this.shipTurret;
 
@@ -658,22 +658,22 @@ var structureUpgrades = {
     ],
     electricity: [
         {
-            costs: {iron: 20},
+            costs: {iron: 10},
             identifier: "electricity",
             power: 5
         },
         {
-            costs: {iron: 20},
+            costs: {iron: 30, circuit: 10},
             identifier: "electricity",
             power: 10
         },
         {
-            costs: {iron: 20},
+            costs: {iron: 50, circuit: 50},
             identifier: "electricity",
             power: 20
         },
         {
-            costs: {iron: 20},
+            costs: {iron: 75, circuit: 100, gem: 1},
             identifier: "electricity",
             power: 50
         }
@@ -1019,6 +1019,7 @@ function newConnetcion(socket){
 
     var spawnSize = (gridSize - edgeSpawnPadding) / 2;
     //var playerPosition = {x: getRndInteger(-spawnSize, spawnSize), y: getRndInteger(-spawnSize, spawnSize)};
+    //var playerPosition = {x: 0, y: 0};
     var playerPosition = playerSpawnPoint(-spawnSize, spawnSize, -spawnSize, spawnSize, worldId);
 
     var playerObject = {id: socket.id, worldId: worldId, x: playerPosition.x, y: playerPosition.y};
@@ -1491,18 +1492,6 @@ function newConnetcion(socket){
         
     });
 
-    socket.on('upgradeInfo', function(data){
-
-        var returnInfo = {
-            structureUpgrades: structureUpgrades,
-            playerUpgrades: playerUpgrades,
-            shopUpgrades: shopUpgrades
-        }
-
-        socket.emit("upgradeInfo", returnInfo);
-
-    });
-
     socket.on('shopUpgrade', function(data){
         var worldId = data.worldId;
 
@@ -1743,6 +1732,18 @@ function newConnetcion(socket){
     
     });
 
+    socket.on('shield', function(data){
+
+        var shield = findObjectWithId(worldsData[data.worldId].hittableObjects, data.id);
+
+        if(shield.object)
+        {
+            shield.object.on = data.on;
+            console.log("shield changed to: " + data.on);
+        }
+            
+    });
+
     socket.on('disconnect', function (data) {
         
         var worldId;
@@ -1956,7 +1957,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
         return;
     }
 
-    var damageSyncIds = [target.object.id];
+    var damageSyncIds = [];
 
     if(target.object.id == "hiveObj" && !worldsData[worldId].master)
         return;
@@ -2020,10 +2021,27 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
         if(shieldRef)
         {
             var shield = findObjectWithId(worldHittableObjects, shieldRef.id);
-            if(shield && shield.object.health > 0){
+
+            if(shield && shield.object.health > 0 && shield.object.on){
+
+                console.log("shield on - hitting shield instead " + shield.object.id);
+
                 target = shield;
                 possiblePlanet = false;
             }
+        }
+    }
+
+    if(target.object.structure && !target.object.on) //The thing being attacked is a shield and it is not on
+    {
+        possiblePlanet = findObjectWithId(worldWorldObjects.planets, target.object.planet.id);
+        target = findObjectWithId(worldHittableObjects, target.object.planet.id);
+
+        console.log("shield off - hitting planet instead ");
+
+        if(!target){
+            console.log('\x1b[31m%s\x1b[0m', "[ERROR]","target not found. Id of: " + id);
+            return;
         }
     }
 
@@ -2031,7 +2049,6 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
 
         if(possiblePlanet && possiblePlanet.object.structures)
         {
-
             possiblePlanet.object.structures.forEach(structure => {
                 var structureDrops = structureUpgrades[structure.type][structure.level].costs;
 
@@ -2077,6 +2094,8 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
 
     if(target.object.health - damage > 0){
         target.object.health -= damage;
+
+        damageSyncIds.push(target.object.id);
 
         if(target.object.id == "hiveObj" || target.object.id == worldsData[worldId].master)
         {
@@ -2363,6 +2382,10 @@ function updateEnemies(){
                             if(player && proj.damage > player.object.health)
                                 dropItems = true;
                         }
+
+
+                        if(obj.structure && !obj.on) //The thing being attacked is a shield and it is not on
+                            continue;
 
                         damageObject(worldId, obj.id, proj.damage, dropItems);
                         destroyedProjs.push({id: proj.id});
@@ -2665,27 +2688,22 @@ function updateItems(){
             {
                 item.x -= velX + item.iVel.x;
                 item.y -= velY + item.iVel.y;
-            
-                item.iVel.x *= .9;
-                item.iVel.y *= .9;
     
                 var size =  Math.round(Math.sqrt(item.amount) + 8);
     
                 if(size > 30)
                     size = 30;
     
-                if(item.new > 2)
+                if(item.new)
                     data.push({x: item.x, y: item.y, rot: item.rotation, size: size, type: item.type, id: item.id});
                 else
                 {
-
-                    if(!item.new)
-                        items[i].new = 1;
-                    else
-                        items[i].new++;
-
-                    dataUrgent.push({x: item.x, y: item.y, rot: item.rotation, size: size, type: item.type, id: item.id});
+                    item.new = true;
+                    dataUrgent.push({x: item.x, y: item.y, rot: item.rotation, size: size, type: item.type, id: item.id, iVel: {x: item.iVel.x, y: item.iVel.y}});
                 }
+
+                item.iVel.x *= .9;
+                item.iVel.y *= .9;
             }
         }
 
@@ -2876,8 +2894,6 @@ function mineProduce()
         if(mineData.length > 0){
             io.sockets.connected[client.id].emit("mineProduce", mineData);
         }
-        
-    
     });
 }
 
@@ -3241,7 +3257,7 @@ function allWorldObjects(worldId){
     for (var matterArray in worldWorldObjects) {
         if (worldWorldObjects.hasOwnProperty(matterArray)) {
             worldWorldObjects[matterArray].forEach(matter => {
-                if(matter.health > 0 )
+                if(matter.health > 0 )  
                 objects.push(matter);
             });
         }
@@ -3280,6 +3296,10 @@ function allStructures(worldId){
     }
     else
     {
+
+        if(!worldIds.contains(worldId))
+            return structures;
+
         var worldWorldObjects = worldsData[worldId].worldObjects;
 
         for(var i = 0; i < worldWorldObjects.planets.length; i++){
@@ -3306,6 +3326,12 @@ function allStructures(worldId){
 
 function newPlayerData(worldId, x, y) {
 
+    var upgradeInfo = {
+        structureUpgrades: structureUpgrades,
+        playerUpgrades: playerUpgrades,
+        shopUpgrades: shopUpgrades
+    }
+
     var data = {
         existingPlayers: worldsData[worldId].clients.concat(worldsData[worldId].enemies),
         worldObjects: worldsData[worldId].worldObjects,
@@ -3313,6 +3339,7 @@ function newPlayerData(worldId, x, y) {
         gridBoxScale: gridBoxScale,
         worldId: worldId,
         master: worldsData[worldId].master,
+        upgrades: upgradeInfo,
         x: x,
         y: y
     };

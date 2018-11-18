@@ -210,14 +210,9 @@ function getImage(item){
     return img;
 }
 
-var upgradeables = [];
-var structureUpgradeables = [];
-
 var structureUpgrades;
 var playerUpgrades;
 var shopUpgrades;
-
-var upgradeableObjects = function(){ return upgradeables.concat(structureUpgradeables); }
 
 var showUpgradesPannel = false;
 var clickedUpgrade = false;
@@ -279,8 +274,8 @@ var caughtInBlackHole = false;
 var aquiredItems = {};
 var aquireItemsFadeTime = 50;
 
-var DISPLAY_NEWS = true;
-var newsDisplayed = true;
+var DISPLAY_NEWS = false;
+var newsDisplayed = DISPLAY_NEWS;
 
 var POSITION_SEND_DELAY = 6;
 var positionSendTime = 0;
@@ -314,8 +309,8 @@ var checklist = {
 checklistFadeTime = 20;
 
 function setup(){
-    socket = io.connect('http://localhost:8080');
-    //socket = io.connect('http://space-base.io/');
+    //socket = io.connect('http://localhost:8080');
+    socket = io.connect('http://space-base.io/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -328,7 +323,6 @@ function setup(){
     socket.on('destroyProjectiles', destroyNetworkedProjectiles);
     socket.on("items", onAquiredItems);
     socket.on("updateItems", updateItems);
-    socket.on("upgradeInfo", receiveUpgradeInfo)
     socket.on("upgradeSync", upgradeSync);
     socket.on("returnMsg", returnMsg);
     socket.on("serverDisconect", forceDisconnect);
@@ -355,6 +349,11 @@ function setupLocalWorld(data){
     master.id = data.master;
     gridSize = data.gridSize;
     gridBoxScale = data.gridBoxScale;
+
+    //Upgrade Info
+    structureUpgrades = data.upgrades.structureUpgrades;
+    playerUpgrades = data.upgrades.playerUpgrades;
+    shopUpgrades = data.upgrades.shopUpgrades;
 
     //Set Temporary GridPosition for spectating while not in game
     gridPos = new Vector(data.x + gridSize / -2, data.y + gridSize / -2);
@@ -425,6 +424,8 @@ function setupLocalWorld(data){
         planetObject.occupiedBy = planet.occupiedBy;
         planetObject.owner = planet.owner; 
 
+        worldObjects.planets.push(planetObject);
+
         //Add all existing structures
         for (var s = 0; s < planet.structures.length; s++) {
             const structure = planet.structures[s];
@@ -439,14 +440,10 @@ function setupLocalWorld(data){
             planetObject.addStructure(planetObject, structure.x, structure.y, structure.rotation, structure.type, structure.level, isFacade, structure.ownerId, structure.id);
         }
 
-        worldObjects.planets.push(planetObject);
         dropDict[planetObject.id] = planet.drops;
     }
 
     allWorldObjects = getAllWorldObjects();
-    allStructures = getAllStructures();
-
-    socket.emit('upgradeInfo');
 }
 function syncItem(data){
     playerItems[data.item] = data.amount;
@@ -518,19 +515,19 @@ function receiveDamageSync(data){
             delete hittableObjects[data.deadObjects[i]];
 
             for (let x = 0; x < allStructures.length; x++) {
-
                 var structure = allStructures[x]
 
                 if(structure.id == data.deadObjects[i])
                 {
                     var planetStructure = findObjectWithId(structure.planet.structures, data.deadObjects[i]);
                     structure.planet.structures.splice(planetStructure.index, 1);
-                }
-            }
 
-            for (let x = 0; x < structureUpgradeables.length; x++) {
-                if(structureUpgradeables[x] == data.deadObjects[i]){
-                    structureUpgradeables.splice(x, 1);
+                    if(selectedStructure!= null && selectedStructure.id == structure.id)
+                    {
+                        selectedStructure = null;
+                        planetShopSelection = null;
+                    }
+                        
                 }
             }
         }
@@ -569,10 +566,10 @@ function receiveDamageSync(data){
                         hittableObjects[hittableObject.id] = hittableObject;
                 }
             }
-
         }
     }
 }
+
 function damagedOwnPlanet(attackOnShield, health, id){
 
     var ownedPlanet = findObjectWithId(ownedPlanets, id.object);
@@ -583,7 +580,6 @@ function damagedOwnPlanet(attackOnShield, health, id){
     //     console.log("HALP WE ARE UNDER ATTACK. Health Left: " + health);
 
     attackedPlanets[id] = true;
-    
 }
 
 function showWorld(){
@@ -602,8 +598,6 @@ function showWorld(){
 function startLocalPlayer(data){
 
     var player = data.player;
-
-    upgradeables.push(clientId);
     friendlyObjectIds = [clientId];
 
     //Spawn client player
@@ -659,7 +653,6 @@ function respawnPlanet(){
     scale = 1;
     spaceShip = null;
     shopOpen = {shopRef: null, type: null, open: false};
-    upgradeables = [];
     planetShopSelection = null;
 
     checklist.aquiredCrown.isActive = false;
@@ -697,8 +690,6 @@ function respawnTimer(){
 function respawn(){
     scale = 1;
     spaceShip = null;
-    upgradeables = [];
-    structureUpgradeables = [];
     ownedPlanets = [];
     currentPlanet = null;
     shopOpen = {shopRef: null, type: null, open: false};
@@ -786,11 +777,6 @@ function spawnNetworkedStructure(data)
 
     allStructures = getAllStructures();
 }
-function receiveUpgradeInfo(data){
-    structureUpgrades = data.structureUpgrades;
-    playerUpgrades = data.playerUpgrades;
-    shopUpgrades = data.shopUpgrades;
-}
 function returnMsg(data){
     var compiledString = "";
 
@@ -816,7 +802,6 @@ function returnMsg(data){
 function upgradeSync(data){
 
     var allUpgradeables = allStructures.concat(allPlayers);
-
     upgradedObject = findObjectWithId(allUpgradeables, data.id).object;
 
     upgradedObject.level = data.level;
@@ -967,9 +952,21 @@ function updateItems(data){
 
         if(!localItem)
             localItem = worldItems[item.id] = new Item(item.x, item.y, item.size, item.type, item.id);
+        else{
+            localItem.coordX = item.x;
+            localItem.coordY = item.y;
+        }
         
-        localItem.coordX = item.x;
-        localItem.coordY = item.y;
+        if(item.iVel)
+        {
+            localItem.coordChangeWatcher.x = localItem.coordX;
+            localItem.coordChangeWatcher.y = localItem.coordY;
+
+            localItem.coordX -= item.iVel.x * 1.5;
+            localItem.coordY -= item.iVel.y * 1.5;
+            localItem.lerpAmount = 20;
+        }
+
         localItem.targetRotation = item.rot;
     }
 
@@ -1636,52 +1633,71 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
     }
 
     this.addStructure = function (planet, x, y, rotation, type, level, isFacade, ownerId, id){
-        var shieldRadius = this.radius + 100;
+        var addedStructure;
 
         if(!isFacade && checklist.landingPadDesc.isActive && !checklist.landingPadDesc.done)
             checklist.landingPadDesc.done = true;
 
-        if(type === "electricity"){
-            var electricity = new Electricity(planet, x, y, rotation, level, ownerId, id);
-            this.structures.push(electricity);
-        }
-        else if(type === "satellite"){
-            var satellite = new Satellite(planet, x, y, rotation, level, ownerId, id);
-            this.structures.push(satellite);
-        }
-        else if(type === "mine"){
-            var mine = new Mine(planet, x, y, rotation, level, ownerId, id);
-            this.structures.push(mine);
+        var spawnerType = type;
 
-            if(!isFacade)
-                producingMines.push(mine);
-        }
-        else if(type.substring(0,7) == "spawner"){
-            var spawner = new Spawner(planet, x, y, rotation, level, type, ownerId, id);
-            this.structures.push(spawner);
-        }
-        else if(type === "turret"){
-            this.structures.push(new Turret(planet, x, y, rotation, level, isFacade, ownerId, id));
-        }
-        else if(type === "shield"){
-            var shield = new Shield(planet, x, y, rotation, level, ownerId, id);
-            this.shield = shield;
-            this.structures.push(shield);
+        if(type.substring(0,7) == "spawner")
+            type = "spawner";
 
-            if(!isFacade)
-                friendlyObjectIds.push(id);
+        switch(type)
+        {
+            case "electricity":
+                addedStructure = new Electricity(planet, x, y, rotation, level, ownerId, id);
+            break;
+            case "satellite":
+                addedStructure = new Satellite(planet, x, y, rotation, level, ownerId, id);
+            break;
+            case "mine":
+                addedStructure = new Mine(planet, x, y, rotation, level, ownerId, id);
+
+                if(!isFacade)
+                    producingMines.push(mine);
+            break;
+            case "spawner":
+                addedStructure = new Spawner(planet, x, y, rotation, level, spawnerType, ownerId, id);
+            break;
+            case "turret":
+                addedStructure = new Turret(planet, x, y, rotation, level, isFacade, ownerId, id);
+            break;
+            case "shield":
+                addedStructure = new Shield(planet, x, y, rotation, level, ownerId, id);
+                this.shield = addedStructure;
+
+                if(!isFacade)
+                    friendlyObjectIds.push(id);
+            break;
+            case "landingPad":
+                addedStructure = new LandingPad(planet, this.radius - 100, id);
+                this.landingPad = addedStructure
+                this.owner = ownerId;
+                
+                if(!isFacade){
+                    friendlyObjectIds.push(planet.id);
+                    ownedPlanets.push(planet);
+                }
+            break;
         }
-        else if(type === "landingPad"){
-            var landingPad = new LandingPad(planet, this.radius - 100, id);
-            this.landingPad = landingPad
-            this.structures.push(landingPad);
-            this.owner = ownerId;
-            
-            if(!isFacade){
-                friendlyObjectIds.push(planet.id);
-                ownedPlanets.push(planet);
+
+        if(addedStructure)
+        {
+            var data = {
+                upgrade: structureUpgrades[type][level],
+                id: id,
+                costs: {},
+                playerId: ownerId,
+                level: level
             }
+
+            this.structures.push(addedStructure);
+            allStructures = getAllStructures();
+            upgradeSync(data);
         }
+            
+
     }
 }
 
@@ -1701,6 +1717,12 @@ function Shield(planet, x, y, rotation, level, ownerId, id){
     this.coordX = x;
     this.coordY = y;
 
+    this.lastPowered = null;
+
+
+    this.health;
+    this.maxHealth;
+
     var healthBarWidth = 300;
 
     var addedShieldRadius = 100;
@@ -1711,6 +1733,12 @@ function Shield(planet, x, y, rotation, level, ownerId, id){
         if(context != null)
             ctx = context;    
 
+        if(this.lastPowered !== planet.powered)
+        {
+            this.lastPowered = planet.powered;
+            socket.emit("shield", {on: planet.powered, id: this.id, worldId: worldId});
+        }
+        
         //Draw Shield
         if(planet.powered)
         {
@@ -1727,13 +1755,15 @@ function Shield(planet, x, y, rotation, level, ownerId, id){
             ctx.fillStyle = this.color;
             ctx.fill();
             ctx.globalAlpha = 1;
+
+            if(this.health < this.maxHealth)
+                displayBar(this.planet.x - healthBarWidth / 2, this.planet.y - this.planet.radius - 150, healthBarWidth, 20, this.health / this.maxHealth, this.color);
         }
 
         //Draw Generators
         var ctx = c;
         if(context != null)
             ctx = context;    
-
 
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -1746,10 +1776,6 @@ function Shield(planet, x, y, rotation, level, ownerId, id){
         // ctx.rotate((this.rotation + 90) / -57.2958);
         // ctx.drawImage(getImage('shieldGenerator' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
         // ctx.restore();
-
-        var hittableObj = hittableObjects[this.id];
-        if(hittableObj)
-            displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, 300, 20, hittableObj.health / hittableObj.maxHealth, this.color);
     }
     this.update = function(){
 
@@ -2188,7 +2214,7 @@ function Item(coordX, coordY, size, type, id) {
         var lastCoords = new Vector(this.lastCoordX, this.lastCoordY);
         this.displayPos = coords;
 
-        if(this.coordChangeWatcher.x != coords.x && this.coordChangeWatcher.y != coords.y)
+        if(this.coordChangeWatcher.x != coords.x || this.coordChangeWatcher.y != coords.y)
         {
             this.lastCoordX = this.coordChangeWatcher.x;
             this.lastCoordY = this.coordChangeWatcher.y;
@@ -2737,7 +2763,7 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
         var lastCoords = new Vector(this.lastCoordX, this.lastCoordY);
         this.displayPos = coords;
 
-        if(this.coordChangeWatcher.x != coords.x && this.coordChangeWatcher.y != coords.y)
+        if(this.coordChangeWatcher.x != coords.x || this.coordChangeWatcher.y != coords.y)
         {
             this.lastCoordX = this.coordChangeWatcher.x;
             this.lastCoordY = this.coordChangeWatcher.y;
@@ -3003,7 +3029,6 @@ function animate() {
         }
         else if(!shopOpen.open) {
             targetScale = 50 / spaceShip.radius;
-            structureUpgradeables = [];
 
             if(mouse.clicked || boost){
 
@@ -3110,7 +3135,9 @@ function animate() {
         gridPos.y -= spaceshipVelocity.y;
 
         for(var i = 0; i < allStructures.length; i++){
-            allStructures[i].health = healthDict[allStructures[i].id];
+
+            if(allStructures[i].health != healthDict[allStructures[i].id])
+                allStructures[i].health = healthDict[allStructures[i].id];
         }
 
         if(!currentPlanet)
@@ -3540,7 +3567,7 @@ function animate() {
     
             c.globalAlpha = .75;
             c.fillStyle = spaceShip.oxygenDispBarBGColor;
-            c.fillRect(windowHeight / 34, windowHeight - oxygenSize * .75 - windowHeight / 24, oxygenSize / 7, oxygenSize * .75);
+            c.fillRect(windowHeight / 34, windowHeight - oxygenSize * .75 - windowHeight / 23, oxygenSize / 7, oxygenSize * .75);
     
             c.globalAlpha = .75;
             c.fillStyle =  "#a3e1ff";
@@ -3962,9 +3989,11 @@ function animate() {
                     c.textAlign = "center";
 
                     var name = $('p#' + type).text();
+                    
+                    if(type == "spawner")
+                        name = $('p#' + planetShopSelection.spawnerType).text();
 
                     var uppercasedType = name.charAt(0).toUpperCase() + name.slice(1);
-
                     c.fillText(uppercasedType, headerX + pannelWidth / 2, yVal - padding);
 
                     //Background
@@ -3985,7 +4014,7 @@ function animate() {
                         if(spaceShip.level > 0)
                         {
                             upgrading = true;
-                            fullyUpgraded = upgrades[level + 1] == null
+                            fullyUpgraded = upgrades[level + 1] == null;
                         }
                         else{
                             level = 1;
@@ -3993,7 +4022,7 @@ function animate() {
                     }
 
                     if(upgrading)
-                        fullyUpgraded = upgrades[level + 1] == null
+                        fullyUpgraded = upgrades[level + 1] == null;
                     
                     var imageLevel = level;
 
@@ -4092,6 +4121,8 @@ function animate() {
                         
                         var costSize = Math.sqrt(canvas.height * canvas.width) / 45;
     
+                        var numberOfCosts = 0;
+
                         if(upgradeCosts){
                             for (var cost in upgradeCosts) {
                                 if (upgradeCosts.hasOwnProperty(cost)) {
@@ -4107,6 +4138,14 @@ function animate() {
                                     c.fillText(upgradeCosts[cost], costX + costSize + padding, costY + costSize / 1.3);
                     
                                     costY += costSize + padding;
+                                    numberOfCosts++;
+
+                                    if(numberOfCosts == 3)
+                                    {
+                                        costY = startCostY;
+                                        costX += costSize + padding * 6;
+                                    }
+                                        
                                 }
                             }
                         }
