@@ -159,6 +159,8 @@ var allWorldObjects = [];
 var allStructures = [];
 var allPlayers = [];
 
+var UPDATE_RATE = 20;
+
 var BLCAKHOLE_GRAVITY = .01;
 var BLCAKHOLE_GRAVITY_EXPONENT = 2.5;
 var MAX_GRAVITATIONAL_DISTACNE = 600;
@@ -188,7 +190,7 @@ var dropDict = {};
 var playerItems = {};
 
 var images = {};
-var imageArray = ["NF", "hive", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "circuit", "charge", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "enemyscout0", "enemyscout1", "enemydefender0", "enemydefender1", "enemyguard0", "enemyguard1", "spawnerScoutGray", "spawnerScout0", "spawnerScout1", "spawnerDefender0", "spawnerDefender1", "spawnerDefenderGray", "spawnerGuard0", "spawnerGuard1", "spawnerGuardGray", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "mineGray", "S", "satellite0", "satellite1", "satellite2", "satellite3", "satelliteGray", "shieldGenerator0", "shieldGenerator1", "shieldGenerator2", "shieldGenerator3", "shieldGenerator4", "shieldGenerator5", "shieldGenerator6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "spaceship0", "spaceship1", "spaceship2", "spaceship3", "spaceship4", "spaceship5", "spaceship6", "spaceship7", "spaceship8", "spaceship9", "spaceship10", "spaceship11", "spaceship12", "spaceship13", "spaceship14", "spaceship15", "spaceshipGray", "stardust", "startGameButton", "spaceShipGray", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "turretGray", "water", "warningSign"];
+var imageArray = ["NF", "hive", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "circuit", "charge", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "enemyscout0", "enemyscout1", "enemydefender0", "enemydefender1", "enemyguard0", "enemyguard1", "spawnerScoutGray", "spawnerScout0", "spawnerScout1", "spawnerDefender0", "spawnerDefender1", "spawnerDefenderGray", "spawnerGuard0", "spawnerGuard1", "spawnerGuardGray", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "mineGray", "S", "satellite0", "satellite1", "satellite2", "satellite3", "satelliteGray", "shieldGenerator0", "shieldGenerator1", "shieldGenerator2", "shieldGenerator3", "shieldGenerator4", "shieldGenerator5", "shieldGenerator6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "spaceShip0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "spaceShip15", "spaceShipGray", "stardust", "startGameButton", "spaceShipGray", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "turretGray", "water", "warningSign"];
 
 function getImage(item){
     for (var image in images) {
@@ -286,8 +288,14 @@ var lastSelectedStructue = null;
 var boughtStructure = null;
 var electricityTimer = {time: 0, duration: 50, on: false};
 
+var boostLength;
+var boostRechargeLegnth;
+
 var structureSpawnPosition = null;
 var structureSpawnRotation = null;
+
+var miniMapSize;
+var minimapPadding;
 
 var master = {id: null, obj: null};
 
@@ -309,8 +317,8 @@ var checklist = {
 checklistFadeTime = 20;
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
-    socket = io.connect('http://space-base.io/');
+    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://space-base.io/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -592,6 +600,8 @@ function showWorld(){
         location.reload();
     }
     
+
+    setInterval(update, UPDATE_RATE);
     animate();
 }
 
@@ -1374,13 +1384,10 @@ $(document).keypress(function(e){
 
         } 
     }
-
-
+    
     if(e.keyCode == 59) // ;
         statsView = !statsView; 
-    
-
-})
+});
 $(document).on('keydown', function(e){
     
     if(spaceShip){
@@ -2928,12 +2935,13 @@ function shortAngleDist(a0,a1) {
     return 2*da % max - da;
 }
 
-//------------------------------------------------------- ANIMATE ------------------------------------------------------
 
 var time = 0;
 var isScaling = true;
 
-function animate() {
+
+function update() {
+
     canvas.width = innerWidth;
     canvas.height = innerHeight;
 
@@ -3104,9 +3112,6 @@ function animate() {
                     }
                 }   
             }
-                
-            
-            
         });
 
         var spaceShipCoords = screenPosToCords(centerX, centerY);
@@ -3136,8 +3141,124 @@ function animate() {
         gridPos.x -= spaceshipVelocity.x;
         gridPos.y -= spaceshipVelocity.y;
 
-        for(var i = 0; i < allStructures.length; i++){
 
+        if(positionSendTime >= POSITION_SEND_DELAY)
+        {
+            positionSendTime = 0;
+            var playerPos = new Vector(-gridPos.x, -gridPos.y);
+            sendPlayerPosition(playerPos, spaceShip.rotation);
+        }
+        else{
+            positionSendTime++;
+        }
+
+        // --------------------------------- Properties Overview    
+        if(propertiesTimer.matter && propertiesTimer.time >= propertiesHoldTime && propertiesTimer.fill < 1)
+            propertiesTimer.fill += .05;
+
+        // --------------------------------- In Sun
+        
+        var isInSun = false;
+
+        worldObjects.spaceMatter.forEach(spaceMatter => {
+            
+            if(spaceMatter.type == "sun"){
+
+                var pos = cordsToScreenPos(spaceMatter.coordX, spaceMatter.coordY);
+
+                if(spaceShip){
+                    var sun = {x: pos.x, y: pos.y, radius: spaceMatter.radius} 
+                    var player = {pos: {x: centerX, y: centerY}, radius: spaceShip.radius} 
+
+                    if(isCollidingCircles(player, sun)){
+                        isInSun = true;
+                        sunTint.color = spaceMatter.color;
+                    }
+                }
+
+            }
+        });    
+            
+        if(isInSun){
+            if(sunTint.amount < .75)
+                sunTint.amount += .01;
+        }
+        else{
+            if(sunTint.amount > 0)
+                sunTint.amount -= .02;
+        }
+
+        // --------------------------------- Boost & Cloak
+
+        if(cloaked && cloakTime < spaceShip.shopUpgrades.cloakTime.value)
+            cloakTime += 16;
+        else if(cloakCoolDownTime < cloakCoolDown)
+            cloakCoolDownTime++;
+
+        boostLength = spaceShip.shopUpgrades.boost.value;
+        boostRechargeLegnth = spaceShip.shopUpgrades.boost.value * 6;
+
+        if(boostReady && boostAmount <= boostLength && boost)
+        {
+            if(boostAmount > 0)
+                boostAmount--;
+            else{
+                boostReady = false;
+                boost = false;
+                boostAmount = 0;
+            }
+        }
+        else if (boostRechargeLegnth > 0 && !boostReady){
+            if(boostAmount < boostRechargeLegnth)
+                boostAmount++;
+            else{
+                boostAmount = boostLength;
+                boostReady = true;
+            }
+        }
+
+        // --------------------------------- Other
+
+        for (var changed in colorChangedHitObjects) {
+            if (colorChangedHitObjects.hasOwnProperty(changed)) {
+               
+                var worldObject = findObjectWithId(allWorldObjects, changed);
+    
+                if(worldObject)
+                {
+                    if(colorChangedHitObjects[changed].time > 0)
+                    {
+                        worldObject.object.color = shadeColorHex(colorChangedHitObjects[changed].color, colorChangedHitObjects[changed].time);
+                        colorChangedHitObjects[changed].time--;
+                    }
+                    else
+                    {
+                        worldObject.object.color = colorChangedHitObjects[changed].color;
+                        delete colorChangedHitObjects[changed];
+                    }
+                }
+            }
+        }
+
+        if(playerDisplayMessage != ""){
+            if(playerMessageTimer > 0)
+                playerMessageTimer -= 1;
+            else if(playerMessageAlpha > 0)
+                playerMessageAlpha -= playerMessageFadeSpeed / 100;
+            else
+                playerDisplayMessage = "";
+    
+            if(playerMessageAlpha < 0)
+                playerMessageAlpha= 0;
+        }
+
+        if(shootCooldownTimer < shootCooldownTime)
+            shootCooldownTimer++;
+
+        if(playerReloadTimer > 0)
+            playerReloadTimer -= 1;
+
+        for(var i = 0; i < allStructures.length; i++){
             if(allStructures[i].health != healthDict[allStructures[i].id])
                 allStructures[i].health = healthDict[allStructures[i].id];
         }
@@ -3172,7 +3293,15 @@ function animate() {
         }
     }
 
-    //Draw -----------------------------------------------------------------------------------------------------------
+    miniMapSize = windowHeight / 5;
+    minimapPadding = windowHeight / 60;
+
+}
+
+//------------------------------------------------------- ANIMATE ------------------------------------------------------
+
+function animate() { 
+
     for (var can in canvases) {
         if (canvases.hasOwnProperty(can)) {
             canvases[can].getContext('2d').scale(scale, scale);
@@ -3181,124 +3310,36 @@ function animate() {
     
     drawGrid(gridPos.x + centerX, gridPos.y + centerY, gridSize, gridSize, gridBoxScale);
 
-    allWorldObjects.forEach(function(matter){
-        var pos = cordsToScreenPos(matter.coordX, matter.coordY);
-        var size = matter.radius + 50;
-
-        if(matter.type == "sun"){
-            size += 500;
-        }
-
-        if(matter.shield)
-        {
-            size += matter.shield.radius;
-        }
-
-        var isClosestAvaiblePlanet = (closestAvailablePlanet != null && (matter.id  == closestAvailablePlanet.id));
-        var isOwnedPlanet = findObjectWithId(ownedPlanets, matter.id)
-
-        //Out of screen Right                           || Left             || Up               || Down
-        if(isOnScreen(pos.x, pos.y, size) || isClosestAvaiblePlanet || isOwnedPlanet != null){
-            matter.health = healthDict[matter.id];
-            matter.update();
-
-            var shop = findObjectWithId(worldObjects.shops, matter.id);
-
-            if(!shop)
-            {
-                var distanceToMouse = Math.sqrt(Math.pow(pos.x - mouse.x, 2) + Math.pow(pos.y - mouse.y, 2));
-
-                if(distanceToMouse <= matter.radius)
-                {
-                    if(propertiesTimer[matter.id])
-                    {
-                        if(propertiesTimer[matter.id].time < propertiesHoldTime)
-                        {
-                            propertiesTimer[matter.id].time++;
-                        }
-                    }
-                    else
-                        propertiesTimer[matter.id] = {time: 0, fill: 0};
+    updateAllMatter();
     
-                    
-                }
-                else{
-                    propertiesTimer[matter.id] = {time: 0, fill: 0};
-                }
-            }
-        }
-        else{
-            propertiesTimer[matter.id] = {time: 0, fill: 0};
-        }
-
-    });
-
     otherPlayers.forEach(function(player){
         player.health = healthDict[player.id];
         player.update();
     });
 
-    if(spaceShip)
+    if(statsView)  // Draw circles to show hitboxes && display coords
     {
-        for (var timer in propertiesTimer) {
-            if (propertiesTimer.hasOwnProperty(timer)) {
+        c.font = "20px Arial";
+        c.fillText("x: " + Math.round(spaceShip.coordX) + " y: " + Math.round(spaceShip.coordY), 5, canvas.height - 5);
+
+        for (var id in hittableObjects) {
+            if (hittableObjects.hasOwnProperty(id)) {
     
-                if(propertiesTimer[clientId] && timer != clientId && propertiesTimer[clientId].time >= propertiesHoldTime)
-                    continue;
+                var obj = hittableObjects[id];
     
-                if(propertiesTimer[timer].time >= propertiesHoldTime){
-                    if(propertiesTimer[timer].fill < 1)
-                    {
-                        propertiesTimer[timer].fill += .05;
+                if(obj.radius && obj.active){
+                    var pos = cordsToScreenPos(obj.x, obj.y);
+    
+                    if(isOnScreen(pos.x, pos.y, size) || isClosestAvaiblePlanet || isOwnedPlanet != null){
+                        c.beginPath();
+                        c.arc(pos.x, pos.y, obj.radius, 0, Math.PI * 2, false);
+                        c.lineWidth = 2;
+                        c.strokeStyle = "#f44242";
+                        c.stroke();
                     }
-    
-                    var matter = findObjectWithId(allWorldObjects.concat(allPlayers), timer);
-    
-                    if(!matter)
-                        delete propertiesTimer[timer];
-                    else{
-                        propertiesOverview(matter.object, propertiesTimer[timer].fill);
-                    }
-                    
-                }
-    
-    
-            }
-        }
-    }
-
-    for (var id in hittableObjects) {
-        if (hittableObjects.hasOwnProperty(id)) {
-
-            var obj = hittableObjects[id];
-
-            if(obj.radius && statsView && obj.active){
-                var pos = cordsToScreenPos(obj.x, obj.y);
-
-                //Out of screen Right                               || Left             || Up               || Down
-                if(!(pos.x - size > (windowWidth + centerX) / scale || pos.x + size < 0 || pos.y + size < 0 || pos.y - size > (windowHeight + centerY) / scale) || isClosestAvaiblePlanet || isOwnedPlanet != null){
-                    c.beginPath();
-                    c.arc(pos.x, pos.y, obj.radius, 0, Math.PI * 2, false);
-                    c.lineWidth = 2;
-                    c.strokeStyle = "#f44242";
-                    c.stroke();
                 }
             }
         }
-    }
-
-    if(spaceShip){
-
-        if(positionSendTime >= POSITION_SEND_DELAY)
-        {
-            positionSendTime = 0;
-            var playerPos = new Vector(-gridPos.x, -gridPos.y);
-            sendPlayerPosition(playerPos, spaceShip.rotation);
-        }
-        else{
-            positionSendTime++;
-        }
-        
     }
 
     for(var i = projectiles.length - 1; i >= 0; i--){
@@ -3321,115 +3362,8 @@ function animate() {
         proj.update();
     }
 
-
     if(spaceShip && ownedPlanets.length > 0){
-
-        //Draw arrows pointing to owned planets
-        for (let i = 0; i < ownedPlanets.length; i++) {
-            
-            const planet = ownedPlanets[i];
-            var size = planet.radius;
-
-            if(planet.shield)
-                size = planet.shield.radius;
-
-            //Out of screen Right                                           || Left                || Up                  || Down
-            if((planet.x + centerX - size > (windowWidth + centerX) / scale || planet.x + size < 0 || planet.y + size < 0 || planet.y + centerY - size > (windowHeight + centerY) / scale)){
-
-                var padding = 20 / scale;
-                var screenWidth = windowWidth / scale - 2 * padding;
-                var screenHeight = windowHeight / scale - 2 * padding;
-
-                var x = planet.x;
-                var y = planet.y;
-
-                var arrowPos = {x: 0, y: 0};
-
-                var slopeY = planet.y - screenHeight / 2;
-                var slopeX = planet.x - screenWidth / 2;
-                var slope = Math.abs(slopeY / slopeX);
-                var screenRatio = Math.abs(screenHeight / screenWidth);
-
-                var xModifier = 1;
-                var yModifier = 1;
-
-                if(slopeX < 0)
-                    xModifier = 0;
-
-                if(slopeY < 0)
-                    yModifier = 0;
-
-                if(slope == screenRatio) //Corner
-                {
-                    arrowPos.x = screenWidth * xModifier;
-                    arrowPos.y = screenHeight * yModifier;   
-                }
-                else if(slope < screenRatio) //Top
-                {
-                    if(slopeX < 0)
-                    {
-                        arrowPos.x = padding;
-                        arrowPos.y = (screenWidth * slopeY / slopeX) / -2 + (screenHeight / 2) + (padding);
-                        
-                    }
-                    else{
-                        arrowPos.x = screenWidth + padding;
-                        arrowPos.y = (screenWidth * slopeY / slopeX) / 2 + (screenHeight / 2) + (padding);
-                    }
-
-                }
-                else if(slope > screenRatio) //Top / Bottom
-                {
-                    if(slopeY < 0)
-                    {
-                        arrowPos.x = screenHeight * slopeX / slopeY / -2 + screenWidth / 2;
-                        arrowPos.y = padding;
-                    }
-                    else{
-                        arrowPos.x = screenHeight *  slopeX / slopeY / 2 + screenWidth / 2 
-                        arrowPos.y = screenHeight + padding;
-                    }
-
-                    arrowPos.x += padding;
-                }
-
-                var arrowRotation = Math.atan2(centerY - planet.y, centerX - planet.x) - (45 * Math.PI / 180);
-                var arrowSize = 20 / scale;
-
-                var arrowColor = "#ffffff";
-
-                if(attackedPlanets[planet.id]){
-                    if(!flashingPlanetArrows[planet.id]){
-                        flashingPlanetArrows[planet.id] = {times: 0, isFlashed: true, time: 0};
-                    }
-                    else{
-                        if(flashingPlanetArrows[planet.id].times > planetArrowFlashTimes)
-                        {
-                            attackedPlanets[planet.id] = false;
-                            delete flashingPlanetArrows[planet.id];
-                        }
-                        else{
-                            if(flashingPlanetArrows[planet.id].time < planetArrowFlashInterval)
-                                flashingPlanetArrows[planet.id].time++;
-                            else
-                            {
-                                flashingPlanetArrows[planet.id].time = 0;
-                                flashingPlanetArrows[planet.id].isFlashed = !flashingPlanetArrows[planet.id].isFlashed;
-                                flashingPlanetArrows[planet.id].times++;
-                            }
-                        }       
-                    }
-                }
-                
-                if(flashingPlanetArrows[planet.id] && flashingPlanetArrows[planet.id].isFlashed)
-                    arrowColor = planet.color;
-                else
-                    arrowColor = "#ffffff";
-
-                drawArrow(arrowPos.x, arrowPos.y, arrowRotation, arrowColor, arrowSize);
-            }
-        }
-
+        drawArrowsToOwnedPlanets();
     }
 
     for (var item in worldItems) {
@@ -3438,35 +3372,11 @@ function animate() {
         }
     }
 
-    var isInSun = false;
-    
     c.scale(1 / scale, 1 / scale);
 
     if(spaceShip){
 
-        if(currentPlanet){
-            if(boughtStructure)
-            {
-                c.font = windowHeight / 17 + "px Arial";
-                c.fillStyle = "white";
-                c.globalAlpha = .2;
-                c.textAlign="center"; 
-                c.fillText($('p#placeStructue').text() + boughtStructure, windowWidth / 2, (windowHeight - 80));
-                c.textAlign="left"; 
-                c.globalAlpha = 1;
-            }
-            else{
-                c.font = windowHeight / 17 + "px Arial";
-                c.fillStyle = "white";
-                c.globalAlpha = .2;
-                c.textAlign="center"; 
-                c.fillText($('p#takeOff').text(), windowWidth / 2, (windowHeight - 80));
-                c.textAlign="left"; 
-                c.globalAlpha = 1;
-            }
-           
-        }
-        else if(!currentPlanet && closestAvailablePlanet){
+        if(!currentPlanet && closestAvailablePlanet){
 
             var shopInRange = false;
 
@@ -3499,34 +3409,6 @@ function animate() {
         }
     }
 
-    worldObjects.spaceMatter.forEach(spaceMatter => {
-        
-        if(spaceMatter.type == "sun"){
-
-            var pos = cordsToScreenPos(spaceMatter.coordX, spaceMatter.coordY);
-
-            if(spaceShip){
-                var sun = {x: pos.x, y: pos.y, radius: spaceMatter.radius} 
-                var player = {pos: {x: centerX, y: centerY}, radius: spaceShip.radius} 
-
-                if(isCollidingCircles(player, sun)){
-                    isInSun = true;
-                    sunTint.color = spaceMatter.color;
-                }
-            }
-
-        }
-    });    
-        
-    if(isInSun){
-        if(sunTint.amount < .75)
-            sunTint.amount += .01;
-    }
-    else{
-        if(sunTint.amount > 0)
-            sunTint.amount -= .02;
-    }
-
     if(sunTint.amount > 0){
         c.globalAlpha = sunTint.amount;
         c.fillStyle = sunTint.color;
@@ -3547,65 +3429,8 @@ function animate() {
 
     //Display Stats
     if(spaceShip){
-
-        var checkItemY = windowHeight * .7;
-        var checkPadding = windowHeight * .02;
-
-        var width = windowHeight * .4;
-        var height = width * .25;
-
-        var yPositions = {};
-        var i = 0;
-        
         if(!currentPlanet)
-        {
-            var oxyWidth = windowWidth / 3;
-            var oxyHeight = windowHeight / 20;
-    
-            oxygenSize = windowHeight / 3.5;
-    
-            var percentOxygenRemaining = spaceShip.oxygenRemaining / spaceShip.oxygen;
-            var oxyHeight = oxygenSize * .75 * percentOxygenRemaining;
-    
-            c.globalAlpha = .75;
-            c.fillStyle = spaceShip.oxygenDispBarBGColor;
-            c.fillRect(windowHeight / 34, windowHeight - oxygenSize * .75 - windowHeight / 23, oxygenSize / 7, oxygenSize * .75);
-    
-            c.globalAlpha = .75;
-            c.fillStyle =  "#a3e1ff";
-            c.fillRect(windowHeight / 34, windowHeight - oxyHeight - windowHeight / 24, oxygenSize / 7, oxyHeight);
-    
-            c.globalAlpha = 1;
-            
-            c.drawImage(getImage("oxygenTank"), -oxygenSize / 3.5 - windowHeight / 80, windowHeight - oxygenSize - windowHeight / 50, oxygenSize, oxygenSize)
-
-            c.font = windowHeight / 30 + "px Helvetica";
-            c.fillStyle = "white";
-            c.textAlign = "center";
-            c.fillText("O²", oxygenSize / 5.2, windowHeight - oxygenSize - windowHeight / 30);
-
-            if(percentOxygenRemaining <= 0)
-            {
-                var warningWidth = (windowHeight + windowWidth) / 10;
-                var warningHeight = warningWidth * 11/21;
-        
-                c.globalAlpha = .8;
-                c.drawImage(getImage("warningSign"), windowWidth / 2 - warningWidth / 2, windowHeight / 2 - warningHeight /2, warningWidth, warningHeight);
-                var fontsize = warningHeight / 6;
-        
-                c.font = fontsize + "px Helvetica";
-                c.fillStyle = "white";
-        
-                wrapText(c, $('p#oxygenWarning').text(), windowWidth / 2, windowHeight / 2, warningWidth * .85, fontsize);
-            }
-            c.textAlign = "left";
-            
-        }
-
-        function getCardYPos(index)
-        {
-            return checkItemY + (checkPadding + height) * index;
-        }
+            drawOxygen();
 
         if(currentPlanet)
         {
@@ -3618,91 +3443,9 @@ function animate() {
             checklist.fly.isActive = true;
         }
 
-        for (var check in checklist) {
-
-            c.globalAlpha = 1;
-
-            if (checklist.hasOwnProperty(check)) {
-
-                var checkItem = checklist[check];
-
-                if(checkItem.isActive)
-                {
-
-                    if(!checkItem.yPos)
-                        checkItem.yPos = getCardYPos(i);
-                    else if(checkItem.yPos != getCardYPos(i)){
-                        if(checkItem.lerp == undefined)
-                            checkItem.lerp = 0;
-                        else if(checkItem.lerp < 1){
-                            checkItem.yPos = checkItem.yPos + (getCardYPos(i) - checkItem.yPos) * checkItem.lerp;
-                            checkItem.lerp += .01;
-                        }
-                        else if(checkItem.lerp >= 1) { 
-                            checkItem.yPos = getCardYPos(i);
-                            checkItem.lerp = 0;
-                        }
-                    }
-
-                    if(!checkItem.lerp)
-                        checkItem.lerp = 0;
-
-                    if(!checkItem.alpha)
-                        checkItem.alpha = 1 / (i + 1);
-                    else if(checkItem.alpha != 1 / (i + 1))
-                    {
-                        checkItem.alpha = checkItem.alpha + (1 / (i + 1) - checkItem.alpha) * checkItem.lerp;
-                    }
-
-                    if(!checkItem.size)
-                        checkItem.size = 1 / (i * .2 + 1);
-                    else if(checkItem.size != 1 / (i + 1))
-                    {
-                        checkItem.size = checkItem.size + (1 / (i * .2 + 1) - checkItem.size) * checkItem.lerp;
-                    }
-
-                    //var size = 1 / (i * .2 + 1) * 1 - (getCardYPos(i) - checkItem.yPos) * checkItem.lerp / 10;
-
-                    var fontsize = width / 20;
-
-                    if(checkItem.done)
-                    {
-                        if(!checkItem.fade)
-                            checkItem.fade = 0;
-
-                        if(checkItem.fade < checklistFadeTime)
-                        {
-                            c.globalAlpha = (checklistFadeTime - checkItem.fade) / checklistFadeTime * checkItem.alpha;
-                            c.drawImage(getImage("checklist_checked"), windowWidth / 2 - width * checkItem.size / 2, checkItem.yPos, width * checkItem.size, height * checkItem.size);
-                            checkItem.fade++;
-                        }
-                        else
-                            checkItem.isActive = false
-                    }
-                    else{
-                        c.globalAlpha = checkItem.alpha;
-                        c.drawImage(getImage("checklist"), windowWidth / 2 - width * checkItem.size / 2, checkItem.yPos , width * checkItem.size, height * checkItem.size);
-                    }
-
-
-                    if(checkItem.isActive)
-                    {
-                        c.fillStyle = "white";
-                        c.font = fontsize + "px Helvetica";
-        
-                        wrapText(c, $('p#' + check).text(), windowWidth / 2 - width * checkItem.size / 4, checkItem.yPos + fontsize * 2, width * .7, fontsize);
-                    }
-                
-
-                    if(!checkItem.done)
-                        i++;
-                }
-            }
-        }
-        c.globalAlpha = 1;
+        drawChecklist();
 
         if(spaceShip.health > 0){
-
             var xPadding = 10;
             var yPadding = 10;
 
@@ -3714,16 +3457,6 @@ function animate() {
         }
     
         if(playerDisplayMessage != ""){
-            if(playerMessageTimer > 0)
-                playerMessageTimer -= 1;
-            else if(playerMessageAlpha > 0)
-                playerMessageAlpha -= playerMessageFadeSpeed / 100;
-            else
-                playerDisplayMessage = "";
-    
-            if(playerMessageAlpha < 0)
-                playerMessageAlpha= 0;
-    
             c.globalAlpha = playerMessageAlpha;
             c.font = "50px Helvetica";
             c.fillStyle = "White";
@@ -3766,551 +3499,54 @@ function animate() {
                 }
             }
             else
+                drawPlanetShopPanel();
+
+            if(boughtStructure)
             {
-                var hoveredStructure = null;
-
-                //Highlight Seleted Structures ----------------------------------------------------
-
-                currentPlanet.structures.forEach(structure => {
-                    
-                    var distance = Math.sqrt(Math.pow(mouse.x - structure.x, 2) + Math.pow(mouse.y - structure.y, 2));
-                    
-                    if(distance < structure.size / 2)
-                        hoveredStructure = structure;
-                });
-
-                var selectedNew = false;
-
-                var slCtx = FindCanvas("selectedObj", "destination-atop", true);            //Selected structure canvas context
-                var hlCtx = FindCanvas("highlightedObjCanvas", "destination-atop", true);   //Highlighted structure canvas context
-
-                if(hoveredStructure)
-                {   
-                    if(hoveredStructure != selectedStructure)
-                    {
-
-                        if(mouse.clickDown)
-                        {
-                            selectedStructure = hoveredStructure;
-                            planetShopSelection = selectedStructure;
-                            hlCtx.fillStyle = "#5beeff";
-        
-                            selectedNew = true;
-                        }
-        
-                        hlCtx.fillStyle = "#ffffff";
-                        
-                        hlCtx.globalAlpha = .5;
-        
-                        hlCtx.save();
-                        hlCtx.translate(hoveredStructure.x, hoveredStructure.y);
-                        hlCtx.rotate((hoveredStructure.rotation - 90) / -57.2958);
-                        hlCtx.fillRect(-hoveredStructure.size / 2, -hoveredStructure.size / 2, hoveredStructure.size, hoveredStructure.size);
-                        hlCtx.restore();
-        
-                        hlCtx.globalAlpha = 1;
-                        hoveredStructure.draw(hlCtx);
-                    }
-                    else if(mouse.clickDown)
-                    {
-                        selectedStructure = null;
-                        planetShopSelection = null;
-                    }
-                }
-                else{
-                    lastSelectedStructue = null;
-                }
-                if(selectedStructure && !selectedNew){
-                    
-                    slCtx.fillStyle = "#5beeff";
-                    slCtx.globalAlpha = .5;
-
-                    slCtx.save();
-                    slCtx.translate(selectedStructure.x, selectedStructure.y);
-                    slCtx.rotate((selectedStructure.rotation - 90) / -57.2958);
-                    slCtx.fillRect(-selectedStructure.size / 2, -selectedStructure.size / 2, selectedStructure.size, selectedStructure.size);
-                    slCtx.restore();
-
-                    slCtx.globalAlpha = 1;
-                    selectedStructure.draw(slCtx);
-                }
-
-                //Draw planet structure shop ------------------------------------------------------------
-                var turretButtonOffset = 0;
-
-                var numYButtons = 4;
-                var numXButtons = 2;
-
-                var buttonSizes = Math.sqrt(canvas.height * canvas.width) / 18;
-                var padding = Math.sqrt(canvas.height * canvas.width) / 100;
-
-                var selectedStructureImageSize = Math.sqrt(canvas.height * canvas.width) / 9;
-
-                var yVal = canvas.height - (buttonSizes + padding) * numYButtons - padding * 2;
-                var xVal = padding;
-
-                var buttonTypes = ["spaceShip", "landingPad", "mine", "turret", "shield", "electricity", "satellite"];
-
-                if(currentPlanet.id == "hive")
-                {
-                    numYButtons = 4;
-                    numXButtons = 1;
-                    buttonTypes = ["spawnerScout", "spawnerDefender", "spawnerGuard"];
-                }
-
-                //Box Label -----------------------------
-                var backgroundWidth = (buttonSizes + padding) * numXButtons + padding;
-                var backgroundHeight = (buttonSizes + padding) * numYButtons + padding;
-
-                var cornerRadius = Math.sqrt(canvas.height * canvas.width) / 70;
-                var fontsize = Math.sqrt(canvas.height * canvas.width) / 45 * Math.sqrt(numXButtons) / Math.sqrt(3);
-                
-                var yTextSize = fontsize - padding / Math.sqrt(canvas.height * canvas.width);
-
+                c.font = windowHeight / 17 + "px Arial";
+                c.fillStyle = "white";
                 c.globalAlpha = .2;
-                c.fillStyle = "#ffffff";
-
-                c.beginPath();
-                c.moveTo(xVal + padding, yVal);
-                c.lineTo(xVal + padding, yVal - yTextSize + cornerRadius);
-                c.arc(xVal + padding + cornerRadius, yVal - yTextSize, cornerRadius, -180 * Math.PI / 180, -90 * Math.PI / 180);
-                c.lineTo(xVal + backgroundWidth - padding - cornerRadius, yVal - yTextSize - cornerRadius);
-                c.arc(xVal + backgroundWidth - padding - cornerRadius, yVal - yTextSize, cornerRadius, -90 * Math.PI / 180, 0);
-                c.lineTo(xVal + backgroundWidth - padding, yVal);
-                c.fill();
-
+                c.textAlign="center"; 
+                c.fillText($('p#placeStructue').text() + boughtStructure, windowWidth / 2, (windowHeight - 80));
+                c.textAlign="left"; 
                 c.globalAlpha = 1;
-                c.font = fontsize + "px Helvetica";
-                c.textAlign = "center";
-                c.fillText($('p#structures').text(), backgroundWidth / 2 + padding, yVal - padding);
-
-                c.globalAlpha = .2;
-                c.fillRect(xVal, yVal, backgroundWidth, backgroundHeight);
-
-                //Draw Buttons ------------------------------
-                c.globalAlpha = 1;
-
-                var buttonY = yVal;
-                var buttonX = xVal;
-
-                var mouseX = mouse.x * scale;
-                var mouseY = mouse.y * scale;                    
-
-                var typeI = 0;
-
-                for (let ix = 0; ix < numXButtons; ix++) {
-
-                    for (let iy = 0; iy < numYButtons; iy++) {
-                        if (mouseY > buttonY + padding && mouseY < buttonY + padding + buttonSizes && mouseX > buttonX + padding && mouseX < buttonX + padding + buttonSizes) 
-                        {
-                            if(mouse.clicked)
-                            {
-                                if(mouse.clickDown)
-                                {
-                                    selectedStructure = null;
-                                    planetShopSelection = buttonTypes[typeI];
-                                }
-
-                                c.fillStyle = "#a3a3a3";
-                            }
-                            else
-                                c.fillStyle = "#cccccc";
-                        }
-                        else
-                            c.fillStyle = "#ffffff";
-
-
-                        var imagePadding = 20;
-                        var imageName = buttonTypes[typeI] + "Gray";
-
-                        if(typeI > buttonTypes.length - 1)
-                            imageName = "x"
-                        else if(buttonTypes[typeI] == "shield")
-                            imageName = "shieldGeneratorGray"
-                        
-
-                        c.globalAlpha = ".5";
-                        c.fillRect(buttonX + padding, buttonY + padding, buttonSizes, buttonSizes);
-                        c.globalAlpha = "1";
-                        c.drawImage(getImage(imageName), buttonX + padding + imagePadding / 2, buttonY + padding + imagePadding / 2, buttonSizes - imagePadding, buttonSizes - imagePadding);
-                        buttonY += buttonSizes + padding;
-                        typeI++;
-                    }
-
-                    buttonX += buttonSizes + padding;
-                    buttonY = yVal;
-                }
-
-                //Draw Selected Structure Panel -------------            
-                c.globalAlpha = 1;
-
-                if(planetShopSelection != null)
-                {
-                    var type = planetShopSelection;
-                    var level = 0;
-                    var upgrading = typeof planetShopSelection == "object";
-
-                    if(upgrading)
-                    {
-                        type = planetShopSelection.type;
-                        level = planetShopSelection.level;
-                    }
-                    else if(type == "spaceShip")
-                        level = spaceShip.level;
-
-                    var upgrades = structureUpgrades[type];
-
-                    if(upgrades == undefined)
-                        upgrades = playerUpgrades;
-
-                    var pannelWidth = selectedStructureImageSize * 8/7 + padding * 2;
-                    var pannelHeight = backgroundHeight;
-
-                    var panelX = xVal + backgroundWidth
-                    var panelY = canvas.height - pannelHeight - padding;
-
-                    turretButtonOffset += pannelWidth;
-
-                    //Header
-                    var headerX = panelX;
-
-                    c.globalAlpha = .2;
-                    c.fillStyle = "#ffffff";
-
-                    c.beginPath();
-                    c.moveTo(headerX + padding, yVal);
-                    c.lineTo(headerX + padding, yVal - yTextSize + cornerRadius);
-                    c.arc(headerX + padding + cornerRadius, yVal - yTextSize, cornerRadius, -180 * Math.PI / 180, -90 * Math.PI / 180);
-                    c.lineTo(headerX + pannelWidth - padding - cornerRadius, yVal - yTextSize - cornerRadius);
-                    c.arc(headerX + pannelWidth - padding - cornerRadius, yVal - yTextSize, cornerRadius, -90 * Math.PI / 180, 0);
-                    c.lineTo(headerX + pannelWidth - padding, yVal);
-                    c.fill();
-
-                    c.globalAlpha = 1;
-                    c.font = fontsize + "px Helvetica";
-                    c.textAlign = "center";
-
-                    var name = $('p#' + type).text();
-                    
-                    if(type == "spawner")
-                        name = $('p#' + planetShopSelection.spawnerType).text();
-
-                    var uppercasedType = name.charAt(0).toUpperCase() + name.slice(1);
-                    c.fillText(uppercasedType, headerX + pannelWidth / 2, yVal - padding);
-
-                    //Background
-                    c.globalAlpha = .2;
-                    c.fillRect(panelX, panelY, pannelWidth, pannelHeight);
-
-                    //Division Line
-                    c.globalAlpha = .5;
-                    c.fillRect(panelX - 2, panelY + 10, 4, pannelHeight - 20);
-
-                    //Image
-                    c.globalAlpha = 1;
-
-                    var fullyUpgraded = false;
-
-                    if(type == "spaceShip")
-                    {
-                        if(spaceShip.level > 0)
-                        {
-                            upgrading = true;
-                            fullyUpgraded = upgrades[level + 1] == null;
-                        }
-                        else{
-                            level = 1;
-                        }
-                    }
-
-                    if(upgrading)
-                        fullyUpgraded = upgrades[level + 1] == null;
-                    
-                    var imageLevel = level;
-
-                    if(upgrading && !fullyUpgraded)
-                        imageLevel = level + 1;
-
-                    if(type == "spawner" && upgrading)
-                        type = planetShopSelection.spawnerType;
-
-                    var imageName = type + imageLevel;
-
-                    if(type == "shield")
-                        imageName = "shieldGenerator" + imageLevel;
-
-                    c.drawImage(getImage(imageName), panelX + pannelWidth / 2 - selectedStructureImageSize / 2, panelY + padding, selectedStructureImageSize, selectedStructureImageSize);
-
-                    //Buy / Upgrade button
-                    var shopButtonWidth = pannelWidth * 2 / 3;
-                    var shopButtonHeight = pannelHeight / 10;
-
-                    var shopButtonX = panelX + pannelWidth / 2 - shopButtonWidth / 2;
-                    var shopButtonY = panelY + padding * 2 + selectedStructureImageSize;
-
-                    var label = $('p#buy').text();
-
-                    fontsize = Math.sqrt(canvas.height * canvas.width) / 60;
-
-                    if(upgrading)
-                    {
-                        if(fullyUpgraded){
-                            label = $('p#fullyUpgraded').text();
-                            fontsize = Math.sqrt(canvas.height * canvas.width) / 80;
-                        }
-                        else{
-                            label = $('p#upgrade').text();
-                            upgrading = true;
-                        }
-                    }
-                    if (!fullyUpgraded && mouseY > shopButtonY && mouseY < shopButtonY + shopButtonHeight && mouseX > shopButtonX && mouseX < shopButtonX + shopButtonWidth) {
-                        c.fillStyle = "#e2e2e2";
-
-                        if(mouse.clicked)
-                        {
-                            if(mouse.clickDown)
-                            {
-                                if(upgrading)
-                                {
-                                    var id = planetShopSelection.id;
-
-                                    if(type == "spaceShip")
-                                        id = clientId;
-                                    
-                                    var data = {id: id, worldId: worldId}
-                                    socket.emit('upgradeRequest', data);
-                                }
-                                else
-                                {
-                                    if(type == "landingPad")
-                                        requestStructureSpawn(type);
-                                    else if(type == "spaceShip")
-                                    {
-                                        var data = {id: clientId, worldId: worldId}
-                                        socket.emit('upgradeRequest', data);
-                                    }
-                                    else
-                                        boughtStructure = type;
-                                }
-                                
-                            }
-
-                            c.fillStyle = "#c6c6c6";
-                        }
-                    }
-                    else{
-                        c.fillStyle = "#ffffff";
-                    }
-
-                    c.fillRect(shopButtonX, shopButtonY, shopButtonWidth, shopButtonHeight);
-
-                    c.globalAlpha = .8;
-                    c.fillStyle = "black";
-                    c.font = "bold " + fontsize + "px Helvetica";
-                    c.textAlign = "center";
-                    c.fillText(label, shopButtonX + shopButtonWidth / 2, shopButtonY + shopButtonHeight - padding);
-
-                    // Cost
-                    if(!fullyUpgraded)
-                    {
-                        if(upgrading)
-                            level++;
-                        var upgradeCosts = upgrades[level].costs
-
-                        var costX = panelX + padding;
-                        var startCostY = shopButtonY + shopButtonHeight + padding;
-                        var costY = startCostY;
-                        
-                        var costSize = Math.sqrt(canvas.height * canvas.width) / 45;
-    
-                        var numberOfCosts = 0;
-
-                        if(upgradeCosts){
-                            for (var cost in upgradeCosts) {
-                                if (upgradeCosts.hasOwnProperty(cost)) {
-                                    var color = "white";
-    
-                                    if(!playerItems[cost] || playerItems[cost] < upgradeCosts[cost])
-                                        color = "#ff9696";
-                
-                                    c.drawImage(getImage(cost), costX, costY, costSize, costSize);
-                                    c.font = costSize / 1.5 + "px Helvetica";
-                                    c.fillStyle = color;
-                                    c.textAlign = "left";
-                                    c.fillText(upgradeCosts[cost], costX + costSize + padding, costY + costSize / 1.3);
-                    
-                                    costY += costSize + padding;
-                                    numberOfCosts++;
-
-                                    if(numberOfCosts == 3)
-                                    {
-                                        costY = startCostY;
-                                        costX += costSize + padding * 6;
-                                    }
-                                        
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Description
-                    if(typeof planetShopSelection == "string" && !(type == "spaceShip" && level > 0) )
-                    {
-                        var descBoxHeight = -1 * (costY + padding - canvas.height + padding);
-                        var descBoxWidth = pannelWidth - padding * 2;
-
-                        var descBoxX = panelX + pannelWidth / 2 - descBoxWidth / 2;
-                        var descBoxY = costY;
-
-                        var fontsize = Math.sqrt(canvas.height * canvas.width) / 65;
-                        c.globalAlpha = .2;
-                        c.fillStyle = "#ffffff";
-                        c.fillRect(descBoxX, descBoxY, descBoxWidth, descBoxHeight);
-
-                        c.globalAlpha = 1;
-                        c.textAlign = "left";
-                        c.fillStyle = "white";
-                        c.font = fontsize + "px Helvetica";
-                        wrapText(c, $('p#' + type + "Desc").text(), descBoxX + padding / 2, descBoxY + fontsize + padding / 5, descBoxWidth - padding / 2, fontsize);
-                    } 
-                }
-
-                var drawManualTurretButton = false;
-
-                for (let x = 0; x < currentPlanet.structures.length; x++) {
-                    const structure = currentPlanet.structures[x];
-                    
-                    if(structure.type == "turret")
-                    {
-                        drawManualTurretButton = true;
-                        break;
-                    }
-                }
-
-                if(drawManualTurretButton)
-                {
-
-                    var mtButtonSize = windowHeight / 15;
-
-                    var mtButtonX = backgroundWidth + turretButtonOffset + padding * 2;
-                    var mtButtonY = windowHeight - padding - mtButtonSize;
-
-                    c.fillStyle = "#e2e2e2";
-                    c.globalAlpha = .3;
-
-                    if (mouseY > mtButtonY && mouseY < mtButtonY + mtButtonSize && mouseX > mtButtonX && mouseX < mtButtonX + mtButtonSize) 
-                    {
-                        if(mouse.clickDown) //initial click
-                        {
-                            turretManualMode = !turretManualMode;
-
-                            if (!turretManualMode)
-                            {
-                                var data = {turrets: [], worldId:worldId};
-
-                                for(var i = 0; i < currentPlanet.structures.length; i++){
-                                    var structure = currentPlanet.structures[i];
-                                    if(structure.type == "turret")
-                                        data.turrets.push({id: structure.id, stop: true});
-                                } 
-    
-                                socket.emit("turretRot", data);
-                            }
-                        }
-                        else if(mouse.clicked) //mouse pressed down after initial click
-                            c.globalAlpha = .5; 
-                        else
-                            c.globalAlpha = .4; //just hovering
-                    }
-
-                    c.fillRect(mtButtonX, mtButtonY, mtButtonSize, mtButtonSize);
-                    c.globalAlpha = 1;
-                    c.drawImage(getImage("target"), mtButtonX + padding / 2, mtButtonY + padding / 2, mtButtonSize - padding, mtButtonSize - padding)
-                }
-
-                c.textAlign = "left";
             }
-
+            else{
+                c.font = windowHeight / 17 + "px Arial";
+                c.fillStyle = "white";
+                c.globalAlpha = .2;
+                c.textAlign="center"; 
+                c.fillText($('p#takeOff').text(), windowWidth / 2, (windowHeight - 80));
+                c.textAlign="left"; 
+                c.globalAlpha = 1;
+            }
         }
-        
-        var miniMapSize = windowHeight / 5;
-        var minimapPadding = windowHeight / 60;
 
         minimap(miniMapSize, windowWidth - miniMapSize - minimapPadding, windowHeight - miniMapSize - minimapPadding);
-    
-        if(statsView){
-            c.font = "20px Arial";
-            c.fillText("x: " + Math.round(spaceShip.coordX) + " y: " + Math.round(spaceShip.coordY), 5, canvas.height - 5);
-        }
-    
-        var cloakedBarDisplayed = false;
 
+        var cloakedBarDisplayed = false;
+        var dbWidth = canvas.width / 3;
+        
         if(cloaked)
         {
             cloakedBarDisplayed = true;
-            
-            var width = canvas.width / 3;
-            displayBar(centerX * scale - width / 2, 10, width, 20, (spaceShip.shopUpgrades.cloakTime.value - cloakTime) / spaceShip.shopUpgrades.cloakTime.value, "#77e3ff");
-
-            if(cloakTime < spaceShip.shopUpgrades.cloakTime.value)
-                cloakTime += 16;
+            displayBar(centerX * scale - dbWidth / 2, 10, dbWidth, 20, (spaceShip.shopUpgrades.cloakTime.value - cloakTime) / spaceShip.shopUpgrades.cloakTime.value, "#77e3ff");
         }
         else if(cloakCoolDownTime < cloakCoolDown){
             cloakedBarDisplayed = true;
-
-            cloakCoolDownTime++;
-
-            var width = canvas.width / 3;
-            displayBar(centerX * scale - width / 2, 10, width, 20, cloakCoolDownTime / cloakCoolDown, "#2fc4a8");
+            displayBar(centerX * scale - dbWidth / 2, 10, dbWidth, 20, cloakCoolDownTime / cloakCoolDown, "#2fc4a8");
         }
-
-        var boostLegnth = spaceShip.shopUpgrades.boost.value;
-        var boostRechargeLegnth = spaceShip.shopUpgrades.boost.value * 6;
 
         var boostBarY = 10;
 
         if(cloakedBarDisplayed)
             boostBarY = 40;
 
-        if(boostReady && boostAmount <= boostLegnth)
-        {
-            if(boostLegnth != boostAmount){
-                var width = canvas.width / 3;
-                displayBar(centerX * scale - width / 2, boostBarY, width, 20, boostAmount / boostLegnth, "#f9dd6b");
-            }
+        if(boostReady && boostAmount <= boostLength && boostLength != boostAmount)
+            displayBar(centerX * scale - dbWidth / 2, boostBarY, dbWidth, 20, boostAmount / boostLength, "#f9dd6b");
+        else if (boostRechargeLegnth > 0 && !boostReady)
+            displayBar(centerX * scale - dbWidth / 2, boostBarY, dbWidth, 20, boostAmount / boostRechargeLegnth, "#937f2a");
 
-            if(boost){
-                if(boostAmount > 0)
-                    boostAmount--;
-                else{
-                    boostReady = false;
-                    boost = false;
-                    boostAmount = 0;
-                }
-            }
-            
-        }
-        else if (boostRechargeLegnth > 0 && !boostReady){
-            if(boostAmount < boostRechargeLegnth)
-                boostAmount++;
-            else{
-                boostAmount = boostLegnth;
-                boostReady = true;
-            }
-
-            var width = canvas.width / 3;
-            displayBar(centerX * scale - width / 2, boostBarY, width, 20, boostAmount / boostRechargeLegnth, "#937f2a");
-        }
-
-
-        if(shootCooldownTimer < shootCooldownTime){
-            shootCooldownTimer++;
-        }
-
-        if(playerReloadTimer > 0){
-
-            playerReloadTimer -= 1;
-        }
 
         if(!currentPlanet){
             var width = canvas.width / 5;
@@ -4321,28 +3557,6 @@ function animate() {
 
     if(spaceShip)
         drawLeaderBoard();
-    
-    for (var changed in colorChangedHitObjects) {
-        if (colorChangedHitObjects.hasOwnProperty(changed)) {
-           
-            var worldObject = findObjectWithId(allWorldObjects, changed);
-
-            if(worldObject)
-            {
-                if(colorChangedHitObjects[changed].time > 0)
-                {
-                    worldObject.object.color = shadeColorHex(colorChangedHitObjects[changed].color, colorChangedHitObjects[changed].time);
-                    colorChangedHitObjects[changed].time--;
-                }
-                else
-                {
-                    worldObject.object.color = colorChangedHitObjects[changed].color;
-                    delete colorChangedHitObjects[changed];
-                }
-            }
-
-        }
-    }
 
     for (var can in canvases) {
         if (canvases.hasOwnProperty(can) && can != "mainCanvas") {
@@ -4458,20 +3672,6 @@ function drawLeaderBoard(){
     
     c.globalAlpha = 1;
 }
-
-function sortArrayByProp(arr, prop){
-    var len = arr.length;
-    for (var i = len-1; i>=0; i--){
-      for(var j = 1; j<=i; j++){
-        if(arr[j-1][prop]>arr[j][prop]){
-            var temp = arr[j-1][prop];
-            arr[j-1][prop] = arr[j][prop];
-            arr[j][prop] = temp;
-         }
-      }
-    }
-    return arr;
- }
 
 function drawShopPanel(type){
 
@@ -4649,10 +3849,729 @@ function drawShopPanel(type){
     c.globalAlpha = 1;
 }
 
-var canClickArrow = true;
+function drawPlanetShopPanel(){
 
-function playerHasResources(costs)
+    var hoveredStructure = null;
+
+    //Highlight Seleted Structures ----------------------------------------------------
+
+    currentPlanet.structures.forEach(structure => {
+        
+        var distance = Math.sqrt(Math.pow(mouse.x - structure.x, 2) + Math.pow(mouse.y - structure.y, 2));
+        
+        if(distance < structure.size / 2)
+            hoveredStructure = structure;
+    });
+
+    var selectedNew = false;
+
+    var slCtx = FindCanvas("selectedObj", "destination-atop", true);            //Selected structure canvas context
+    var hlCtx = FindCanvas("highlightedObjCanvas", "destination-atop", true);   //Highlighted structure canvas context
+
+    if(hoveredStructure)
+    {   
+        if(hoveredStructure != selectedStructure)
+        {
+
+            if(mouse.clickDown)
+            {
+                selectedStructure = hoveredStructure;
+                planetShopSelection = selectedStructure;
+                hlCtx.fillStyle = "#5beeff";
+
+                selectedNew = true;
+            }
+
+            hlCtx.fillStyle = "#ffffff";
+            
+            hlCtx.globalAlpha = .5;
+
+            hlCtx.save();
+            hlCtx.translate(hoveredStructure.x, hoveredStructure.y);
+            hlCtx.rotate((hoveredStructure.rotation - 90) / -57.2958);
+            hlCtx.fillRect(-hoveredStructure.size / 2, -hoveredStructure.size / 2, hoveredStructure.size, hoveredStructure.size);
+            hlCtx.restore();
+
+            hlCtx.globalAlpha = 1;
+            hoveredStructure.draw(hlCtx);
+        }
+        else if(mouse.clickDown)
+        {
+            selectedStructure = null;
+            planetShopSelection = null;
+        }
+    }
+    else{
+        lastSelectedStructue = null;
+    }
+    if(selectedStructure && !selectedNew){
+        
+        slCtx.fillStyle = "#5beeff";
+        slCtx.globalAlpha = .5;
+
+        slCtx.save();
+        slCtx.translate(selectedStructure.x, selectedStructure.y);
+        slCtx.rotate((selectedStructure.rotation - 90) / -57.2958);
+        slCtx.fillRect(-selectedStructure.size / 2, -selectedStructure.size / 2, selectedStructure.size, selectedStructure.size);
+        slCtx.restore();
+
+        slCtx.globalAlpha = 1;
+        selectedStructure.draw(slCtx);
+    }
+
+    //Draw planet structure shop ------------------------------------------------------------
+    var turretButtonOffset = 0;
+
+    var numYButtons = 4;
+    var numXButtons = 2;
+
+    var buttonSizes = Math.sqrt(canvas.height * canvas.width) / 18;
+    var padding = Math.sqrt(canvas.height * canvas.width) / 100;
+
+    var selectedStructureImageSize = Math.sqrt(canvas.height * canvas.width) / 9;
+
+    var yVal = canvas.height - (buttonSizes + padding) * numYButtons - padding * 2;
+    var xVal = padding;
+
+    var buttonTypes = ["spaceShip", "landingPad", "mine", "turret", "shield", "electricity", "satellite"];
+
+    if(currentPlanet.id == "hive")
+    {
+        numYButtons = 4;
+        numXButtons = 1;
+        buttonTypes = ["spawnerScout", "spawnerDefender", "spawnerGuard"];
+    }
+
+    //Box Label -----------------------------
+    var backgroundWidth = (buttonSizes + padding) * numXButtons + padding;
+    var backgroundHeight = (buttonSizes + padding) * numYButtons + padding;
+
+    var cornerRadius = Math.sqrt(canvas.height * canvas.width) / 70;
+    var fontsize = Math.sqrt(canvas.height * canvas.width) / 45 * Math.sqrt(numXButtons) / Math.sqrt(3);
+    
+    var yTextSize = fontsize - padding / Math.sqrt(canvas.height * canvas.width);
+
+    c.globalAlpha = .2;
+    c.fillStyle = "#ffffff";
+
+    c.beginPath();
+    c.moveTo(xVal + padding, yVal);
+    c.lineTo(xVal + padding, yVal - yTextSize + cornerRadius);
+    c.arc(xVal + padding + cornerRadius, yVal - yTextSize, cornerRadius, -180 * Math.PI / 180, -90 * Math.PI / 180);
+    c.lineTo(xVal + backgroundWidth - padding - cornerRadius, yVal - yTextSize - cornerRadius);
+    c.arc(xVal + backgroundWidth - padding - cornerRadius, yVal - yTextSize, cornerRadius, -90 * Math.PI / 180, 0);
+    c.lineTo(xVal + backgroundWidth - padding, yVal);
+    c.fill();
+
+    c.globalAlpha = 1;
+    c.font = fontsize + "px Helvetica";
+    c.textAlign = "center";
+    c.fillText($('p#structures').text(), backgroundWidth / 2 + padding, yVal - padding);
+
+    c.globalAlpha = .2;
+    c.fillRect(xVal, yVal, backgroundWidth, backgroundHeight);
+
+    //Draw Buttons ------------------------------
+    c.globalAlpha = 1;
+
+    var buttonY = yVal;
+    var buttonX = xVal;
+
+    var mouseX = mouse.x * scale;
+    var mouseY = mouse.y * scale;                    
+
+    var typeI = 0;
+
+    for (let ix = 0; ix < numXButtons; ix++) {
+
+        for (let iy = 0; iy < numYButtons; iy++) {
+            if (mouseY > buttonY + padding && mouseY < buttonY + padding + buttonSizes && mouseX > buttonX + padding && mouseX < buttonX + padding + buttonSizes) 
+            {
+                if(mouse.clicked)
+                {
+                    if(mouse.clickDown)
+                    {
+                        selectedStructure = null;
+                        planetShopSelection = buttonTypes[typeI];
+                    }
+
+                    c.fillStyle = "#a3a3a3";
+                }
+                else
+                    c.fillStyle = "#cccccc";
+            }
+            else
+                c.fillStyle = "#ffffff";
+
+
+            var imagePadding = 20;
+            var imageName = buttonTypes[typeI] + "Gray";
+
+            if(typeI > buttonTypes.length - 1)
+                imageName = "x"
+            else if(buttonTypes[typeI] == "shield")
+                imageName = "shieldGeneratorGray"
+            
+
+            c.globalAlpha = ".5";
+            c.fillRect(buttonX + padding, buttonY + padding, buttonSizes, buttonSizes);
+            c.globalAlpha = "1";
+            c.drawImage(getImage(imageName), buttonX + padding + imagePadding / 2, buttonY + padding + imagePadding / 2, buttonSizes - imagePadding, buttonSizes - imagePadding);
+            buttonY += buttonSizes + padding;
+            typeI++;
+        }
+
+        buttonX += buttonSizes + padding;
+        buttonY = yVal;
+    }
+
+    //Draw Selected Structure Panel -------------            
+    c.globalAlpha = 1;
+
+    if(planetShopSelection != null)
+    {
+        var type = planetShopSelection;
+        var level = 0;
+        var upgrading = typeof planetShopSelection == "object";
+
+        if(upgrading)
+        {
+            type = planetShopSelection.type;
+            level = planetShopSelection.level;
+        }
+        else if(type == "spaceShip")
+            level = spaceShip.level;
+
+        var upgrades = structureUpgrades[type];
+
+        if(upgrades == undefined)
+            upgrades = playerUpgrades;
+
+        var pannelWidth = selectedStructureImageSize * 8/7 + padding * 2;
+        var pannelHeight = backgroundHeight;
+
+        var panelX = xVal + backgroundWidth
+        var panelY = canvas.height - pannelHeight - padding;
+
+        turretButtonOffset += pannelWidth;
+
+        //Header
+        var headerX = panelX;
+
+        c.globalAlpha = .2;
+        c.fillStyle = "#ffffff";
+
+        c.beginPath();
+        c.moveTo(headerX + padding, yVal);
+        c.lineTo(headerX + padding, yVal - yTextSize + cornerRadius);
+        c.arc(headerX + padding + cornerRadius, yVal - yTextSize, cornerRadius, -180 * Math.PI / 180, -90 * Math.PI / 180);
+        c.lineTo(headerX + pannelWidth - padding - cornerRadius, yVal - yTextSize - cornerRadius);
+        c.arc(headerX + pannelWidth - padding - cornerRadius, yVal - yTextSize, cornerRadius, -90 * Math.PI / 180, 0);
+        c.lineTo(headerX + pannelWidth - padding, yVal);
+        c.fill();
+
+        c.globalAlpha = 1;
+        c.font = fontsize + "px Helvetica";
+        c.textAlign = "center";
+
+        var name = $('p#' + type).text();
+        
+        if(type == "spawner")
+            name = $('p#' + planetShopSelection.spawnerType).text();
+
+        var uppercasedType = name.charAt(0).toUpperCase() + name.slice(1);
+        c.fillText(uppercasedType, headerX + pannelWidth / 2, yVal - padding);
+
+        //Background
+        c.globalAlpha = .2;
+        c.fillRect(panelX, panelY, pannelWidth, pannelHeight);
+
+        //Division Line
+        c.globalAlpha = .5;
+        c.fillRect(panelX - 2, panelY + 10, 4, pannelHeight - 20);
+
+        //Image
+        c.globalAlpha = 1;
+
+        var fullyUpgraded = false;
+
+        if(type == "spaceShip")
+        {
+            if(spaceShip.level > 0)
+            {
+                upgrading = true;
+                fullyUpgraded = upgrades[level + 1] == null;
+            }
+            else{
+                level = 1;
+            }
+        }
+
+        if(upgrading)
+            fullyUpgraded = upgrades[level + 1] == null;
+        
+        var imageLevel = level;
+
+        if(upgrading && !fullyUpgraded)
+            imageLevel = level + 1;
+
+        if(type == "spawner" && upgrading)
+            type = planetShopSelection.spawnerType;
+
+        var imageName = type + imageLevel;
+
+        if(type == "shield")
+            imageName = "shieldGenerator" + imageLevel;
+
+        c.drawImage(getImage(imageName), panelX + pannelWidth / 2 - selectedStructureImageSize / 2, panelY + padding, selectedStructureImageSize, selectedStructureImageSize);
+
+        //Buy / Upgrade button
+        var shopButtonWidth = pannelWidth * 2 / 3;
+        var shopButtonHeight = pannelHeight / 10;
+
+        var shopButtonX = panelX + pannelWidth / 2 - shopButtonWidth / 2;
+        var shopButtonY = panelY + padding * 2 + selectedStructureImageSize;
+
+        var label = $('p#buy').text();
+
+        fontsize = Math.sqrt(canvas.height * canvas.width) / 60;
+
+        if(upgrading)
+        {
+            if(fullyUpgraded){
+                label = $('p#fullyUpgraded').text();
+                fontsize = Math.sqrt(canvas.height * canvas.width) / 80;
+            }
+            else{
+                label = $('p#upgrade').text();
+                upgrading = true;
+            }
+        }
+        if (!fullyUpgraded && mouseY > shopButtonY && mouseY < shopButtonY + shopButtonHeight && mouseX > shopButtonX && mouseX < shopButtonX + shopButtonWidth) {
+            c.fillStyle = "#e2e2e2";
+
+            if(mouse.clicked)
+            {
+                if(mouse.clickDown)
+                {
+                    if(upgrading)
+                    {
+                        var id = planetShopSelection.id;
+
+                        if(type == "spaceShip")
+                            id = clientId;
+                        
+                        var data = {id: id, worldId: worldId}
+                        socket.emit('upgradeRequest', data);
+                    }
+                    else
+                    {
+                        if(type == "landingPad")
+                            requestStructureSpawn(type);
+                        else if(type == "spaceShip")
+                        {
+                            var data = {id: clientId, worldId: worldId}
+                            socket.emit('upgradeRequest', data);
+                        }
+                        else
+                            boughtStructure = type;
+                    }
+                    
+                }
+
+                c.fillStyle = "#c6c6c6";
+            }
+        }
+        else{
+            c.fillStyle = "#ffffff";
+        }
+
+        c.fillRect(shopButtonX, shopButtonY, shopButtonWidth, shopButtonHeight);
+
+        c.globalAlpha = .8;
+        c.fillStyle = "black";
+        c.font = "bold " + fontsize + "px Helvetica";
+        c.textAlign = "center";
+        c.fillText(label, shopButtonX + shopButtonWidth / 2, shopButtonY + shopButtonHeight - padding);
+
+        // Cost
+        if(!fullyUpgraded)
+        {
+            if(upgrading)
+                level++;
+            var upgradeCosts = upgrades[level].costs
+
+            var costX = panelX + padding;
+            var startCostY = shopButtonY + shopButtonHeight + padding;
+            var costY = startCostY;
+            
+            var costSize = Math.sqrt(canvas.height * canvas.width) / 45;
+
+            var numberOfCosts = 0;
+
+            if(upgradeCosts){
+                for (var cost in upgradeCosts) {
+                    if (upgradeCosts.hasOwnProperty(cost)) {
+                        var color = "white";
+
+                        if(!playerItems[cost] || playerItems[cost] < upgradeCosts[cost])
+                            color = "#ff9696";
+    
+                        c.drawImage(getImage(cost), costX, costY, costSize, costSize);
+                        c.font = costSize / 1.5 + "px Helvetica";
+                        c.fillStyle = color;
+                        c.textAlign = "left";
+                        c.fillText(upgradeCosts[cost], costX + costSize + padding, costY + costSize / 1.3);
+        
+                        costY += costSize + padding;
+                        numberOfCosts++;
+
+                        if(numberOfCosts == 3)
+                        {
+                            costY = startCostY;
+                            costX += costSize + padding * 6;
+                        }
+                            
+                    }
+                }
+            }
+        }
+        
+        // Description
+        if(typeof planetShopSelection == "string" && !(type == "spaceShip" && level > 0) )
+        {
+            var descBoxHeight = -1 * (costY + padding - canvas.height + padding);
+            var descBoxWidth = pannelWidth - padding * 2;
+
+            var descBoxX = panelX + pannelWidth / 2 - descBoxWidth / 2;
+            var descBoxY = costY;
+
+            var fontsize = Math.sqrt(canvas.height * canvas.width) / 65;
+            c.globalAlpha = .2;
+            c.fillStyle = "#ffffff";
+            c.fillRect(descBoxX, descBoxY, descBoxWidth, descBoxHeight);
+
+            c.globalAlpha = 1;
+            c.textAlign = "left";
+            c.fillStyle = "white";
+            c.font = fontsize + "px Helvetica";
+            wrapText(c, $('p#' + type + "Desc").text(), descBoxX + padding / 2, descBoxY + fontsize + padding / 5, descBoxWidth - padding / 2, fontsize);
+        } 
+    }
+
+    var drawManualTurretButton = false;
+
+    for (let x = 0; x < currentPlanet.structures.length; x++) {
+        const structure = currentPlanet.structures[x];
+        
+        if(structure.type == "turret")
+        {
+            drawManualTurretButton = true;
+            break;
+        }
+    }
+
+    if(drawManualTurretButton)
+    {
+
+        var mtButtonSize = windowHeight / 15;
+
+        var mtButtonX = backgroundWidth + turretButtonOffset + padding * 2;
+        var mtButtonY = windowHeight - padding - mtButtonSize;
+
+        c.fillStyle = "#e2e2e2";
+        c.globalAlpha = .3;
+
+        if (mouseY > mtButtonY && mouseY < mtButtonY + mtButtonSize && mouseX > mtButtonX && mouseX < mtButtonX + mtButtonSize) 
+        {
+            if(mouse.clickDown) //initial click
+            {
+                turretManualMode = !turretManualMode;
+
+                if (!turretManualMode)
+                {
+                    var data = {turrets: [], worldId:worldId};
+
+                    for(var i = 0; i < currentPlanet.structures.length; i++){
+                        var structure = currentPlanet.structures[i];
+                        if(structure.type == "turret")
+                            data.turrets.push({id: structure.id, stop: true});
+                    } 
+
+                    socket.emit("turretRot", data);
+                }
+            }
+            else if(mouse.clicked) //mouse pressed down after initial click
+                c.globalAlpha = .5; 
+            else
+                c.globalAlpha = .4; //just hovering
+        }
+
+        c.fillRect(mtButtonX, mtButtonY, mtButtonSize, mtButtonSize);
+        c.globalAlpha = 1;
+        c.drawImage(getImage("target"), mtButtonX + padding / 2, mtButtonY + padding / 2, mtButtonSize - padding, mtButtonSize - padding)
+    }
+
+    c.textAlign = "left";
+            
+}
+
+function drawArrowsToOwnedPlanets(){
+
+    for (let i = 0; i < ownedPlanets.length; i++) {
+    
+        const planet = ownedPlanets[i];
+        var size = planet.radius;
+
+        if(planet.shield)
+            size = planet.shield.radius;
+
+        //Out of screen Right                                           || Left                || Up                  || Down
+        if((planet.x + centerX - size > (windowWidth + centerX) / scale || planet.x + size < 0 || planet.y + size < 0 || planet.y + centerY - size > (windowHeight + centerY) / scale)){
+
+            var padding = 20 / scale;
+            var screenWidth = windowWidth / scale - 2 * padding;
+            var screenHeight = windowHeight / scale - 2 * padding;
+
+            var x = planet.x;
+            var y = planet.y;
+
+            var arrowPos = {x: 0, y: 0};
+
+            var slopeY = planet.y - screenHeight / 2;
+            var slopeX = planet.x - screenWidth / 2;
+            var slope = Math.abs(slopeY / slopeX);
+            var screenRatio = Math.abs(screenHeight / screenWidth);
+
+            var xModifier = 1;
+            var yModifier = 1;
+
+            if(slopeX < 0)
+                xModifier = 0;
+
+            if(slopeY < 0)
+                yModifier = 0;
+
+            if(slope == screenRatio) //Corner
+            {
+                arrowPos.x = screenWidth * xModifier;
+                arrowPos.y = screenHeight * yModifier;   
+            }
+            else if(slope < screenRatio) //Top
+            {
+                if(slopeX < 0)
+                {
+                    arrowPos.x = padding;
+                    arrowPos.y = (screenWidth * slopeY / slopeX) / -2 + (screenHeight / 2) + (padding);
+                    
+                }
+                else{
+                    arrowPos.x = screenWidth + padding;
+                    arrowPos.y = (screenWidth * slopeY / slopeX) / 2 + (screenHeight / 2) + (padding);
+                }
+
+            }
+            else if(slope > screenRatio) //Top / Bottom
+            {
+                if(slopeY < 0)
+                {
+                    arrowPos.x = screenHeight * slopeX / slopeY / -2 + screenWidth / 2;
+                    arrowPos.y = padding;
+                }
+                else{
+                    arrowPos.x = screenHeight *  slopeX / slopeY / 2 + screenWidth / 2 
+                    arrowPos.y = screenHeight + padding;
+                }
+
+                arrowPos.x += padding;
+            }
+
+            var arrowRotation = Math.atan2(centerY - planet.y, centerX - planet.x) - (45 * Math.PI / 180);
+            var arrowSize = 20 / scale;
+
+            var arrowColor = "#ffffff";
+
+            if(attackedPlanets[planet.id]){
+                if(!flashingPlanetArrows[planet.id]){
+                    flashingPlanetArrows[planet.id] = {times: 0, isFlashed: true, time: 0};
+                }
+                else{
+                    if(flashingPlanetArrows[planet.id].times > planetArrowFlashTimes)
+                    {
+                        attackedPlanets[planet.id] = false;
+                        delete flashingPlanetArrows[planet.id];
+                    }
+                    else{
+                        if(flashingPlanetArrows[planet.id].time < planetArrowFlashInterval)
+                            flashingPlanetArrows[planet.id].time++;
+                        else
+                        {
+                            flashingPlanetArrows[planet.id].time = 0;
+                            flashingPlanetArrows[planet.id].isFlashed = !flashingPlanetArrows[planet.id].isFlashed;
+                            flashingPlanetArrows[planet.id].times++;
+                        }
+                    }       
+                }
+            }
+            
+            if(flashingPlanetArrows[planet.id] && flashingPlanetArrows[planet.id].isFlashed)
+                arrowColor = planet.color;
+            else
+                arrowColor = "#ffffff";
+
+            drawArrow(arrowPos.x, arrowPos.y, arrowRotation, arrowColor, arrowSize);
+        }
+    }
+
+}
+
+function drawChecklist()
 {
+
+    var i = 0;
+    var checkItemY = windowHeight * .7;
+    var checkPadding = windowHeight * .02;
+
+    var width = windowHeight * .4;
+    var height = width * .25;
+
+    function getCardYPos(index)
+    {
+        return checkItemY + (checkPadding + height) * index;
+    }
+
+    var yPositions = {};
+    
+
+    for (var check in checklist) {
+
+        c.globalAlpha = 1;
+
+        if (checklist.hasOwnProperty(check)) {
+
+            var checkItem = checklist[check];
+
+            if(checkItem.isActive)
+            {
+
+                if(!checkItem.yPos)
+                    checkItem.yPos = getCardYPos(i);
+                else if(checkItem.yPos != getCardYPos(i)){
+                    if(checkItem.lerp == undefined)
+                        checkItem.lerp = 0;
+                    else if(checkItem.lerp < 1){
+                        checkItem.yPos = checkItem.yPos + (getCardYPos(i) - checkItem.yPos) * checkItem.lerp;
+                        checkItem.lerp += .01;
+                    }
+                    else if(checkItem.lerp >= 1) { 
+                        checkItem.yPos = getCardYPos(i);
+                        checkItem.lerp = 0;
+                    }
+                }
+
+                if(!checkItem.lerp)
+                    checkItem.lerp = 0;
+
+                if(!checkItem.alpha)
+                    checkItem.alpha = 1 / (i + 1);
+                else if(checkItem.alpha != 1 / (i + 1))
+                {
+                    checkItem.alpha = checkItem.alpha + (1 / (i + 1) - checkItem.alpha) * checkItem.lerp;
+                }
+
+                if(!checkItem.size)
+                    checkItem.size = 1 / (i * .2 + 1);
+                else if(checkItem.size != 1 / (i + 1))
+                {
+                    checkItem.size = checkItem.size + (1 / (i * .2 + 1) - checkItem.size) * checkItem.lerp;
+                }
+
+                //var size = 1 / (i * .2 + 1) * 1 - (getCardYPos(i) - checkItem.yPos) * checkItem.lerp / 10;
+
+                var fontsize = width / 20;
+
+                if(checkItem.done)
+                {
+                    if(!checkItem.fade)
+                        checkItem.fade = 0;
+
+                    if(checkItem.fade < checklistFadeTime)
+                    {
+                        c.globalAlpha = (checklistFadeTime - checkItem.fade) / checklistFadeTime * checkItem.alpha;
+                        c.drawImage(getImage("checklist_checked"), windowWidth / 2 - width * checkItem.size / 2, checkItem.yPos, width * checkItem.size, height * checkItem.size);
+                        checkItem.fade++;
+                    }
+                    else
+                        checkItem.isActive = false
+                }
+                else{
+                    c.globalAlpha = checkItem.alpha;
+                    c.drawImage(getImage("checklist"), windowWidth / 2 - width * checkItem.size / 2, checkItem.yPos , width * checkItem.size, height * checkItem.size);
+                }
+
+
+                if(checkItem.isActive)
+                {
+                    c.fillStyle = "white";
+                    c.font = fontsize + "px Helvetica";
+    
+                    wrapText(c, $('p#' + check).text(), windowWidth / 2 - width * checkItem.size / 4, checkItem.yPos + fontsize * 2, width * .7, fontsize);
+                }
+            
+
+                if(!checkItem.done)
+                    i++;
+            }
+        }
+    }
+
+    c.globalAlpha = 1;
+}
+
+function drawOxygen() {
+    var oxyWidth = windowWidth / 3;
+    var oxyHeight = windowHeight / 20;
+
+    oxygenSize = windowHeight / 3.5;
+
+    var percentOxygenRemaining = spaceShip.oxygenRemaining / spaceShip.oxygen;
+    var oxyHeight = oxygenSize * .75 * percentOxygenRemaining;
+
+    c.globalAlpha = .75;
+    c.fillStyle = spaceShip.oxygenDispBarBGColor;
+    c.fillRect(windowHeight / 34, windowHeight - oxygenSize * .75 - windowHeight / 23, oxygenSize / 7, oxygenSize * .75);
+
+    c.globalAlpha = .75;
+    c.fillStyle =  "#a3e1ff";
+    c.fillRect(windowHeight / 34, windowHeight - oxyHeight - windowHeight / 24, oxygenSize / 7, oxyHeight);
+
+    c.globalAlpha = 1;
+    
+    c.drawImage(getImage("oxygenTank"), -oxygenSize / 3.5 - windowHeight / 80, windowHeight - oxygenSize - windowHeight / 50, oxygenSize, oxygenSize)
+
+    c.font = windowHeight / 30 + "px Helvetica";
+    c.fillStyle = "white";
+    c.textAlign = "center";
+    c.fillText("O²", oxygenSize / 5.2, windowHeight - oxygenSize - windowHeight / 30);
+
+    if(percentOxygenRemaining <= 0)
+    {
+        var warningWidth = (windowHeight + windowWidth) / 10;
+        var warningHeight = warningWidth * 11/21;
+
+        c.globalAlpha = .8;
+        c.drawImage(getImage("warningSign"), windowWidth / 2 - warningWidth / 2, windowHeight / 2 - warningHeight /2, warningWidth, warningHeight);
+        var fontsize = warningHeight / 6;
+
+        c.font = fontsize + "px Helvetica";
+        c.fillStyle = "white";
+
+        wrapText(c, $('p#oxygenWarning').text(), windowWidth / 2, windowHeight / 2, warningWidth * .85, fontsize);
+    }
+    c.textAlign = "left";
+}
+
+function playerHasResources(costs) {
     var costCounter = 0;
     var neededCosts = 0;
 
@@ -4729,6 +4648,59 @@ function minimap(size, x, y){
         c.fill();  
     }
       
+}
+
+function updateAllMatter(){
+
+    var propertySelected = false;
+
+    allWorldObjects.forEach(function(matter){
+        var pos = cordsToScreenPos(matter.coordX, matter.coordY);
+        var size = matter.radius + 50;
+
+        if(matter.type == "sun")
+            size += 500;
+
+        if(matter.shield)
+            size += matter.shield.radius;
+
+        var isClosestAvaiblePlanet = (closestAvailablePlanet != null && (matter.id  == closestAvailablePlanet.id));
+        var isOwnedPlanet = findObjectWithId(ownedPlanets, matter.id);
+
+        if(isOnScreen(pos.x, pos.y, size) || isClosestAvaiblePlanet || isOwnedPlanet != null){
+            matter.health = healthDict[matter.id];
+            matter.update();
+
+            var shop = findObjectWithId(worldObjects.shops, matter.id);
+
+            if(!shop)
+            {
+                var distanceToMouse = Math.sqrt(Math.pow(pos.x - mouse.x, 2) + Math.pow(pos.y - mouse.y, 2));
+
+                if(distanceToMouse <= matter.radius)
+                {
+                    if(propertiesTimer.matter && propertiesTimer.matter.id == clientId && matter.id != clientId)
+                        return;
+
+                    if(propertiesTimer.matter && propertiesTimer.matter.id == matter.id)
+                    {
+                        if(propertiesTimer.time < propertiesHoldTime)
+                            propertiesTimer.time++;
+                    }
+                    else
+                        propertiesTimer = {time: 0, fill: 0, matter: matter};
+
+                    propertySelected = true;
+                }
+            }
+        }
+    });
+
+    if(!propertySelected)
+        propertiesTimer = {time: 0, fill: 0, matter: null};
+    else
+        propertiesOverview(propertiesTimer.matter, propertiesTimer.fill);
+
 }
 
 function propertiesOverview(object, fill){
@@ -5031,7 +5003,7 @@ function spikyBall(ctx, x, y, radius, sides, startAngle, anticlockwise, spikyAmo
     }
     ctx.closePath();
     ctx.restore();
-  }
+}
 
 function polygon(ctx, x, y, radius, sides, startAngle, anticlockwise) {
     if (sides < 3) return;
@@ -5083,8 +5055,6 @@ function structureSpawnPoint(structureSize, img, addedDist){
         c.translate(x, y);
         c.rotate((rad - 90) * Math.PI / -180);
         c.drawImage(getImage(img), -structureSize/2,-structureSize/2,structureSize,structureSize);
-        //c.fillStyle = "#42aaf4";
-        //c.fillRect(-rectWidth/2+20,-rectHeight/2,rectWidth,rectHeight);
         c.restore();
     }
 
@@ -5097,6 +5067,20 @@ function isOnScreen(x, y, size){
 
 function getRndInteger(min, max) {
     return (Math.random() * (max - min) ) + min;
+}
+
+function sortArrayByProp(arr, prop){
+    var len = arr.length;
+    for (var i = len-1; i>=0; i--){
+      for(var j = 1; j<=i; j++){
+        if(arr[j-1][prop]>arr[j][prop]){
+            var temp = arr[j-1][prop];
+            arr[j-1][prop] = arr[j][prop];
+            arr[j][prop] = temp;
+         }
+      }
+    }
+    return arr;
 }
 
 function screenPosToCords(x, y){
@@ -5129,7 +5113,7 @@ function findObjectWithId(array, id){
 
 var uniqueId = function() {
     return 'id-' + Math.random().toString(36).substr(2, 16);
-};
+}
 
 CanvasRenderingContext2D.prototype.wavy = function(from, to, frequency, amplitude, step, negative) 
 { 
@@ -5154,6 +5138,5 @@ CanvasRenderingContext2D.prototype.wavy = function(from, to, frequency, amplitud
 	}
 }
 
+
 setup();
-
-
