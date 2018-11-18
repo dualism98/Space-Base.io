@@ -309,8 +309,8 @@ var checklist = {
 checklistFadeTime = 20;
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
-    socket = io.connect('http://space-base.io/');
+    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://space-base.io/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -1724,11 +1724,6 @@ function Shield(planet, x, y, rotation, level, ownerId, id){
     this.maxHealth;
 
     var healthBarWidth = 300;
-
-<<<<<<< HEAD
-        if(hittableObj)
-            displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, 300, 20, hittableObj.health / hittableObj.maxHealth, "blue");
-=======
     var addedShieldRadius = 100;
 
     this.draw = function(context){
@@ -1780,7 +1775,6 @@ function Shield(planet, x, y, rotation, level, ownerId, id){
         // ctx.rotate((this.rotation + 90) / -57.2958);
         // ctx.drawImage(getImage('shieldGenerator' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
         // ctx.restore();
->>>>>>> development
     }
     this.update = function(){
 
