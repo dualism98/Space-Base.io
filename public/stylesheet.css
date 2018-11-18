@@ -260,6 +260,13 @@ a:hover{
     padding: 5px;
 }
 
+#repsawnAd {
+    vertical-align: middle;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+}
+
 #help {
     display: table-row;
     vertical-align: middle;

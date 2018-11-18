@@ -2751,7 +2751,7 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
         if(this.isEnemy)
             this.image = getImage('enemy' + this.username + ((this.level / 3) - 1));
         else
-            this.image = getImage('spaceship' + this.level);
+            this.image = getImage('spaceShip' + this.level);
 
 
         c.globalAlpha = this.alpha;
@@ -2948,14 +2948,6 @@ function update() {
 
     windowWidth =  $(window).width();
     windowHeight =  $(window).height();
-
-    requestAnimationFrameId = requestAnimationFrame(animate);
-
-    for (var can in canvases) {
-        if (canvases.hasOwnProperty(can)) {
-            canvases[can].getContext('2d').clearRect(0, 0, innerWidth, innerHeight);
-        }
-    }
 
     if(scale != targetScale) {
 
@@ -3302,6 +3294,14 @@ function update() {
 //------------------------------------------------------- ANIMATE ------------------------------------------------------
 
 function animate() { 
+
+    requestAnimationFrameId = requestAnimationFrame(animate);
+
+    for (var can in canvases) {
+        if (canvases.hasOwnProperty(can)) {
+            canvases[can].getContext('2d').clearRect(0, 0, innerWidth, innerHeight);
+        }
+    }
 
     for (var can in canvases) {
         if (canvases.hasOwnProperty(can)) {
