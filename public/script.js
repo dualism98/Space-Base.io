@@ -1655,7 +1655,7 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
                 addedStructure = new Mine(planet, x, y, rotation, level, ownerId, id);
 
                 if(!isFacade)
-                    producingMines.push(mine);
+                    producingMines.push(addedStructure);
             break;
             case "spawner":
                 addedStructure = new Spawner(planet, x, y, rotation, level, spawnerType, ownerId, id);
