@@ -30,7 +30,7 @@
 
 li {
     text-align: center;
-    display: table-row;
+    display: table-row !important;
 }
 
 #spacebase {
@@ -50,7 +50,7 @@ li {
 #aboutContent{
     display: none;
     position: absolute;
-    top: 10%;
+    top: 10vh;
 
     table-layout: fixed;
     margin-left: auto;
@@ -136,7 +136,7 @@ li {
 #helpContent {
     display: none;
     position: absolute;
-    top: 0%;
+    top: 10vh;
     width: 100%;
     height: 100%;
 }
@@ -204,8 +204,6 @@ a:hover{
     background-size: 100%;
     cursor:pointer;
 
-    cursor: pointer;
-
     border: none;
 
     left: 22%;
@@ -214,13 +212,22 @@ a:hover{
     height: 5vw;
 }
 
+#backHelp:hover {
+    filter: saturate(200%) brightness(70%);
+
+}
+
+#backHelp:active {
+    filter: saturate(400%) brightness(30%);
+}
+
 #mainContent {
     position: absolute;
-    top: 10%;
 
     display: table;
     table-layout: fixed;
     margin-left: auto;
+    margin-top: 10vh;
     margin-right: auto;
     left: -25%;
     right:0;
@@ -229,19 +236,8 @@ a:hover{
 }
 
 #controls {
-    display: table-row;
-    vertical-align: middle;
-
     border: none;
     width: 22.88vh;
-
-    display: "inline-block";
-
-    border: none;
-    margin-top: 1vh;
-    margin-left: auto;
-    margin-right: auto;
-    
     padding: 5px;
 }
 
@@ -299,7 +295,7 @@ a:hover{
 
 #news{
     position: absolute;
-    top: 20%;
+    top: 20vh;
     width: 100%;
     background-color: blue; 
 }
@@ -324,7 +320,7 @@ a:hover{
 .example_responsive_1 {
     width: 100%;
     height: auto;
-    object-fit: contain
+    
 }
 
 #rightAd {
@@ -343,6 +339,7 @@ a:hover{
 }
 
 #bottomAd{
+<<<<<<< HEAD
     display: table-row;
     vertical-align: middle;
 
@@ -352,6 +349,12 @@ a:hover{
     margin-top: 1vh;
     margin-left: auto;
     margin-right: auto;
+=======
+    width: 100%;
+    height: 10px;
+
+    background-color: red;
+>>>>>>> development
 }
 
 #redditLink{
@@ -395,10 +398,91 @@ body{
     position: relative;
 }
 
-canvas{
+#mainCanvas{
     background-color: #1B1730;
     filter: blur(5px);
 }
+
+#hiddenFields p{
+    float: left;
+}
+
+.nonDecoratedLink{
+    text-decoration: none;
+}
+
+#moreIoGames{
+    cursor: default;
+
+    width: 14vh;
+    height: 2vh;
+
+    margin-top: .5vh;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: .5vh;
+
+    padding: 5px;
+
+    color:white;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 1.2vh;
+    text-align: left;
+    text-decoration: none; 
+
+    background-color: #a3a498;
+    border: .3vh solid #ffffff;
+    outline: .3vh solid #707070;
+}
+
+#redditAnnouncement{
+    cursor: pointer;
+
+    width: 20vh;
+    height: 5vh;
+
+    margin-top: .5vh;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 2vh;
+
+    padding: 5px;
+
+    color:white;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 1.2vh;
+    text-align: left;
+    text-decoration: none; 
+
+    background-color: #a3a498;
+    border: .3vh solid #ffffff;
+    outline: .3vh solid #707070;
+
+    display:none;
+}
+
+#vignetteOverlay {
+    -webkit-box-align: center;
+    -webkit-box-pack: center;
+    -webkit-transition: 0.25s opacity;
+    background: -webkit-radial-gradient(rgba(59, 64, 70, 0.3),
+                                        rgba(75, 81, 85, 0.3) 35%,
+                                        rgba(109, 28, 28, 0.7));
+    bottom: 0;
+    display: -webkit-box;
+    left: 0;
+    padding: 20px;
+    padding-bottom: 130px;
+    position: fixed;
+    right: 0;
+    top: 0;
+    z-index: 100;
+    width: 100%;
+    height:100%;
+    pointer-events: none;
+    
+    opacity: 0;
+  }
 
 input:focus {
     outline: none; 

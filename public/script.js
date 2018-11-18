@@ -1,13 +1,49 @@
 //Canvas
-var canvas = document.querySelector('canvas');
+var canvas = document.getElementById('mainCanvas');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 var c = canvas.getContext('2d');
 
+var FindCanvas = function(id, compositeOp, returnContext)
+{
+    var tempCanvas;
+
+    if(canvases[id])
+    {
+        tempCanvas = canvases[id];
+    }
+    else{
+        tempCanvas = document.createElement('canvas');
+
+        tempCanvas.id = id;
+        tempCanvas.width = window.innerWidth;
+        tempCanvas.height = window.innerHeight;
+        tempCanvas.style.zIndex = -1;
+        tempCanvas.style.position = "absolute";
+        tempCanvas.style.left = "0";
+        tempCanvas.style.top = "0";
+    
+        document.getElementById("content").appendChild(tempCanvas);
+        canvases[id] = document.getElementById(id);
+    }
+
+    if(returnContext)
+    {
+        var context = tempCanvas.getContext('2d');
+        context.globalCompositeOperation = compositeOp;
+        return context;
+    }
+    else
+        return tempCanvas;
+}
+
+var canvases = {mainCanvas: canvas};
+
 var mouse = {
     x :undefined,
     y: undefined,
-    clicked: false
+    clicked: false,
+    clickDown: false
 }
 
 String.prototype.trunc = 
@@ -70,6 +106,7 @@ var socket;
 var clientId;
 var otherPlayers = [];
 var worldObjects = [];
+var worldItems = {};
 var hittableObjects = {};
 var gridSize;
 var gridBoxScale;
@@ -79,7 +116,7 @@ var worldId;
 function getAllWorldObjects(){
     var objects = [];
 
-    objects = worldObjects.asteroids.concat(worldObjects.planets).concat(worldObjects.shops);
+    objects = worldObjects.planets.concat(worldObjects.spaceMatter).concat(worldObjects.shops);
 
     if(spaceShip)
         objects.push(spaceShip);
@@ -120,10 +157,10 @@ var spaceShip;
 
 var allWorldObjects = [];
 var allStructures = [];
+var allPlayers = [];
 
 var BLCAKHOLE_GRAVITY = .01;
 var BLCAKHOLE_GRAVITY_EXPONENT = 2.5;
-
 var MAX_GRAVITATIONAL_DISTACNE = 600;
 var planetDist;
 
@@ -143,8 +180,6 @@ var isHoldingShoot = false;
 var projectiles = [];
 var otherProjectiles = [];
 
-var healthBarColor = "#36a52c";
-
 var currentPlanet;
 var closestAvailablePlanet;
 
@@ -153,7 +188,7 @@ var dropDict = {};
 var playerItems = {};
 
 var images = {};
-var imageArray = ["NF", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "S", "shield0", "shield1", "shield2", "shield3", "shield4", "shield5", "shield6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "shop", "spaceship0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "water"];
+var imageArray = ["NF", "asteroidBits", "backX", "boost0", "boost1", "boost2", "boost3", "bulletPenetration0", "bulletPenetration1", "bulletPenetration2", "bulletPenetration3", "charge", "cloakTime0", "cloakTime1", "cloakTime2", "cloakTime3", "cloakTime4", "crystal", "E", "earth", "gem", "iron", "landingPad0", "mine0", "mine1", "mine2", "mine3", "mine4", "mine5", "mine6", "mine7", "mine8", "mine9", "mine10", "mineGray", "S", "satellite0", "satellite1", "satellite2", "satellite3", "satelliteGray", "shieldGenerator0", "shieldGenerator1", "shieldGenerator2", "shieldGenerator3", "shieldGenerator4", "shieldGenerator5", "shieldGenerator6", "shipTurret0", "shipTurret1", "shipTurret2", "shipTurret3", "shipTurret4", "shipTurretBase0", "shipTurretBase1", "shipTurretBase2", "shipTurretBase3", "shipTurretBase4", "spaceship0", "spaceShip1", "spaceShip2", "spaceShip3", "spaceShip4", "spaceShip5", "spaceShip6", "spaceShip7", "spaceShip8", "spaceShip9", "spaceShip10", "spaceShip11", "spaceShip12", "spaceShip13", "spaceShip14", "stardust", "startGameButton", "spaceShipGray", "turret0", "turret1", "turret2", "turret3", "turret4", "turret5", "turret6", "turret7", "turretGray", "water"];
 
 function getImage(item){
     for (var image in images) {
@@ -175,14 +210,9 @@ function getImage(item){
     return img;
 }
 
-var upgradeables = [];
-var structureUpgradeables = [];
-
 var structureUpgrades;
 var playerUpgrades;
 var shopUpgrades;
-
-var upgradeableObjects = function(){ return upgradeables.concat(structureUpgradeables); }
 
 var showUpgradesPannel = false;
 var clickedUpgrade = false;
@@ -200,6 +230,7 @@ var scale = 1;
 var sunTint = {amount: 0, color: "#fffff"};
 
 var ownedPlanets = [];
+var hiveObj = {};
 
 var windowWidth;
 var windowHeight;
@@ -229,6 +260,9 @@ var boostReady = false;
 
 var landed = false;
 
+var turretManualMode = false;
+var turretRotSendTimer = {time: 0, delay: 20};
+
 var propertiesTimer = {};
 var propertiesHoldTime = 80;
 var username = "unnamed";
@@ -246,23 +280,28 @@ var newsDisplayed = DISPLAY_NEWS;
 var POSITION_SEND_DELAY = 6;
 var positionSendTime = 0;
 
+var planetShopSelection = null;
+var selectedStructure = null;
+var lastSelectedStructue = null;
+var boughtStructure = null;
+var electricityTimer = {time: 0, duration: 50, on: false};
+
+var structureSpawnPosition = null;
+var structureSpawnRotation = null;
+
+var master = {id: null, obj: null};
+
 var checklist = {
     fly:{
-        isActive: true
+        isActive: false
     },
     shoot:{
-        isActive: true
-    },
-    upgrade:{
         isActive: false
     },
-    upgradeClick:{
+    landingPadDesc:{
         isActive: false
     },
-    landingPad:{
-        isActive: false
-    },
-    structures:{
+    aquiredCrown:{
         isActive: false
     }
 }
@@ -272,8 +311,6 @@ checklistFadeTime = 20;
 function setup(){
     //socket = io.connect('http://localhost:8080');
     socket = io.connect('http://space-base.io/');
-    //socket = io.connect('http://iogame-iogame.193b.starter-ca-central-1.openshiftapps.com/');
-    //socket = io.connect('https://shielded-chamber-23023.herokuapp.com/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -283,20 +320,23 @@ function setup(){
     socket.on('damageSync', receiveDamageSync);
     socket.on('spawnProj', spawnNetworkedProjectile);
     socket.on('spawnStructure', spawnNetworkedStructure);
-    socket.on('destroyProjectile', destroyNetworkedProjectile);
+    socket.on('destroyProjectiles', destroyNetworkedProjectiles);
     socket.on("items", onAquiredItems);
-    socket.on("upgradeInfo", receiveUpgradeInfo)
+    socket.on("updateItems", updateItems);
     socket.on("upgradeSync", upgradeSync);
     socket.on("returnMsg", returnMsg);
     socket.on("serverDisconect", forceDisconnect);
     socket.on("planetOccupancy", updatePlanetOccupier);
+    socket.on("ejectPlayer", ejectPlayer);
     socket.on("mineProduce", mineProduce);
     socket.on("respawn", respawn);
     socket.on("respawnPlanet", respawnPlanet);
     socket.on("newWorldObjectSync", newWorldObjectSync);
     socket.on("syncItem", syncItem);
     socket.on('shopUpgrade', shopUpgrade);
+    socket.on('turretRot', turretRot);
     socket.on('cloak', cloak);
+    socket.on('master', setMaster);
 
     centerX = (canvas.width / 2 / scale);
     centerY = (canvas.height / 2 / scale);
@@ -304,12 +344,16 @@ function setup(){
 
 //Receive Data Functions
 function setupLocalWorld(data){
-
     worldId = data.worldId;
     clientId = socket.io.engine.id;
-
+    master.id = data.master;
     gridSize = data.gridSize;
     gridBoxScale = data.gridBoxScale;
+
+    //Upgrade Info
+    structureUpgrades = data.upgrades.structureUpgrades;
+    playerUpgrades = data.upgrades.playerUpgrades;
+    shopUpgrades = data.upgrades.shopUpgrades;
 
     //Set Temporary GridPosition for spectating while not in game
     gridPos = new Vector(data.x + gridSize / -2, data.y + gridSize / -2);
@@ -319,11 +363,14 @@ function setupLocalWorld(data){
 
     for(var i = 0; i < data.existingPlayers.length; i++){
         client = data.existingPlayers[i];
-
+            
         if(client.id != clientId){
             var player = new NetworkSpaceShip(client.x, client.y, client.maxHealth, client.health, 0, client.level, client.radius, client.username, client.id);
-            if(client.shipTurret){
 
+            if(client.id == master.id)
+            master.obj = player;
+
+            if(client.shipTurret){
                 var isFacade = player.id != clientId;
 
                 player.turret = new Turret(player, client.x, client.y, 0, client.shipTurret.level - 1, isFacade, player.id, client.shipTurret.id);
@@ -338,7 +385,7 @@ function setupLocalWorld(data){
     }
 
     //Spawn World Objects
-    worldObjects = {asteroids: [], planets: [], shops: []};// = data.worldObjects;
+    worldObjects = {spaceMatter: [], planets: [], shops: []};// = data.worldObjects;
 
     //Shops
     for(var i = 0; i < data.worldObjects.shops.length; i++){
@@ -349,18 +396,20 @@ function setupLocalWorld(data){
         worldObjects.shops.push(shopObject);
     }
 
+    //Space Matter
+    for(var i = 0; i < data.worldObjects.spaceMatter.length; i++){
 
-    //asteroids
-    for(var i = 0; i < data.worldObjects.asteroids.length; i++){
+        var spaceMatter = data.worldObjects.spaceMatter[i];
 
-        var asteroid = data.worldObjects.asteroids[i];
-
-        if(!asteroid || asteroid.health <= 0)
+        if(!spaceMatter || spaceMatter.health <= 0)
             continue;
 
-        var asteroidObject = new SpaceMatter(asteroid.x, asteroid.y, asteroid.radius, asteroid.color, asteroid.maxHealth, asteroid.health, asteroid.type, asteroid.id);
-        worldObjects.asteroids.push(asteroidObject);
-        dropDict[asteroid.id] = asteroid.drops;
+        var spaceMatterObj = new SpaceMatter(spaceMatter.x, spaceMatter.y, spaceMatter.radius, spaceMatter.color, spaceMatter.maxHealth, spaceMatter.health, spaceMatter.type, spaceMatter.id);
+        worldObjects.spaceMatter.push(spaceMatterObj);
+        dropDict[spaceMatter.id] = spaceMatter.drops;
+
+        if(spaceMatterObj.id == "hiveObj")
+            hiveObj = spaceMatterObj;
     }
 
     //Planets
@@ -375,21 +424,26 @@ function setupLocalWorld(data){
         planetObject.occupiedBy = planet.occupiedBy;
         planetObject.owner = planet.owner; 
 
+        worldObjects.planets.push(planetObject);
+
         //Add all existing structures
         for (var s = 0; s < planet.structures.length; s++) {
             const structure = planet.structures[s];
             var isFacade = structure.ownerId != clientId;
+
+            if(structure.type == "spawner")
+            {
+                var uppercasedType = structure.enemyType.charAt(0).toUpperCase() + structure.enemyType.slice(1);
+                structure.type = "spawner" + uppercasedType;
+            }
+
             planetObject.addStructure(planetObject, structure.x, structure.y, structure.rotation, structure.type, structure.level, isFacade, structure.ownerId, structure.id);
         }
 
-        worldObjects.planets.push(planetObject);
         dropDict[planetObject.id] = planet.drops;
     }
 
     allWorldObjects = getAllWorldObjects();
-    allStructures = getAllStructures();
-
-    socket.emit('upgradeInfo');
 }
 function syncItem(data){
     playerItems[data.item] = data.amount;
@@ -431,20 +485,20 @@ function newWorldObjectSync(data){
     }
     else{
 
-        var changedSpaceMatter = findObjectWithId(worldObjects.asteroids, data.id);
+        var changedSpaceMatter = findObjectWithId(worldObjects.spaceMatter, data.id);
 
         if(data.dead && changedSpaceMatter)
         {
-            worldObjects.asteroids.splice(changedSpaceMatter.index, 1);
+            worldObjects.spaceMatter.splice(changedSpaceMatter.index, 1);
             delete hittableObjects[data.id];
         }
         else{
             var newSpaceMatter = new SpaceMatter(data.newObject.x, data.newObject.y, data.newObject.radius, data.newObject.color, data.newObject.maxHealth, data.newObject.health, data.newObject.type, data.id);
 
             if(changedSpaceMatter)
-                worldObjects.asteroids[changedSpaceMatter.index] = newSpaceMatter;
+                worldObjects.spaceMatter[changedSpaceMatter.index] = newSpaceMatter;
             else
-                worldObjects.asteroids.push(newSpaceMatter);
+                worldObjects.spaceMatter.push(newSpaceMatter);
         }
 
     }
@@ -457,7 +511,27 @@ function receiveDamageSync(data){
         var localObj = hittableObjects[data.deadObjects[i]];
 
         if(localObj)
+        {
             delete hittableObjects[data.deadObjects[i]];
+
+            for (let x = 0; x < allStructures.length; x++) {
+                var structure = allStructures[x]
+
+                if(structure.id == data.deadObjects[i])
+                {
+                    var planetStructure = findObjectWithId(structure.planet.structures, data.deadObjects[i]);
+                    structure.planet.structures.splice(planetStructure.index, 1);
+
+                    if(selectedStructure!= null && selectedStructure.id == structure.id)
+                    {
+                        selectedStructure = null;
+                        planetShopSelection = null;
+                    }
+                        
+                }
+            }
+        }
+            
     }
 
     for (var id in data.hittableObjects) {
@@ -485,39 +559,27 @@ function receiveDamageSync(data){
                     if(hittableObject.health > 0)
                         hittableObjects[hittableObject.id] = hittableObject;
                     else
-                    {
                         delete hittableObjects[hittableObject.id];
-    
-                        var isStructure = false;
-    
-                        for (let i = 0; i < structureUpgradeables.length; i++) {
-                            if(structureUpgradeables[i] == hittableObject.id){
-                                structureUpgradeables.splice(i, 1);
-                                isStructure = true;
-                            }
-                        }
-                    }
                 }
                 else{
                     if(hittableObject.health > 0)
                         hittableObjects[hittableObject.id] = hittableObject;
                 }
             }
-
         }
     }
 }
+
 function damagedOwnPlanet(attackOnShield, health, id){
 
     var ownedPlanet = findObjectWithId(ownedPlanets, id.object);
 
-    if(attackOnShield)
-        console.log("HALP WE ARE UNDER ATTACK. Shield Health Left: " + health);
-    else
-        console.log("HALP WE ARE UNDER ATTACK. Health Left: " + health);
+    // if(attackOnShield)
+    //     console.log("HALP WE ARE UNDER ATTACK. Shield Health Left: " + health);
+    // else
+    //     console.log("HALP WE ARE UNDER ATTACK. Health Left: " + health);
 
     attackedPlanets[id] = true;
-    
 }
 
 function showWorld(){
@@ -532,15 +594,14 @@ function showWorld(){
     
     animate();
 }
+
 function startLocalPlayer(data){
 
     var player = data.player;
-
-    upgradeables.push(clientId);
     friendlyObjectIds = [clientId];
 
     //Spawn client player
-    spaceShip = new SpaceShip(centerX, centerY, player.maxHealth, player.health, player.level, player.radius, player.speed, player.turningSpeed, player.fireRate, player.projectileSpeed, clientId);
+    spaceShip = new SpaceShip(centerX, centerY, player.maxHealth, player.health, player.level, player.radius, player.speed, player.turningSpeed, player.fireRate, player.projectileSpeed, player.oxygen, clientId);
     spaceShip.shopUpgrades = player.shopUpgrades;
     
     playerItems = {};
@@ -580,6 +641,7 @@ function startLocalPlayer(data){
     }
 
 }
+
 function newPlayer(data){
     otherPlayers.push(new NetworkSpaceShip(data.x, data.y, data.maxHealth, data.health, data.rotation, data.level, data.radius, data.username, data.id));
 }
@@ -591,7 +653,9 @@ function respawnPlanet(){
     scale = 1;
     spaceShip = null;
     shopOpen = {shopRef: null, type: null, open: false};
-    upgradeables = [];
+    planetShopSelection = null;
+
+    checklist.aquiredCrown.isActive = false;
 
     caughtInBlackHole = false;
 
@@ -626,10 +690,12 @@ function respawnTimer(){
 function respawn(){
     scale = 1;
     spaceShip = null;
-    upgradeables = [];
-    structureUpgradeables = [];
     ownedPlanets = [];
+    currentPlanet = null;
     shopOpen = {shopRef: null, type: null, open: false};
+    planetShopSelection = null;
+
+    checklist.aquiredCrown.isActive = false;
 
     caughtInBlackHole = false;
 
@@ -642,33 +708,57 @@ function respawn(){
     
 }
 function updatePlayerPosition(data){
-    otherPlayer = findObjectWithId(otherPlayers, data.id);
+    data.forEach(player => {
+        otherPlayer = findObjectWithId(otherPlayers, player.id);
 
-    if(otherPlayer){
-        var otherPlayerObj = otherPlayer.object;
+        if(otherPlayer){
+            var otherPlayerObj = otherPlayer.object;
 
-        otherPlayerObj.coordX = data.x;
-        otherPlayerObj.coordY = data.y;
-        otherPlayerObj.targetRotation = data.rot;
-    }
+            otherPlayerObj.coordX = player.x;
+            otherPlayerObj.coordY = player.y;
+            otherPlayerObj.targetRotation = player.rot;
+
+            if(player.instantSnap)
+            {
+                otherPlayerObj.rotLerpAmount = 0;
+                otherPlayerObj.rotLerpTime = 0;
+                otherPlayerObj.rotWatcher = otherPlayerObj.targetRotation;
+                otherPlayerObj.lastRot = otherPlayerObj.targetRotation;
+                otherPlayerObj.rotation = otherPlayerObj.targetRotation;
+            }
+        }
+    });
 }
 function spawnNetworkedProjectile(data){
     otherProjectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, data.bulletPenetration, true, data.id));
 }
-function destroyNetworkedProjectile(data){
-    var deadProjOther = findObjectWithId(otherProjectiles, data.id);
-    var deadProjOwn = findObjectWithId(projectiles, data.id);
+function destroyNetworkedProjectiles(data){
 
-    if(deadProjOther)
-        otherProjectiles.splice(deadProjOther.index, 1);
-    else if(deadProjOwn)
-        projectiles.splice(deadProjOwn.index, 1);
+    data.forEach(proj => {
+        
+        var deadProjOther = findObjectWithId(otherProjectiles, proj.id);
+        var deadProjOwn = findObjectWithId(projectiles, proj.id);
+    
+        if(deadProjOther)
+            otherProjectiles.splice(deadProjOther.index, 1);
+        else if(deadProjOwn)
+            projectiles.splice(deadProjOwn.index, 1);
+
+    });
+
+    
 }
 function updatePlanetOccupier(data){
      worldObjects.planets.forEach(planet => {
         if(planet.id == data.planetId)
             planet.occupiedBy = data.playerId;
     });
+}
+function ejectPlayer()
+{
+    currentPlanet.occupiedBy = null;
+    currentPlanet = null;
+    landed = false;
 }
 function spawnNetworkedStructure(data)
 {
@@ -687,18 +777,31 @@ function spawnNetworkedStructure(data)
 
     allStructures = getAllStructures();
 }
-function receiveUpgradeInfo(data){
-    structureUpgrades = data.structureUpgrades;
-    playerUpgrades = data.playerUpgrades;
-    shopUpgrades = data.shopUpgrades;
-}
 function returnMsg(data){
-    displayMessage(data, 10, 5);
+    var compiledString = "";
+
+    data.forEach(element => {
+        if(typeof element == "number")
+            compiledString += " " + element.toString();
+        else{
+            if(compiledString != "" && element != "S")
+                compiledString += " ";
+
+            var text = $('p#' + element).text();
+
+            if(text == "")
+                text = element;
+
+            compiledString += text;
+
+        }
+    });
+
+    displayMessage(compiledString, 35, 5);
 }
 function upgradeSync(data){
 
-    var allUpgradeables = allWorldObjects.concat(allStructures.concat(otherPlayers));
-
+    var allUpgradeables = allStructures.concat(allPlayers);
     upgradedObject = findObjectWithId(allUpgradeables, data.id).object;
 
     upgradedObject.level = data.level;
@@ -706,11 +809,24 @@ function upgradeSync(data){
     for (var property in data.upgrade) {
         if (data.upgrade.hasOwnProperty(property)) {
 
-            if(property == "maxHealth"){
-                var precent = upgradedObject["health"] / upgradedObject[property];
+            if(property == "maxHealth" || property == "oxygen"){
+
+                var val = "";
+
+                switch (property)
+                {
+                    case "maxHealth":
+                        val = "health"
+                        break;
+                    case "oxygen":
+                        val = "oxygenRemaining"
+                        break;
+                }
+
+                var precent = upgradedObject[val] / upgradedObject[property];
 
                 upgradedObject[property] = data.upgrade[property];
-                upgradedObject["health"] = precent * data.upgrade[property];
+                upgradedObject[val] = precent * data.upgrade[property];
             }
             else
                 upgradedObject[property] = data.upgrade[property];
@@ -767,23 +883,24 @@ function mineProduce(data){
     data.forEach(mine => {
         localMine = findObjectWithId(producingMines, mine.id);
 
-        if(localMine)
+        if(localMine && localMine.object.planet.powered)
+        {
             localMine.object.productionEffect(mine.item);
-    
-        if(playerItems[mine.item])
-            playerItems[mine.item] += mine.amount;
-        else 
-        {
-            playerItems[mine.item] = mine.amount;
-        }
+        
+            if(playerItems[mine.item])
+                playerItems[mine.item] += mine.amount;
+            else 
+            {
+                playerItems[mine.item] = mine.amount;
+            }
 
-        if(added[mine.item])
-            added[mine.item] += mine.amount;
-        else 
-        {
-            added[mine.item] = mine.amount;
+            if(added[mine.item])
+                added[mine.item] += mine.amount;
+            else 
+            {
+                added[mine.item] = mine.amount;
+            }
         }
-
     });
     
     for (var item in added) {
@@ -798,6 +915,18 @@ function mineProduce(data){
 function onAquiredItems(data){
     for (var drop in data.drops) {
         if (data.drops.hasOwnProperty(drop)) {
+
+            if(drop == "crown")
+            {
+                master.id = clientId;
+                if(spaceShip){
+                    master.obj = spaceShip;
+                    checklist.aquiredCrown.isActive = true;
+                }
+
+                ownedPlanets.push(hiveObj);
+            }
+               
             if(playerItems[drop])
                 playerItems[drop] += data.drops[drop];
             else
@@ -806,6 +935,61 @@ function onAquiredItems(data){
             aquiredItems[drop] = {amount: data.drops[drop], time: aquireItemsFadeTime};
         }
     } 
+}
+
+function updateItems(data){
+
+    for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+        
+        var localItem = worldItems[item.id];
+
+        if(item.collected){
+            if(localItem)
+                delete worldItems[item.id];
+            continue;
+        }
+
+        if(!localItem)
+            localItem = worldItems[item.id] = new Item(item.x, item.y, item.size, item.type, item.id);
+        else{
+            localItem.coordX = item.x;
+            localItem.coordY = item.y;
+        }
+        
+        if(item.iVel)
+        {
+            localItem.coordChangeWatcher.x = localItem.coordX;
+            localItem.coordChangeWatcher.y = localItem.coordY;
+
+            localItem.coordX -= item.iVel.x * 1.5;
+            localItem.coordY -= item.iVel.y * 1.5;
+            localItem.lerpAmount = 20;
+        }
+
+        localItem.targetRotation = item.rot;
+    }
+
+}
+
+function turretRot(data)
+{
+    for (let i = 0; i < data.length; i++) {
+        const turret = data[i];
+
+        var localTurret = findObjectWithId(allStructures, turret.id);
+
+        if(localTurret)
+        {
+            if(turret.stop)
+                localTurret.object.rotControlled = false;
+            else{
+                localTurret.object.rotControlled = true;
+                localTurret.object.targetServerRot = turret.rot;
+            }
+        }
+        
+    }
 }
 
 function cloak(data){
@@ -832,6 +1016,27 @@ function cloak(data){
         }
     }
 }
+
+function setMaster(data)
+{
+    master.id = data;
+
+    if(data != null)
+    {
+        var searchArray = otherPlayers;
+    
+        if(spaceShip)
+            searchArray = searchArray.concat(spaceShip);
+    
+        player = findObjectWithId(searchArray, data);
+        master.obj = player.object;
+    }
+    else 
+        master.obj = null;
+    
+    
+}
+
 function playerExited(data){
 
     otherPlayer = findObjectWithId(otherPlayers, data.clientId);
@@ -849,25 +1054,22 @@ function playerExited(data){
 
         if(otherPlayerHittableObj)
             delete hittableObjects[data.clientId];
+    }
 
-
-        if(data.forGood)
-        {
-            var structureObejcts = [];
-    
-            allStructures.forEach(structure => {
-                data.structureIds.forEach(id => {
-                    if(id == structure.id){
-                        planet = findObjectWithId(worldObjects.planets, structure.planet.id);
-                        planet.object.owner = null;
-                        planetStructureIndex = findObjectWithId(planet.object.structures, structure.id).index;
-                        planet.object.structures.splice(planetStructureIndex, 1);
-                    }
-                });
+    if(data.structureIds)
+    {
+        allStructures.forEach(structure => {
+            data.structureIds.forEach(id => {
+                if(id == structure.id){
+                    planet = findObjectWithId(worldObjects.planets, structure.planet.id);
+                    planet.object.owner = null;
+                    planetStructureIndex = findObjectWithId(planet.object.structures, structure.id).index;
+                    planet.object.structures.splice(planetStructureIndex, 1);
+                }
             });
-    
-            allStructures = getAllStructures();
-        }
+        });
+
+        allStructures = getAllStructures();
     }
 }
 function forceDisconnect(data){
@@ -900,11 +1102,14 @@ function sendProjectile(x, y, vel, size, color, id, shooterId, damagePercent){
 
     socket.emit('spawnProj', data);
 }
-function sendProjectileHit(projectileId, subjectId){
+function sendProjectileHit(projectileId, subjectId, hitX, hitY, ignoreShield = false){
     var data = {
         id: subjectId,
         projectileId: projectileId,
-        worldId: worldId
+        hitX: Math.round(hitX),
+        hitY: Math.round(hitY),
+        worldId: worldId,
+        ignoreShield: ignoreShield
     }
 
     socket.emit('projectileHit', data);
@@ -919,8 +1124,9 @@ window.addEventListener('mousemove',
 
 window.addEventListener('mousedown', 
     function(event){
+        mouse.clickDown = true;
         mouse.clicked = true;
-
+       
         if(newsDisplayed)
         {
             $("#mainContent").css("filter", "none");
@@ -944,11 +1150,15 @@ window.addEventListener('resize',
     windowWidth =  $(window).width();
     windowHeight =  $(window).height();
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    for (var can in canvases) {
+        if (canvases.hasOwnProperty(can)) {
+            canvases[can].width = window.innerWidth;
+            canvases[can].height = window.innerHeight;
+        }
+    }
 
-    centerX = (canvas.width / 2 / scale);
-    centerY = (canvas.height / 2 / scale);
+    centerX = (window.innerWidth / 2 / scale);
+    centerY = (window.innerHeight / 2 / scale);
 });
 
 $('#playerNameInput').on('keypress', function (e) {
@@ -1026,8 +1236,6 @@ $(document).ready(function() {
     else{
         $("#news").fadeOut(0);
     }
-
-    
 });
 
 $(document).keyup(function(e){
@@ -1039,23 +1247,47 @@ $(document).keyup(function(e){
 
 $(document).keypress(function(e){
 
-    if(currentPlanet && spaceShip){
-        if(e.keyCode == 104) // H
-        {
-            if(currentPlanet.health < currentPlanet.maxHealth)
-                socket.emit("heal", {id: currentPlanet.id, worldId: worldId});
-            else
-                socket.emit("heal", {id: clientId, worldId: worldId});
-        }
+    if(boughtStructure != null)
+        return;
 
-        if(e.keyCode == 108) // L
-            requestStructureSpawn(currentPlanet, currentPlanet.x, currentPlanet.y, 0, "landingPad", false, clientId);
-        if(e.keyCode == 115) // S
-            requestStructureSpawn(currentPlanet, currentPlanet.x, currentPlanet.y, 0, "shield", false, clientId);
-        if(e.keyCode == 109) // M
-            requestStructureSpawn(currentPlanet, structureSpawnPosition.x, structureSpawnPosition.y, structureSpawnRotation, "mine", false, clientId);
-        if(e.keyCode == 116) // T
-            requestStructureSpawn(currentPlanet, structureSpawnPosition.x, structureSpawnPosition.y, structureSpawnRotation, "turret", false, clientId);
+    if(currentPlanet && spaceShip){
+
+        if(currentPlanet.id != "hive")
+        {
+            if(e.keyCode == 104) // H
+            {
+                if(currentPlanet.health < currentPlanet.maxHealth)
+                    socket.emit("heal", {id: currentPlanet.id, worldId: worldId});
+                else
+                    socket.emit("heal", {id: clientId, worldId: worldId});
+            }
+    
+            
+            if(structureSpawnPoint(50 * scale))
+            {
+                switch (e.keyCode)
+                {
+                    case 108 : // L
+                        requestStructureSpawn("landingPad");
+                        break;
+                    case 115: // S
+                        requestStructureSpawn("shield");
+                        break;
+                    case 109: // M
+                        requestStructureSpawn("mine");
+                        break;
+                    case 116: // T
+                        requestStructureSpawn("turret");
+                        break;
+                    case 101: // E
+                        requestStructureSpawn("electricity");
+                        break;
+                    case 113: // Q
+                        requestStructureSpawn("satellite");
+                        break;
+                }
+            }
+        }
 
         if(e.keyCode == 32){ //SPACE
             socket.emit('planetOccupancy', {planetId: currentPlanet.id, playerId: null, worldId: worldId})
@@ -1064,14 +1296,13 @@ $(document).keypress(function(e){
                 
             landed = false;
             currentPlanet = null;
+            planetShopSelection = null;
 
-            checklist.landingPad.isActive = false;
-            checklist.structures.isActive = false;
+            checklist.landingPadDesc.isActive = false;
 
         }
     }
     else if(spaceShip){
-
         if(e.keyCode == 99 && !cloaked && cloakCoolDownTime >= cloakCoolDown) //C
         {
             if(spaceShip.shopUpgrades["cloakTime"].level > 0){
@@ -1114,9 +1345,10 @@ $(document).keypress(function(e){
 
                 if(shootBullet)
                 {
-                    shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, spaceShip.projectileSpeed, spaceShip.radius / 4, spaceShip.shopUpgrades.bulletPenetration.value + 1, "#f45c42", clientId, 1 - playerReloadTimer / 1000);
+                    var damagePercent = 1 - playerReloadTimer / spaceShip.fireRate;
+                    shoot(-gridPos.x, -gridPos.y, spaceShip.rotation, spaceShip.projectileSpeed, spaceShip.radius / 4 * damagePercent, spaceShip.shopUpgrades.bulletPenetration.value + 1, "#f45c42", clientId, damagePercent);
                     shootCooldownTimer = 0;
-                    playerReloadTimer = 1000;
+                    playerReloadTimer = spaceShip.fireRate;
                 }
             }
             
@@ -1132,21 +1364,15 @@ $(document).keypress(function(e){
             currentPlanet.occupiedBy = clientId;
             closestAvailablePlanet = null;
 
-            if(playerHasResources(structureUpgrades["landingPad"][0].costs) && !ownedPlanets.contains(currentPlanet.id) && !checklist.landingPad.done)
+            if(currentPlanet.id == "hive" && checklist.aquiredCrown.isActive)
+                checklist.aquiredCrown.done = true;
+
+            if(playerHasResources(structureUpgrades["landingPad"][0].costs) && !ownedPlanets.contains(currentPlanet.id) && !checklist.landingPadDesc.done && !currentPlanet.id == "hive")
             {
-                checklist.landingPad.isActive = true;
+                checklist.landingPadDesc.isActive = true;
             }
 
         } 
-    }
-    
-    if(!showUpgradesPannel && !clickedUpgrade)
-        showUpgradesPannel = e.keyCode == 102; //F
-
-    if(showUpgradesPannel && spaceShip && checklist.upgrade.isActive)
-    {
-        checklist.upgrade.done = true;
-        checklist.upgradeClick.isActive = true;
     }
 
 
@@ -1154,19 +1380,7 @@ $(document).keypress(function(e){
         statsView = !statsView; 
     
 
-}).keyup(function(e){
-
-    showUpgradesPannel = false;
-
-    if(spaceShip && checklist.upgrade.done && !checklist.upgradeClick.done) {
-        checklist.upgrade.isActive = true;
-        checklist.upgrade.done = false;
-        checklist.upgradeClick.isActive = false;
-    }
-
-    clickedUpgrade = false;
-});
-
+})
 $(document).on('keydown', function(e){
     
     if(spaceShip){
@@ -1221,21 +1435,28 @@ $(document).on('keyup', function(e){
     }
 });
 
-function requestStructureSpawn(planet, x, y, rotation, type, isFacade, ownerId){
-    var globalPos = screenPosToCords(x, y);
+function requestStructureSpawn(type, enemyType){
+
+    var globalPos;
+
+    if(structureSpawnPosition != null)
+        globalPos = screenPosToCords(structureSpawnPosition.x, structureSpawnPosition.y);
+    else
+        globalPos = screenPosToCords(-1908129038, 102839);
 
     var spawnData = {
         planetId: currentPlanet.id,
         x: globalPos.x, 
         y: globalPos.y,
-        rotation: rotation,
+        rotation: structureSpawnRotation,
         type: type,
         ownerId: clientId,
         isFacade: false,
+        enemyType: enemyType,
         worldId: worldId
     }
 
-    socket.emit("requestSpawnStructure", spawnData)
+    socket.emit("requestSpawnStructure", spawnData);
 }
 
 //------------------------------------------------------- Constructor Objects  ------------------------------------------------------
@@ -1258,7 +1479,11 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
     this.shield = null;
     this.landingPad = null;
 
+    this.powered = false;
+
     var healthBarWidth = 100;
+
+    this.stripeVars = null;
 
     this.draw = function(){
         c.beginPath();
@@ -1270,114 +1495,296 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         c.arc(this.x, this.y, this.radius - 20, 0, Math.PI * 2, false);
         c.fillStyle = shadeColorHex(this.color, 10);
         c.fill();
+
+        var height = this.radius - this.stripeVars.ofsetY;
+        var width = Math.sqrt(-8 * height * (height / 2 - this.radius)); 
+
+        var start = {x: -width / 2, y: this.stripeVars.ofsetY};
+        var end = {x: width / 2, y: this.stripeVars.ofsetY};
+
+        var angle = Math.PI / 2 - Math.acos(this.stripeVars.ofsetY / this.radius);
+
+        c.fillStyle = shadeColorHex(this.color, this.stripeVars.colorHex);
+        c.globalAlpha = .2;
+        
+        c.save();
+        c.translate(this.x, this.y);
+        c.rotate(this.stripeVars.rotation);
+        c.beginPath();
+        c.arc(0, 0, this.radius, angle, Math.PI - angle, false);
+        c.wavy(start, end, this.stripeVars.frequency, 12, 4);
+        c.fill();
+        c.restore();
+        c.globalAlpha = 1;
+
     }
     this.update = function(){
         var pos = cordsToScreenPos(this.coordX, this.coordY);
         this.x = pos.x;
         this.y = pos.y
 
+        var powerAvailable = 0;
+        var powerNeeded = 0;
+
+        for (let i = 0; i < this.structures.length; i++) {
+            const structure = this.structures[i];
+            
+            if(structure.type == "landingPad")
+                continue;
+
+            if(structure.type == "electricity")
+                powerAvailable += structure.power;
+            else
+                powerNeeded += structure.level + 1;
+        }
+
+        this.powered = powerAvailable >= powerNeeded;
+
+        if(this.stripeVars == null)
+        {
+            this.stripeVars = {};
+            this.stripeVars.frequency = Math.floor(Math.random() * this.radius / 20) + .004 * this.radius;  
+            this.stripeVars.rotation = Math.floor(Math.random() * Math.PI * 2);
+            this.stripeVars.ofsetY = Math.floor(Math.random() * 100) - 50;
+            this.stripeVars.colorHex = Math.floor(Math.random() * 60) + 20;
+        }
+
         this.draw();
         this.updateStructures();
 
+        if(!this.powered && this.owner == clientId)
+        {
+            var powerlessStructures = this.structures;
+
+            powerlessStructures.forEach(structure => {
+
+                if(structure.type == "landingPad" || structure.type == "electricity" || structure.type == "spawner")
+                    return;
+
+                var size = 30;
+                var distanceAboveStructure = size + 20;
+                var distanceToStructure = Math.sqrt(Math.pow(this.x - structure.x, 2) + Math.pow(this.y - structure.y, 2));
+                var hyp = distanceToStructure + distanceAboveStructure;
+                var scalar = hyp / distanceToStructure * -1;
+
+                var powerX = (this.x - structure.x) * scalar + this.x;
+                var powerY = (this.y - structure.y) * scalar + this.y;
+
+                if(electricityTimer.on)
+                {
+                    c.translate(powerX, powerY);
+                    c.rotate((structure.rotation - 90) / -57.2958);
+                    c.drawImage(getImage('charge'), -size / 2, -size / 2, size, size);
+                    c.rotate(-(structure.rotation - 90) / -57.2958);
+                    c.translate(-powerX, -powerY);
+                }
+            });
+
+            if(electricityTimer.time < electricityTimer.duration)
+                electricityTimer.time++;
+            else
+            {
+                electricityTimer.time = 0;
+                electricityTimer.on = !electricityTimer.on;
+            }
+            
+        }
 
         healthBarWidth = 200;
 
         if(this.health != this.maxHealth)
-        displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, healthBarWidth, 20, this.health / this.maxHealth, "green");
-
-        if(currentPlanet == this){
-            var rad = Math.atan2(mouse.y - this.y, mouse.x - this.x) * -57.2958;
-            structureSpawnRotation = rad;
-            drawPointAroundCircle(this.x, this.y, radius + 20, rad, 1);
-        }
+            displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, healthBarWidth, 20, this.health / this.maxHealth, "#88ff60");
     }
 
     this.updateStructures = function(){
+
+        var data = {turrets: [], worldId:worldId};
+
         for(var i = 0; i < this.structures.length; i++){
-            this.structures[i].update();
+            if(this.powered)
+                this.structures[i].update();
+            else
+            {
+                if((this.structures[i].isFacade != null && !this.structures[i].isFacade))
+                {
+                    this.structures[i].isFacade = true;
+                    this.structures[i].update();
+                    this.structures[i].isFacade = false;
+                }
+                else if((this.structures[i].isFacade != null && this.structures[i].isFacade) || this.structures[i].isFacade == undefined)
+                    this.structures[i].update();
+            }
+
+            if(this.powered && this.structures[i].type == "turret" && turretManualMode && !this.structures[i].isFacade)
+                data.turrets.push({id: this.structures[i].id, rot: this.structures[i].shootRotation});
         } 
+
+        if(data.turrets.length > 0)
+        {
+            if(turretRotSendTimer.time >= turretRotSendTimer.delay)
+            {
+                turretRotSendTimer.time = 0;
+                socket.emit("turretRot", data);
+            }
+            else
+                turretRotSendTimer.time++;
+        }
+            
     }
 
     this.addStructure = function (planet, x, y, rotation, type, level, isFacade, ownerId, id){
-        var shieldRadius = this.radius + 100;
+        var addedStructure;
 
-        if(!isFacade)
+        if(!isFacade && checklist.landingPadDesc.isActive && !checklist.landingPadDesc.done)
+            checklist.landingPadDesc.done = true;
+
+        var spawnerType = type;
+
+        if(type.substring(0,7) == "spawner")
+            type = "spawner";
+
+        switch(type)
         {
-            if(checklist.landingPad.isActive && !checklist.landingPad.done)
-            {
-                checklist.landingPad.done = true;
-                checklist.structures.isActive = true;
+            case "electricity":
+                addedStructure = new Electricity(planet, x, y, rotation, level, ownerId, id);
+            break;
+            case "satellite":
+                addedStructure = new Satellite(planet, x, y, rotation, level, ownerId, id);
+            break;
+            case "mine":
+                addedStructure = new Mine(planet, x, y, rotation, level, ownerId, id);
+
+                if(!isFacade)
+                    producingMines.push(mine);
+            break;
+            case "spawner":
+                addedStructure = new Spawner(planet, x, y, rotation, level, spawnerType, ownerId, id);
+            break;
+            case "turret":
+                addedStructure = new Turret(planet, x, y, rotation, level, isFacade, ownerId, id);
+            break;
+            case "shield":
+                addedStructure = new Shield(planet, x, y, rotation, level, ownerId, id);
+                this.shield = addedStructure;
+
+                if(!isFacade)
+                    friendlyObjectIds.push(id);
+            break;
+            case "landingPad":
+                addedStructure = new LandingPad(planet, this.radius - 100, id);
+                this.landingPad = addedStructure
+                this.owner = ownerId;
+                
+                if(!isFacade){
+                    friendlyObjectIds.push(planet.id);
+                    ownedPlanets.push(planet);
+                }
+            break;
+        }
+
+        if(addedStructure)
+        {
+            var data = {
+                upgrade: structureUpgrades[type][level],
+                id: id,
+                costs: {},
+                playerId: ownerId,
+                level: level
             }
-            else
-                checklist.structures.done = true;
-        }
 
-        if(type === "mine"){
-            var mine = new Mine(planet, x, y, rotation, level, ownerId, id);
-            this.structures.push(mine);
-
-            if(!isFacade)
-                producingMines.push(mine);
+            this.structures.push(addedStructure);
+            allStructures = getAllStructures();
+            upgradeSync(data);
         }
-        else if(type === "turret"){
-            this.structures.push(new Turret(planet, x, y, rotation, level, isFacade, ownerId, id));
-        }
-        else if(type === "shield"){
-            var shield = new Shield(planet, shieldRadius, level, id);
-            this.shield = shield;
-            this.structures.push(shield);
-
-            if(!isFacade)
-                friendlyObjectIds.push(id);
-        }
-        else if(type === "landingPad"){
-            var landingPad = new LandingPad(planet, this.radius - 100, id);
-            this.landingPad = landingPad
-            this.structures.push(landingPad);
-            this.owner = ownerId;
             
-            if(!isFacade){
-                friendlyObjectIds.push(planet.id);
-                ownedPlanets.push(planet);
-            }
-        }
+
     }
 }
-function Shield(planet, radius, level, id){
+
+function Shield(planet, x, y, rotation, level, ownerId, id){
     this.planet = planet;
     this.x;
     this.y;
-    this.radius = radius;
-    this.color = "blue";
-    this.id = id;
-    this.type = "shield";
+    this.rotation = rotation;
     this.level = level;
+    this.size = 50;
+    this.id = id;
+    this.ownerId = ownerId;
+    this.type = "shield";
 
-    this.draw = function(){
-        c.beginPath();
-        c.globalAlpha = 0.3;
-        c.lineWidth = 10;
-        c.arc(this.x, this.y, this.radius + c.lineWidth / 2, 0, Math.PI * 2, false);
-        c.strokeStyle = "blue";
-        c.stroke();
+    this.color = "#287aff"
 
-        c.globalAlpha = 0.1;
-        c.beginPath();
-        c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-        c.fillStyle = this.color;
-        c.fill();
-        c.globalAlpha = 1;
+    this.coordX = x;
+    this.coordY = y;
 
-        healthBarWidth = 300;
+    this.lastPowered = null;
 
-        var hittableObj = hittableObjects[this.id];
 
+    this.health;
+    this.maxHealth;
+
+    var healthBarWidth = 300;
+
+<<<<<<< HEAD
         if(hittableObj)
             displayBar(this.x - healthBarWidth / 2, this.y - this.radius - 50, 300, 20, hittableObj.health / hittableObj.maxHealth, "blue");
+=======
+    var addedShieldRadius = 100;
+
+    this.draw = function(context){
+
+        var ctx = c;
+        if(context != null)
+            ctx = context;    
+
+        if(this.lastPowered !== planet.powered)
+        {
+            this.lastPowered = planet.powered;
+            socket.emit("shield", {on: planet.powered, id: this.id, worldId: worldId});
+        }
+        
+        //Draw Shield
+        if(planet.powered)
+        {
+            ctx.beginPath();
+            ctx.globalAlpha = 0.3;
+            ctx.lineWidth = 10;
+            ctx.arc(this.planet.x, this.planet.y, this.planet.radius + addedShieldRadius+ c.lineWidth / 2, 0, Math.PI * 2, false);
+            ctx.strokeStyle = this.color;
+            ctx.stroke();
+    
+            ctx.globalAlpha = 0.1;
+            ctx.beginPath();
+            ctx.arc(this.planet.x, this.planet.y, this.planet.radius + addedShieldRadius, 0, Math.PI * 2, false);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+
+            if(this.health < this.maxHealth)
+                displayBar(this.planet.x - healthBarWidth / 2, this.planet.y - this.planet.radius - 150, healthBarWidth, 20, this.health / this.maxHealth, this.color);
+        }
+
+        //Draw Generators
+        var ctx = c;
+        if(context != null)
+            ctx = context;    
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((this.rotation - 90) / -57.2958);
+        ctx.drawImage(getImage('shieldGenerator' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.restore();
+
+        // ctx.save();
+        // ctx.translate(this.planet.x + (this.planet.x - this.x), this.planet.y + (this.planet.y - this.y));
+        // ctx.rotate((this.rotation + 90) / -57.2958);
+        // ctx.drawImage(getImage('shieldGenerator' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        // ctx.restore();
+>>>>>>> development
     }
     this.update = function(){
 
-        var pos = cordsToScreenPos(this.planet.coordX, this.planet.coordY);
+        var pos = cordsToScreenPos(this.coordX, this.coordY);
 
         this.x = pos.x;
         this.y = pos.y;
@@ -1401,19 +1808,24 @@ function LandingPad(planet, radius, id){
     this.type = "landingPad";
     this.level = 0;
 
-    this.draw = function(){
-        c.beginPath();
-        c.lineWidth = 10;
-        c.arc(this.x, this.y, this.radius + c.lineWidth / 2, 0, Math.PI * 2, false);
-        c.strokeStyle = "gray";
-        c.stroke();
+    this.draw = function(context){
 
-        c.lineWidth = 1;
+        var ctx = c;
+        if(context != null)
+            ctx = context;    
 
-        c.beginPath();
-        c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-        c.fillStyle = "darkGray";
-        c.fill();
+        ctx.beginPath();
+        ctx.lineWidth = 10;
+        ctx.arc(this.x, this.y, this.radius + c.lineWidth / 2, 0, Math.PI * 2, false);
+        ctx.strokeStyle = "gray";
+        ctx.stroke();
+
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+        ctx.fillStyle = "darkGray";
+        ctx.fill();
     }
     this.update = function(){
         
@@ -1439,12 +1851,17 @@ function Mine(planet, x, y, rotation, level, ownerId, id){
 
     this.level = level;
 
-    this.draw = function(){
-        c.save();
-        c.translate(this.x, this.y);
-        c.rotate((this.rotation - 90) / -57.2958);
-        c.drawImage(getImage('mine' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
-        c.restore();
+    this.draw = function(context){
+
+        var ctx = c;
+        if(context != null)
+            ctx = context;    
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((this.rotation - 90) / -57.2958);
+        ctx.drawImage(getImage('mine' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.restore();
     }
     this.update = function(){ 
         
@@ -1458,13 +1875,140 @@ function Mine(planet, x, y, rotation, level, ownerId, id){
         //console.log(cost);
     }
 }
+function Spawner(planet, x, y, rotation, level, type, ownerId, id){
+    this.planet = planet;
+    this.x;
+    this.y;
+    this.rotation = rotation;
+    this.size = 50;
+    this.id = id;
+    this.ownerId = ownerId;
+    this.type = "spawner";
+    this.spawnerType = type;
+
+    this.coordX = x;
+    this.coordY = y;
+
+    this.level = level;
+
+    this.draw = function(context){
+
+        var ctx = c;
+        if(context != null)
+            ctx = context;    
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((this.rotation - 90) / -57.2958);
+        ctx.drawImage(getImage(this.spawnerType + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.restore();
+    }
+    this.update = function(){ 
+        
+        var pos = cordsToScreenPos(this.coordX, this.coordY);
+        this.x = pos.x;
+        this.y = pos.y;
+
+        this.draw();
+    }
+    this.productionEffect = function(cost){
+        //console.log(cost);
+    }
+}
+function Electricity(planet, x, y, rotation, level, ownerId, id){
+
+    this.planet = planet;
+    this.x;
+    this.y;
+    this.rotation = rotation;
+    this.size = 50;
+    this.id = id;
+    this.ownerId = ownerId;
+    this.type = "electricity";
+
+    this.power = 0;
+
+    this.coordX = x;
+    this.coordY = y;
+
+    this.level = level;
+
+    this.draw = function(context){
+
+        var ctx = c;
+        if(context != null)
+            ctx = context;    
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((this.rotation - 90) / -57.2958);
+        ctx.drawImage(getImage('electricity' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.restore();
+    }
+
+    this.update = function(){ 
+        
+        var pos = cordsToScreenPos(this.coordX, this.coordY);
+        this.x = pos.x;
+        this.y = pos.y;
+
+        this.draw();
+    }
+
+}
+function Satellite(planet, x, y, rotation, level, ownerId, id){
+
+    this.planet = planet;
+    this.x;
+    this.y;
+    this.rotation = rotation;
+    this.size = 50;
+    this.id = id;
+    this.ownerId = ownerId;
+    this.type = "satellite";
+
+    this.distance = 150;
+
+    this.coordX = x;
+    this.coordY = y;
+
+    this.level = level;
+
+    this.draw = function(context){
+
+        var ctx = c;
+        if(context != null)
+            ctx = context;    
+
+        this.x = (this.planet.x + (this.planet.radius + this.distance) * Math.cos(-this.rotation*Math.PI/180));
+        this.y = (this.planet.y + (this.planet.radius + this.distance) * Math.sin(-this.rotation*Math.PI/180));
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((this.rotation - 90) / -57.2958);
+        ctx.drawImage(getImage('satellite' + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.restore();
+    }
+
+    this.update = function(){ 
+        
+        var pos = cordsToScreenPos(this.coordX, this.coordY);
+        this.x = pos.x;
+        this.y = pos.y;
+
+        this.rotation += .1;
+
+        this.draw();
+    }
+
+}
 function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
     this.planet = planet;
     this.x;
     this.y;
     this.rotation = rotation;
     this.headRotation = 0;
-    this.baseSize = 50;
+    this.size = 50;
     this.headLength = 40;
     this.headWidth = 10;
     this.type = "turret";
@@ -1474,6 +2018,13 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
 
     this.coordX = x;
     this.coordY = y;
+
+    this.rotControlled = false;
+    this.targetServerRot = 0;
+    this.lastTargetServerRot = 0;
+    this.rotLerpAmount = 00;
+    this.rotLerpTime = 20;
+    this.rotWatcher = 0;
 
     this.shootRotation;
     this.headDistanceFromBase = 10;
@@ -1490,50 +2041,92 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
 
     this.shootPoint = new Vector();
 
-    this.draw = function(){
-        //Draw Base
-        c.save();
-        c.translate(this.x, this.y);
-        c.rotate((this.rotation - 90) / -57.2958);
-        c.drawImage(getImage(this.type + this.level), -this.baseSize / 2, -this.baseSize / 2, this.baseSize, this.baseSize);
-        c.restore();
+    this.draw = function(context){
 
-        var l = this.x - this.planet.x;
-        var h = this.y - this.planet.y;
+        var ctx = c;
 
-        var hyp = this.planet.radius;
+        if(context != null)
+            ctx = context;
 
-        var cx = hyp + this.headDistanceFromBase;
-
-        var x = l * (cx / hyp);
-        var y = h * (cx / hyp);
-
-        var headX = this.planet.x + x;
-        var headY = this.planet.y + y
-
-        this.shootPoint = new Vector(headX, headY);
-        
-        this.shootRotation = 0;
-
-        //Draw Head
-        if(this.target)
+        if(ctx == c)
         {
-            var playerPos = cordsToScreenPos(this.target.coordX, this.target.coordY);
+            var l = this.x - this.planet.x;
+            var h = this.y - this.planet.y;
 
-            this.shootRotation = Math.atan2(playerPos.y - headY, playerPos.x - headX);
-            this.headRotation = this.shootRotation * 180 / Math.PI;
-        }
-        else{
-            this.shootRotation = this.rotation * - Math.PI / 180;
-            this.headRotation = this.shootRotation * 180 / Math.PI;
+            var hyp = this.planet.radius;
+
+            var cx = hyp + this.headDistanceFromBase;
+
+            var x = l * (cx / hyp);
+            var y = h * (cx / hyp);
+
+            var headX = this.planet.x + x;
+            var headY = this.planet.y + y;
+
+            this.shootPoint = new Vector(headX, headY);
+            if(!this.rotControlled)
+                this.shootRotation = 0;
+
+            //Draw Head
+            if(this.rotControlled)
+            {
+                if(this.rotWatcher != this.targetServerRot)
+                {
+                    this.lastTargetServerRot = this.rotWatcher;
+                    this.rotWatcher = this.targetServerRot;
+
+                    this.rotLerpTime = this.rotLerpAmount;
+                    this.rotLerpAmount = 0;
+                }
+                
+                if(this.rotLerpAmount <= this.rotLerpTime)
+                    this.shootRotation = this.lastTargetServerRot + (this.targetServerRot - this.lastTargetServerRot) * this.rotLerpAmount / this.rotLerpTime;
+                else
+                    this.shootRotation = this.targetServerRot;
+
+                this.rotLerpAmount++;
+
+                this.headRotation = this.shootRotation * 180 / Math.PI;
+            }
+            else if(turretManualMode && !this.isFacade)
+            {
+                this.shootRotation = Math.atan2(mouse.y - headY, mouse.x - headX);
+                this.headRotation = this.shootRotation * 180 / Math.PI;
+            }
+            else if(this.target)
+            {
+                var playerPos;
+
+                if(this.target.id != clientId)
+                    playerPos = cordsToScreenPos(this.target.displayPos.x, this.target.displayPos.y);
+                else
+                    playerPos = cordsToScreenPos(this.target.coordX, this.target.coordY);
+
+                this.shootRotation = Math.atan2(playerPos.y - headY, playerPos.x - headX);
+                this.headRotation = this.shootRotation * 180 / Math.PI;
+            }
+            else{
+                this.shootRotation = this.rotation * - Math.PI / 180;
+                this.headRotation = this.shootRotation * 180 / Math.PI;
+            }
+
+            ctx.save();
+            ctx.translate(headX, headY);
+            ctx.rotate(this.shootRotation);
+            ctx.fillStyle = planetColors[1];
+            ctx.strokeStyle = "#636363";
+            ctx.lineWidth= 2;
+            ctx.fillRect(-this.headLength / 2 + this.headLength / 4, -this.headWidth / 2, this.headLength, this.headWidth);
+            ctx.strokeRect(-this.headLength / 2 + this.headLength / 4, -this.headWidth / 2, this.headLength, this.headWidth);
+            ctx.restore();
         }
 
-        c.save();
-        c.translate(headX, headY);
-        c.rotate(this.shootRotation);
-        c.fillStyle = planetColors[1];
-        c.fillRect(-this.headLength / 2 + this.headLength / 4, -this.headWidth / 2, this.headLength, this.headWidth);
-        c.restore();
+        //Draw Base
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((this.rotation - 90) / -57.2958);
+        ctx.drawImage(getImage(this.type + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.restore();
     }
     this.update = function(){
 
@@ -1546,7 +2139,7 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
         this.updateTarget();
 
         this.draw();
-         if(this.target && !this.isFacade){
+         if((this.target || turretManualMode) && !this.isFacade){
             this.shootCounter += 1;
 
             if(this.shootCounter >= this.shootInterval){
@@ -1558,13 +2151,6 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
         }
     }
     this.updateTarget = function(){
-        var allPlayers;
-
-        if(spaceShip)
-            allPlayers = otherPlayers.concat(spaceShip);
-        else
-            allPlayers = otherPlayers;
-
         this.target = null;
 
         for(var i = 0; i < allPlayers.length; i++){
@@ -1572,6 +2158,9 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
             player = allPlayers[i];
             
             if(player.id == ownerId || player.alpha < 1)
+                continue;
+
+            if((player.id.substring(0,5) == "enemy") && playerItems["crown"] >= 1)
                 continue;
 
             var playerPos = cordsToScreenPos(player.coordX, player.coordY);
@@ -1588,12 +2177,125 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
             }
             else if(distance <= this.range)
                 this.target = player;
-            
-            
-                
         }
     }
 }
+
+function Item(coordX, coordY, size, type, id) {
+    this.speed = 10;
+    this.x;
+    this.y;
+    this.type = type;
+    this.id = id;
+    this.size = size;
+
+    this.targetRotation = 0;
+    this.rotation = 0;
+
+    this.coordX = coordX;
+    this.coordY = coordY;
+
+    this.coordChangeWatcher = new Vector();
+    this.rotWatcher = 0;
+
+    this.lastCoordX = 0;
+    this.lastCoordY = 0;
+
+    this.lastRot = 0;
+    this.rotation = 0;
+    this.rotLerpTime = 10;
+    this.rotLerpAmount = 0;
+
+    this.lerpAmount = 0;
+    this.lerpTime = 10;
+
+    this.displayPos = new Vector();
+
+    var jumpDistance = 5000;
+
+    this.update = function(){
+        
+        var coords = new Vector(this.coordX, this.coordY);
+        var lastCoords = new Vector(this.lastCoordX, this.lastCoordY);
+        this.displayPos = coords;
+
+        if(this.coordChangeWatcher.x != coords.x || this.coordChangeWatcher.y != coords.y)
+        {
+            this.lastCoordX = this.coordChangeWatcher.x;
+            this.lastCoordY = this.coordChangeWatcher.y;
+            lastCoords = new Vector(this.lastCoordX, this.lastCoordY);
+
+            this.lerpTime = this.lerpAmount;
+            this.lerpAmount = 0;
+            this.coordChangeWatcher = coords;
+        }
+
+        if(this.rotWatcher != this.targetRotation)
+        {
+            this.lastRot = this.rotWatcher;
+
+            this.rotLerpTime = this.rotLerpAmount;
+            this.rotLerpAmount = 0;
+
+            this.rotWatcher = this.targetRotation;
+        }
+
+        var distance = Math.abs(Math.pow(coords.x - lastCoords.x, 2) + Math.pow(coords.y - lastCoords.y, 2));
+
+        if(distance > jumpDistance)
+        {
+            this.lastCoordX = coords.x;
+            this.lastCoordY = coords.y
+            this.displayPos = coords;
+        }
+        else if (this.lerpAmount <= this.lerpTime) {
+            var t = Math.round(this.lerpAmount / this.lerpTime * 100) / 100;
+            var subCoord = Vector.prototype.subtract(coords, lastCoords);
+            this.displayPos = Vector.prototype.addition(lastCoords, new Vector(subCoord.x * t, subCoord.y * t));
+        }
+
+        this.lerpAmount++;
+
+        if(this.rotLerpAmount <= this.rotLerpTime)
+            this.rotation = this.lastRot + (this.targetRotation - this.lastRot) * this.rotLerpAmount / this.rotLerpTime;
+        else
+            this.rotation = this.targetRotation;
+
+        this.rotLerpAmount++;
+
+        var pos = cordsToScreenPos(this.displayPos.x, this.displayPos.y);
+
+        this.x = pos.x;
+        this.y = pos.y;
+
+        this.draw();
+    }
+
+    this.draw = function() {
+     
+        if(type == "crown")
+        {
+            c.globalAlpha = .5;
+            c.fillStyle = "#48f442"
+            c.shadowBlur = -1;
+            c.shadowColor = "#48f442";
+            c.beginPath();
+            c.arc(this.x,this.y, this.size * 2, 0,2*Math.PI);
+            c.fill(); 
+            c.shadowBlur = 0;
+        }
+        
+        c.globalAlpha = 1;
+        c.translate(this.x, this.y);
+        c.rotate(this.rotation);
+        c.drawImage(getImage(this.type), -this.size, -this.size, this.size * 2, this.size * 2);
+        c.rotate(-this.rotation);
+        c.translate(-this.x, -this.y);
+        
+
+    }
+}
+
 function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
     this.pos = new Vector(0, 0);
     this.radius = radius;
@@ -1645,10 +2347,21 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
     }
 
     this.checkForCollisions = function(){   //Check for collisions in Hittable Objects
+
         for (var id in hittableObjects) {
             if (hittableObjects.hasOwnProperty(id)) {
 
                 var hittableObj = hittableObjects[id];
+                
+                var isShield = findObjectWithId(allStructures, id);
+                if(isShield && isShield.object.type == "shield" && !isShield.object.planet.powered)
+                {
+                    this.shieldIgnored = id;
+                    continue;
+                }
+
+                if((hittableObj.id.substring(0,5) == "enemy" || hittableObj.id == "hiveObj") && playerItems["crown"] >= 1)
+                    continue;
 
                 if(this.isFriendly(hittableObj.id) || this.hitObjects.contains(hittableObj.id) || !hittableObj.active)
                     continue;
@@ -1660,11 +2373,20 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
 
                     var hitWorldObject = findObjectWithId(allWorldObjects, id);
 
-                    if(hitWorldObject && hitWorldObject.object.type == "blackHole")
-                        return;
+                    if(hitWorldObject && (hitWorldObject.object.type == "blackHole" || hitWorldObject.object.id == "hive"))
+                        continue;
 
-                    sendProjectileHit(this.id, id);
+                    var ignoreShield = false;
 
+                    if(hitWorldObject && hitWorldObject.object.structures && this.shieldIgnored != null)
+                    {
+                        var possibleShield = findObjectWithId(hitWorldObject.object.structures, this.shieldIgnored);
+                        
+                        if(possibleShield)
+                            ignoreShield = true;
+                    }
+                        
+                    sendProjectileHit(this.id, id, this.coord.x, this.coord.y, ignoreShield);
 
                     if(hitWorldObject)
                     {
@@ -1700,7 +2422,6 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
         return false;
     }
 }
-
 function FacadeProjectile(x, y, velocity, size, color, id){
     this.pos = new Vector(x, y);
     this.size = size;
@@ -1755,25 +2476,21 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
         {
             case "crystal":
                 c.beginPath();
-                spikyBall(c, this.x, this.y, this.radius, 20, 0, -Math.PI/2, .75);
-                c.fillStyle = this.color;
-                c.fill();
-
-                c.beginPath();
-                spikyBall(c, this.x, this.y, this.radius - 5, 20, 0, -Math.PI/2, .75);
+                spikyBall(c, this.x, this.y, this.radius - 3, 20, 0, -Math.PI/2, .75);
+                c.strokeStyle = this.color;
                 c.fillStyle = shadeColorHex(this.color, 10);
+                c.lineWidth = 3;
                 c.fill();
+                c.stroke();
             break;
             case "asteroid":
-                c.fillStyle = this.color;
-                c.beginPath();
-                c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-                c.fill();
-
-                c.beginPath();
                 c.fillStyle = shadeColorHex(this.color, 10);
-                c.arc(this.x, this.y, this.radius - 4, 0, Math.PI * 2, false);
+                c.strokeStyle = this.color;
+                c.lineWidth = 4;
+                c.beginPath();
+                c.arc(this.x, this.y, this.radius - 2, 0, Math.PI * 2, false);
                 c.fill();
+                c.stroke();
             break;
             case "sun":
                 c.shadowBlur = 200 * scale;
@@ -1819,6 +2536,9 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
                 c.arc(this.x, this.y, this.radius - 1, 0, Math.PI * 2, false);
                 c.fill();
             break;
+            case "hiveObj":
+                c.drawImage(getImage('hive'), this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+            break;
         }
 
         if(this.health != this.maxHealth)
@@ -1833,7 +2553,7 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
         this.draw();
     }
 }
-function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, fireRate, projectileSpeed, id){
+function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, fireRate, projectileSpeed, oxygen, id){
     this.coordX = x;
     this.coordY = y;
     this.rotation = 0;
@@ -1844,12 +2564,17 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     this.fireRate = fireRate;
     this.turningSpeed = turningSpeed;
     this.projectileSpeed = projectileSpeed;
+    this.oxygen = oxygen;
     this.level = level;
     this.id = id;
 
     this.alpha = 1;
 
     this.turret;
+
+    this.oxygenRemaining;
+    this.oxygenVignetteFade = {i: 0, time: 200};
+    this.oxygenBarBlink = {i: 0, time: 50, legnth: 20};
 
     this.shopUpgrades = {
         bulletPenetration: {
@@ -1890,9 +2615,12 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     this.update = function(){
         this.draw();
 
+        if(this.oxygen)
+            this.doOxygen();
+
         if(this.turret){
             var pos = screenPosToCords(centerX, centerY);
-            this.turret.baseSize = this.radius / 2;
+            this.turret.size = this.radius / 2;
             this.turret.headWidth =  this.radius / 6;
             this.turret.headLength =  this.radius / 2;
 
@@ -1911,6 +2639,63 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
             c.globalAlpha = 1;
                 
         }  
+    }
+    this.doOxygen = function(){
+
+        this.oxygenDispBarBGColor = "#bababa";
+
+        if(this.oxygenRemaining == null)
+            this.oxygenRemaining = this.oxygen;
+        else
+        {
+            if(!currentPlanet)
+            {
+                if(this.oxygenRemaining > 0)
+                {
+                    if(this.oxygenRemaining - 1 <= 0)
+                        socket.emit("oxygen", {has: false, worldId: worldId});
+                    
+                    this.oxygenRemaining--;
+                } 
+                else
+                {
+                    if(this.oxygenBarBlink.i < this.oxygenBarBlink.time)
+                        this.oxygenBarBlink.i++;
+                    else if(this.oxygenBarBlink.i < this.oxygenBarBlink.time + this.oxygenBarBlink.legnth)
+                    {
+                        this.oxygenDispBarBGColor = "red";
+                        this.oxygenBarBlink.i++;
+                    }
+                    else
+                        this.oxygenBarBlink.i = 0;
+                        
+                    if(this.oxygenVignetteFade.i < this.oxygenVignetteFade.time)
+                    {
+                        $("#vignetteOverlay").css("opacity", this.oxygenVignetteFade.i / this.oxygenVignetteFade.time);
+                        this.oxygenVignetteFade.i++;
+                    }                        
+                }
+                
+            }
+            else
+            {
+                this.oxygenBarBlink.i = 0;
+
+                if(this.oxygenRemaining == 0)
+                    socket.emit("oxygen", {has: true, worldId: worldId});
+
+                if (this.oxygenRemaining < this.oxygen)
+                    this.oxygenRemaining += this.oxygen / 25;
+
+                if(this.oxygenRemaining > this.oxygen)
+                    this.oxygenRemaining = this.oxygen
+
+                if(this.oxygenVignetteFade.i > 0){
+                    $("#vignetteOverlay").css("opacity", this.oxygenVignetteFade.i / this.oxygenVignetteFade.time);
+                    this.oxygenVignetteFade.i--;
+                }
+            } 
+        }
     }
 
 }
@@ -1947,9 +2732,13 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
 
     this.displayPos = new Vector();
 
-    var jumpDistance = 100000;
+    var jumpDistance = 10000;
 
     this.turret;
+
+    this.image = null;
+
+    this.isEnemy = this.id.substring(0,5) == "enemy";
 
     this.draw = function(){
         var healthBarWidth = 50;
@@ -1957,22 +2746,16 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
         var testpos = cordsToScreenPos(this.lastCoordX, this.lastCoordY);
         var testpostarget = cordsToScreenPos(this.coordX, this.coordY);
 
-        // c.strokeStyle = "red";
-        // c.lineWidth = 1;
-        // c.beginPath();
-        // c.arc(testpostarget.x, testpostarget.y, this.radius, 0, Math.PI * 2, false);
-        // c.stroke();
+        if(this.isEnemy)
+            this.image = getImage('enemy' + this.username + ((this.level / 3) - 1));
+        else
+            this.image = getImage('spaceship' + this.level);
 
-        // c.strokeStyle = "blue";
-        // c.lineWidth = 1;
-        // c.beginPath();
-        // c.arc(testpos.x, testpos.y, this.radius, 0, Math.PI * 2, false);
-        // c.stroke();
 
         c.globalAlpha = this.alpha;
         c.translate(this.x, this.y);
         c.rotate(this.rotation);
-        c.drawImage(getImage('spaceship' + this.level), -this.radius, -this.radius, this.radius * 2, this.radius * 2);
+        c.drawImage(this.image, -this.radius, -this.radius, this.radius * 2, this.radius * 2);
         c.rotate(-this.rotation);
         c.translate(-this.x, -this.y);
 
@@ -1985,7 +2768,7 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
         var lastCoords = new Vector(this.lastCoordX, this.lastCoordY);
         this.displayPos = coords;
 
-        if(this.coordChangeWatcher.x != coords.x && this.coordChangeWatcher.y != coords.y)
+        if(this.coordChangeWatcher.x != coords.x || this.coordChangeWatcher.y != coords.y)
         {
             this.lastCoordX = this.coordChangeWatcher.x;
             this.lastCoordY = this.coordChangeWatcher.y;
@@ -2010,6 +2793,7 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
 
         if(distance > jumpDistance)
         {
+            console.log("jumped");
             this.lastCoordX = coords.x;
             this.lastCoordY = coords.y
             this.displayPos = coords;
@@ -2018,21 +2802,16 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
             var t = Math.round(this.lerpAmount / this.lerpTime * 100) / 100;
             var subCoord = Vector.prototype.subtract(coords, lastCoords);
             this.displayPos = Vector.prototype.addition(lastCoords, new Vector(subCoord.x * t, subCoord.y * t));
-            this.lerpAmount++;
-        }
-        else if(this.lerpAmount > this.lerpTime){
-            this.lerpAmount++;
         }
 
-        if(this.rotLerpAmount <= this.rotLerpTime){
-            this.rotLerpAmount++;
+        this.lerpAmount++;
+
+        if(this.rotLerpAmount <= this.rotLerpTime)
             this.rotation = this.lastRot + (this.targetRotation - this.lastRot) * this.rotLerpAmount / this.rotLerpTime;
-        }
-        else{
+        else
             this.rotation = this.targetRotation;
-        }
-        // else if (this.rotLerpAmount / this.rotLerpTime > 1)
-        // this.rotLerpAmount++;
+
+        this.rotLerpAmount++;
 
         var pos = cordsToScreenPos(this.displayPos.x, this.displayPos.y);
 
@@ -2042,19 +2821,26 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
         if(this.alpha > 0){
             this.draw();
 
-            //Display username above person
-            c.font = "20px Arial";
-            c.fillStyle = "white";
-            c.globalAlpha = .5;
-            c.textAlign = "center"; 
-            c.fillText(this.username, this.x, this.y - this.radius - 20);
-    
-            c.textAlign = "left"; 
-            c.globalAlpha = 1;
+            if(!this.isEnemy)
+            {
+
+                if(this.id == master.id)
+                    c.drawImage(getImage("crown"), this.x - this.radius / 4, this.y - this.radius - 30 - this.radius / 2, this.radius / 2, this.radius / 2);
+
+                //Display username above person
+                c.font = "20px Arial";
+                c.fillStyle = "white";
+                c.globalAlpha = .5;
+                c.textAlign = "center"; 
+                c.fillText(this.username, this.x, this.y - this.radius - 20);
+
+                c.textAlign = "left"; 
+                c.globalAlpha = 1;
+            } 
         }
 
         if(this.turret){
-            this.turret.baseSize = this.radius / 2;
+            this.turret.size = this.radius / 2;
             this.turret.headWidth =  this.radius / 6;
             this.turret.headLength =  this.radius / 2;
 
@@ -2065,9 +2851,10 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
             c.globalAlpha = this.alpha;
             this.turret.update();
             c.globalAlpha = 1;
-        }  
+        }
     }
 }
+
 function Shop(coordX, coordY, radius, upgradeType){
     this.x;
     this.y;
@@ -2089,7 +2876,7 @@ function Shop(coordX, coordY, radius, upgradeType){
         c.beginPath();
         c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
         c.stroke();
-        c.drawImage(getImage("shop"), this.x - this.radius / 2, this.y - this.radius / 2, this.radius, this.radius); 
+        c.drawImage(getImage("shop" + this.upgradeType), this.x - this.radius / 2, this.y - this.radius / 2, this.radius, this.radius); 
 
         if(this.isInRange){
 
@@ -2101,7 +2888,7 @@ function Shop(coordX, coordY, radius, upgradeType){
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText($('input#openShop').val(), centerX, (windowHeight - 80) / scale);
+                c.fillText($('p#openShop').text(), centerX, (windowHeight - 80) / scale);
                 c.textAlign="left"; 
                 c.globalAlpha = 1;
             }
@@ -2110,14 +2897,11 @@ function Shop(coordX, coordY, radius, upgradeType){
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText($('input#closeShop').val(), centerX, (windowHeight - 80) / scale);
+                c.fillText($('p#closeShop').text(), centerX, (windowHeight - 80) / scale);
                 c.textAlign="left"; 
                 c.globalAlpha = 1;
             }
-
-            
-            
-            
+    
         }
     }
 
@@ -2155,9 +2939,7 @@ function shortAngleDist(a0,a1) {
 var time = 0;
 var isScaling = true;
 
-
 function animate() {
-
     canvas.width = innerWidth;
     canvas.height = innerHeight;
 
@@ -2165,7 +2947,12 @@ function animate() {
     windowHeight =  $(window).height();
 
     requestAnimationFrameId = requestAnimationFrame(animate);
-    c.clearRect(0, 0, innerWidth, innerHeight);
+
+    for (var can in canvases) {
+        if (canvases.hasOwnProperty(can)) {
+            canvases[can].getContext('2d').clearRect(0, 0, innerWidth, innerHeight);
+        }
+    }
 
     if(scale != targetScale) {
 
@@ -2187,10 +2974,16 @@ function animate() {
     }
     
     centerX = (canvas.width / 2 / scale);
-    centerY = (canvas.height / 2 / scale);    
+    centerY = (canvas.height / 2 / scale);  
+    
+    if(spaceShip)
+        allPlayers = otherPlayers.concat(spaceShip);
+    else
+        allPlayers = otherPlayers;
+
 
     otherPlayers.forEach(player => {
-        if(player.displayPos)
+        if(player.displayPos && player.displayPos.x && player.displayPos.y)
         { 
             hittableObjects[player.id].x = player.displayPos.x;
             hittableObjects[player.id].y = player.displayPos.y;
@@ -2218,8 +3011,19 @@ function animate() {
 
             if(spaceshipVelocity.getMagnitude() < .2 && distance < 2)
             {
+
+                var satelliteAddedRange = 0;
+
+                if(currentPlanet.powered)
+                {
+                    currentPlanet.structures.forEach(structure => {
+                        if(structure.type == "satellite")
+                            satelliteAddedRange += structure.range;
+                    });
+                }
+
                 landed = true;
-                targetScale = 120 / currentPlanet.radius;
+                targetScale = (250 - satelliteAddedRange) / currentPlanet.radius;
                 mousePullxTarget = 0;
                 mousePullxTarget = 0;
             }
@@ -2230,7 +3034,6 @@ function animate() {
         }
         else if(!shopOpen.open) {
             targetScale = 50 / spaceShip.radius;
-            structureUpgradeables = [];
 
             if(mouse.clicked || boost){
 
@@ -2268,9 +3071,9 @@ function animate() {
             ? new Vector()
             : new Vector(mousePullx, mousePully);
 
-        worldObjects.asteroids.forEach(function(spaceMatter){
+        worldObjects.spaceMatter.forEach(function(spaceMatter){
 
-            if(spaceMatter.type == "blackHole")
+            if(spaceMatter.type == "blackHole" && !currentPlanet)
             {
                 var pos = cordsToScreenPos(spaceMatter.coordX, spaceMatter.coordY);
 
@@ -2298,19 +3101,10 @@ function animate() {
                         spaceshipVelocity.y = y * holeScaleFactor;
                     }
                     
-                    
                     if(holeDist < 10)
                     {
                         caughtInBlackHole = true;
                     }
-
-                    // c.beginPath();
-                    // c.strokeStyle = "white";
-                    // c.moveTo(windowWidth / 2, windowHeight / 2);
-                    // var tox = centerX * scale + x * holeScaleFactor * 100;
-                    // var toy = centerY * scale + y * holeScaleFactor * 100;
-                    // c.lineTo(tox, toy);
-                    // c.stroke();
                 }   
             }
                 
@@ -2346,7 +3140,9 @@ function animate() {
         gridPos.y -= spaceshipVelocity.y;
 
         for(var i = 0; i < allStructures.length; i++){
-            allStructures[i].health = healthDict[allStructures[i].id];
+
+            if(allStructures[i].health != healthDict[allStructures[i].id])
+                allStructures[i].health = healthDict[allStructures[i].id];
         }
 
         if(!currentPlanet)
@@ -2354,6 +3150,14 @@ function animate() {
 
     }
     else{
+
+        var opacity = $("#vignetteOverlay").css("opacity");
+
+        if(opacity > 0){
+            opacity -= .2;
+            $("#vignetteOverlay").css("opacity", opacity);
+        }
+
         targetScale = startScale;
         
         spaceshipVelocity.x = 0;
@@ -2372,13 +3176,15 @@ function animate() {
     }
 
     //Draw -----------------------------------------------------------------------------------------------------------
-    c.scale(scale, scale);
-
-    drawGrid(gridPos.x + centerX, gridPos.y +  centerY, gridSize, gridSize, gridBoxScale);
+    for (var can in canvases) {
+        if (canvases.hasOwnProperty(can)) {
+            canvases[can].getContext('2d').scale(scale, scale);
+        }
+    }
     
-    var allMatter = allWorldObjects.concat(otherPlayers);
-    allMatter.forEach(function(matter){
+    drawGrid(gridPos.x + centerX, gridPos.y + centerY, gridSize, gridSize, gridBoxScale);
 
+    allWorldObjects.forEach(function(matter){
         var pos = cordsToScreenPos(matter.coordX, matter.coordY);
         var size = matter.radius + 50;
 
@@ -2430,6 +3236,11 @@ function animate() {
 
     });
 
+    otherPlayers.forEach(function(player){
+        player.health = healthDict[player.id];
+        player.update();
+    });
+
     if(spaceShip)
     {
         for (var timer in propertiesTimer) {
@@ -2444,7 +3255,7 @@ function animate() {
                         propertiesTimer[timer].fill += .05;
                     }
     
-                    var matter = findObjectWithId(allMatter, timer);
+                    var matter = findObjectWithId(allWorldObjects.concat(allPlayers), timer);
     
                     if(!matter)
                         delete propertiesTimer[timer];
@@ -2512,7 +3323,8 @@ function animate() {
         proj.pos.y -= spaceshipVelocity.y;
         proj.update();
     }
-    
+
+
     if(spaceShip && ownedPlanets.length > 0){
 
         //Draw arrows pointing to owned planets
@@ -2585,7 +3397,7 @@ function animate() {
                 }
 
                 var arrowRotation = Math.atan2(centerY - planet.y, centerX - planet.x) - (45 * Math.PI / 180);
-                var arrowSize = 10 / scale;
+                var arrowSize = 20 / scale;
 
                 var arrowColor = "#ffffff";
 
@@ -2613,7 +3425,7 @@ function animate() {
                 }
                 
                 if(flashingPlanetArrows[planet.id] && flashingPlanetArrows[planet.id].isFlashed)
-                    arrowColor = planetArrowFlashColor;
+                    arrowColor = planet.color;
                 else
                     arrowColor = "#ffffff";
 
@@ -2623,6 +3435,12 @@ function animate() {
 
     }
 
+    for (var item in worldItems) {
+        if (worldItems.hasOwnProperty(item)) {
+            worldItems[item].update();
+        }
+    }
+
     var isInSun = false;
     
     c.scale(1 / scale, 1 / scale);
@@ -2630,13 +3448,26 @@ function animate() {
     if(spaceShip){
 
         if(currentPlanet){
-            c.font = windowHeight / 15 + "px Arial";
-            c.fillStyle = "white";
-            c.globalAlpha = .2;
-            c.textAlign="center"; 
-            c.fillText($('input#takeOff').val(), windowWidth / 2, (windowHeight - 80));
-            c.textAlign="left"; 
-            c.globalAlpha = 1;
+            if(boughtStructure)
+            {
+                c.font = windowHeight / 17 + "px Arial";
+                c.fillStyle = "white";
+                c.globalAlpha = .2;
+                c.textAlign="center"; 
+                c.fillText($('p#placeStructue').text() + boughtStructure, windowWidth / 2, (windowHeight - 80));
+                c.textAlign="left"; 
+                c.globalAlpha = 1;
+            }
+            else{
+                c.font = windowHeight / 17 + "px Arial";
+                c.fillStyle = "white";
+                c.globalAlpha = .2;
+                c.textAlign="center"; 
+                c.fillText($('p#takeOff').text(), windowWidth / 2, (windowHeight - 80));
+                c.textAlign="left"; 
+                c.globalAlpha = 1;
+            }
+           
         }
         else if(!currentPlanet && closestAvailablePlanet){
 
@@ -2649,11 +3480,11 @@ function animate() {
 
             if(!shopInRange)
             {
-                c.font =  windowHeight / 15 + "px Arial";
+                c.font =  windowHeight / 17 + "px Arial";
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText($('input#land').val(), windowWidth / 2, (windowHeight - 80));
+                c.fillText($('p#land').text(), windowWidth / 2, (windowHeight - 80));
                 c.textAlign="left"; 
     
                 c.globalAlpha = .5;
@@ -2671,7 +3502,7 @@ function animate() {
         }
     }
 
-    worldObjects.asteroids.forEach(spaceMatter => {
+    worldObjects.spaceMatter.forEach(spaceMatter => {
         
         if(spaceMatter.type == "sun"){
 
@@ -2723,25 +3554,71 @@ function animate() {
         var checkItemY = windowHeight * .7;
         var checkPadding = windowHeight * .02;
 
-        var width = windowHeight * .3;
+        var width = windowHeight * .4;
         var height = width * .25;
 
         var yPositions = {};
         var i = 0;
-
-
-        if(spaceShip.level == 0 && !checklist.upgrade.isActive)
-        {
-            if(playerHasResources(playerUpgrades[1].costs))
-            {
-                checklist.upgrade.isActive = true;
-            }
-        }
         
+        if(!currentPlanet)
+        {
+            var oxyWidth = windowWidth / 3;
+            var oxyHeight = windowHeight / 20;
+    
+            oxygenSize = windowHeight / 3.5;
+    
+            var percentOxygenRemaining = spaceShip.oxygenRemaining / spaceShip.oxygen;
+            var oxyHeight = oxygenSize * .75 * percentOxygenRemaining;
+    
+            c.globalAlpha = .75;
+            c.fillStyle = spaceShip.oxygenDispBarBGColor;
+            c.fillRect(windowHeight / 34, windowHeight - oxygenSize * .75 - windowHeight / 23, oxygenSize / 7, oxygenSize * .75);
+    
+            c.globalAlpha = .75;
+            c.fillStyle =  "#a3e1ff";
+            c.fillRect(windowHeight / 34, windowHeight - oxyHeight - windowHeight / 24, oxygenSize / 7, oxyHeight);
+    
+            c.globalAlpha = 1;
+            
+            c.drawImage(getImage("oxygenTank"), -oxygenSize / 3.5 - windowHeight / 80, windowHeight - oxygenSize - windowHeight / 50, oxygenSize, oxygenSize)
+
+            c.font = windowHeight / 30 + "px Helvetica";
+            c.fillStyle = "white";
+            c.textAlign = "center";
+            c.fillText("O²", oxygenSize / 5.2, windowHeight - oxygenSize - windowHeight / 30);
+
+            if(percentOxygenRemaining <= 0)
+            {
+                var warningWidth = (windowHeight + windowWidth) / 10;
+                var warningHeight = warningWidth * 11/21;
+        
+                c.globalAlpha = .8;
+                c.drawImage(getImage("warningSign"), windowWidth / 2 - warningWidth / 2, windowHeight / 2 - warningHeight /2, warningWidth, warningHeight);
+                var fontsize = warningHeight / 6;
+        
+                c.font = fontsize + "px Helvetica";
+                c.fillStyle = "white";
+        
+                wrapText(c, $('p#oxygenWarning').text(), windowWidth / 2, windowHeight / 2, warningWidth * .85, fontsize);
+            }
+            c.textAlign = "left";
+            
+        }
 
         function getCardYPos(index)
         {
             return checkItemY + (checkPadding + height) * index;
+        }
+
+        if(currentPlanet)
+        {
+            checklist.shoot.isActive = false;
+            checklist.fly.isActive = false;
+        }
+        else
+        {
+            checklist.shoot.isActive = true;
+            checklist.fly.isActive = true;
         }
 
         for (var check in checklist) {
@@ -2816,7 +3693,7 @@ function animate() {
                         c.fillStyle = "white";
                         c.font = fontsize + "px Helvetica";
         
-                        wrapText(c, $('input#' + check).val(), windowWidth / 2 - width * checkItem.size / 4, checkItem.yPos + fontsize * 2, width * .6, fontsize);
+                        wrapText(c, $('p#' + check).text(), windowWidth / 2 - width * checkItem.size / 4, checkItem.yPos + fontsize * 2, width * .7, fontsize);
                     }
                 
 
@@ -2827,21 +3704,17 @@ function animate() {
         }
         c.globalAlpha = 1;
 
-        
         if(spaceShip.health > 0){
 
             var xPadding = 10;
             var yPadding = 10;
 
-            displayBar(xPadding, yPadding, 200, 50, spaceShip.health / spaceShip.maxHealth, healthBarColor);
+            displayBar(xPadding, yPadding, 200, 50, spaceShip.health / spaceShip.maxHealth, "#36a52c");
             c.fillStyle = "white";
             displayResources();
             c.font = " 30px Helvetica";
             c.fillText(Math.round(spaceShip.health)+  "/" + Math.round(spaceShip.maxHealth), xPadding + 10, yPadding + 35);  
         }
-
-        if(showUpgradesPannel && !clickedUpgrade)
-            showUpgrades();
     
         if(playerDisplayMessage != ""){
             if(playerMessageTimer > 0)
@@ -2862,89 +3735,508 @@ function animate() {
             c.globalAlpha = 1;
             c.textAlign = "left";
         }
-
-        if(currentPlanet){
-            //Draw the structures aviable for placement on a planet w/ their costs
-            var imageSizes = canvas.height / 12;
-            var padding = canvas.height / 25;
-
-            var yValue = canvas.height / 2.3;
-            var xValue = padding;
-
-            c.globalAlpha = .8;
-            c.fillStyle = "white";
-            c.font = windowHeight / 40 + "px Helvetica";
-            c.fillText("Structures", xValue - padding / 2, yValue + padding);
-
-            c.globalAlpha = .2;
-            c.fillRect(xValue - padding / 2, yValue + padding * 1.2, imageSizes + padding, (imageSizes + padding) * 4);
-            c.globalAlpha = .85;
-
-            c.drawImage(getImage('turret0'), xValue, padding + yValue, imageSizes, imageSizes); 
-            c.drawImage(getImage('mine0'), xValue, padding * 2 + imageSizes + yValue, imageSizes, imageSizes);
-            c.drawImage(getImage('shield0'), xValue, padding * 3 + imageSizes * 2 + yValue, imageSizes, imageSizes);     
-            c.drawImage(getImage('landingPad0'), xValue, padding * 4 + imageSizes * 3 + yValue, imageSizes, imageSizes);  
-    
-            //Display HotKeys
-            var keyX = xValue + imageSizes / 2;
-
-            var shadowX = 4;
-            var shadowY = 4;
-
-            c.fillStyle = "black";
-            c.globalAlpha = .5;
-            c.textAlign = "center"; 
-            c.font = windowHeight / 20 + "px Helvetica";
-
-            c.fillText("T", keyX + shadowX, padding + imageSizes * .85 + yValue + shadowY);
-            c.fillText("M", keyX + shadowX, padding * 2 + imageSizes * 1.75 + yValue + shadowY);
-            c.fillText("S", keyX + shadowX, padding * 3 + imageSizes * 2.75 + yValue + shadowY);
-            c.fillText("L", keyX + shadowX, padding * 4 + imageSizes * 3.75 + yValue + shadowY);
-            
-            c.globalAlpha = .85;
-            c.fillStyle = "white";
-            c.fillText("T", keyX, padding + imageSizes * .85 + yValue);
-            c.fillText("M", keyX, padding * 2 + imageSizes * 1.75 + yValue);
-            c.fillText("S", keyX, padding * 3 + imageSizes * 2.75 + yValue);
-            c.fillText("L", keyX, padding * 4 + imageSizes * 3.75 + yValue);
-
-            c.textAlign = "left"; 
-
-            //Display Costs
-            var structureCosts = [structureUpgrades["turret"][0].costs, structureUpgrades["mine"][0].costs, structureUpgrades["shield"][0].costs, structureUpgrades["landingPad"][0].costs];
-
-            var costSize = canvas.height / 45;
-            var costPadding = canvas.height / 75;
-            var costY = padding + imageSizes + costPadding;
-
-            structureCosts.forEach(costs => {
-                
-                var costX = 5;
-
-                for (var cost in costs) {
-                    if (costs.hasOwnProperty(cost)) {
-
-                        var color = "white";
-                        if(!playerItems[cost] || playerItems[cost] < costs[cost])
-                            color = "#ff9696";
-
-                        c.drawImage(getImage(cost), xValue + costX, costY + yValue, costSize, costSize);
-                        c.font = windowHeight / 50 + "px Helvetica";
-                        c.fillStyle = color;
-                        c.fillText(costs[cost], xValue + costX + costSize * 1.2, costY + costSize / 1.3 + yValue);
         
-                        costX += costSize + costPadding * 3;
+        //Planet Structure Placement -----------------------------------------------
+        if(currentPlanet){
+            if(boughtStructure != null)
+            {
+                var addedDist = 0;
+                var structureImage = boughtStructure;
+
+                if(boughtStructure == "satellite")
+                    addedDist = new Satellite().distance - new Satellite().size / 2;
+                else if(boughtStructure == "shield")
+                    structureImage = "shieldGenerator"
+
+                if(structureSpawnPoint(50 * scale, structureImage + "0", addedDist)){
+                    if(mouse.clickDown)
+                    {
+                        var spawnerType = "nope";
+
+                        if(boughtStructure.substring(0, 7) == "spawner")
+                        {
+                            spawnerType = (boughtStructure.substring(7, boughtStructure.legnth));
+                            spawnerType = spawnerType.charAt(0).toLowerCase() + spawnerType.substring(1, spawnerType.legnth);
+                        }
+                            
+
+                        requestStructureSpawn(boughtStructure, spawnerType);
+                        boughtStructure = null;
+
+                        structureSpawnPosition = null;
+                        structureSpawnRotation = null;
                     }
                 }
-                
-                costY += padding + imageSizes;
-            
-            });
+            }
+            else
+            {
+                var hoveredStructure = null;
 
-            c.globalAlpha = 1;
+                //Highlight Seleted Structures ----------------------------------------------------
+
+                currentPlanet.structures.forEach(structure => {
+                    
+                    var distance = Math.sqrt(Math.pow(mouse.x - structure.x, 2) + Math.pow(mouse.y - structure.y, 2));
+                    
+                    if(distance < structure.size / 2)
+                        hoveredStructure = structure;
+                });
+
+                var selectedNew = false;
+
+                var slCtx = FindCanvas("selectedObj", "destination-atop", true);            //Selected structure canvas context
+                var hlCtx = FindCanvas("highlightedObjCanvas", "destination-atop", true);   //Highlighted structure canvas context
+
+                if(hoveredStructure)
+                {   
+                    if(hoveredStructure != selectedStructure)
+                    {
+
+                        if(mouse.clickDown)
+                        {
+                            selectedStructure = hoveredStructure;
+                            planetShopSelection = selectedStructure;
+                            hlCtx.fillStyle = "#5beeff";
+        
+                            selectedNew = true;
+                        }
+        
+                        hlCtx.fillStyle = "#ffffff";
+                        
+                        hlCtx.globalAlpha = .5;
+        
+                        hlCtx.save();
+                        hlCtx.translate(hoveredStructure.x, hoveredStructure.y);
+                        hlCtx.rotate((hoveredStructure.rotation - 90) / -57.2958);
+                        hlCtx.fillRect(-hoveredStructure.size / 2, -hoveredStructure.size / 2, hoveredStructure.size, hoveredStructure.size);
+                        hlCtx.restore();
+        
+                        hlCtx.globalAlpha = 1;
+                        hoveredStructure.draw(hlCtx);
+                    }
+                    else if(mouse.clickDown)
+                    {
+                        selectedStructure = null;
+                        planetShopSelection = null;
+                    }
+                }
+                else{
+                    lastSelectedStructue = null;
+                }
+                if(selectedStructure && !selectedNew){
+                    
+                    slCtx.fillStyle = "#5beeff";
+                    slCtx.globalAlpha = .5;
+
+                    slCtx.save();
+                    slCtx.translate(selectedStructure.x, selectedStructure.y);
+                    slCtx.rotate((selectedStructure.rotation - 90) / -57.2958);
+                    slCtx.fillRect(-selectedStructure.size / 2, -selectedStructure.size / 2, selectedStructure.size, selectedStructure.size);
+                    slCtx.restore();
+
+                    slCtx.globalAlpha = 1;
+                    selectedStructure.draw(slCtx);
+                }
+
+                //Draw planet structure shop ------------------------------------------------------------
+                var turretButtonOffset = 0;
+
+                var numYButtons = 4;
+                var numXButtons = 2;
+
+                var buttonSizes = Math.sqrt(canvas.height * canvas.width) / 18;
+                var padding = Math.sqrt(canvas.height * canvas.width) / 100;
+
+                var selectedStructureImageSize = Math.sqrt(canvas.height * canvas.width) / 9;
+
+                var yVal = canvas.height - (buttonSizes + padding) * numYButtons - padding * 2;
+                var xVal = padding;
+
+                var buttonTypes = ["spaceShip", "landingPad", "mine", "turret", "shield", "electricity", "satellite"];
+
+                if(currentPlanet.id == "hive")
+                {
+                    numYButtons = 4;
+                    numXButtons = 1;
+                    buttonTypes = ["spawnerScout", "spawnerDefender", "spawnerGuard"];
+                }
+
+                //Box Label -----------------------------
+                var backgroundWidth = (buttonSizes + padding) * numXButtons + padding;
+                var backgroundHeight = (buttonSizes + padding) * numYButtons + padding;
+
+                var cornerRadius = Math.sqrt(canvas.height * canvas.width) / 70;
+                var fontsize = Math.sqrt(canvas.height * canvas.width) / 45 * Math.sqrt(numXButtons) / Math.sqrt(3);
+                
+                var yTextSize = fontsize - padding / Math.sqrt(canvas.height * canvas.width);
+
+                c.globalAlpha = .2;
+                c.fillStyle = "#ffffff";
+
+                c.beginPath();
+                c.moveTo(xVal + padding, yVal);
+                c.lineTo(xVal + padding, yVal - yTextSize + cornerRadius);
+                c.arc(xVal + padding + cornerRadius, yVal - yTextSize, cornerRadius, -180 * Math.PI / 180, -90 * Math.PI / 180);
+                c.lineTo(xVal + backgroundWidth - padding - cornerRadius, yVal - yTextSize - cornerRadius);
+                c.arc(xVal + backgroundWidth - padding - cornerRadius, yVal - yTextSize, cornerRadius, -90 * Math.PI / 180, 0);
+                c.lineTo(xVal + backgroundWidth - padding, yVal);
+                c.fill();
+
+                c.globalAlpha = 1;
+                c.font = fontsize + "px Helvetica";
+                c.textAlign = "center";
+                c.fillText($('p#structures').text(), backgroundWidth / 2 + padding, yVal - padding);
+
+                c.globalAlpha = .2;
+                c.fillRect(xVal, yVal, backgroundWidth, backgroundHeight);
+
+                //Draw Buttons ------------------------------
+                c.globalAlpha = 1;
+
+                var buttonY = yVal;
+                var buttonX = xVal;
+
+                var mouseX = mouse.x * scale;
+                var mouseY = mouse.y * scale;                    
+
+                var typeI = 0;
+
+                for (let ix = 0; ix < numXButtons; ix++) {
+
+                    for (let iy = 0; iy < numYButtons; iy++) {
+                        if (mouseY > buttonY + padding && mouseY < buttonY + padding + buttonSizes && mouseX > buttonX + padding && mouseX < buttonX + padding + buttonSizes) 
+                        {
+                            if(mouse.clicked)
+                            {
+                                if(mouse.clickDown)
+                                {
+                                    selectedStructure = null;
+                                    planetShopSelection = buttonTypes[typeI];
+                                }
+
+                                c.fillStyle = "#a3a3a3";
+                            }
+                            else
+                                c.fillStyle = "#cccccc";
+                        }
+                        else
+                            c.fillStyle = "#ffffff";
+
+
+                        var imagePadding = 20;
+                        var imageName = buttonTypes[typeI] + "Gray";
+
+                        if(typeI > buttonTypes.length - 1)
+                            imageName = "x"
+                        else if(buttonTypes[typeI] == "shield")
+                            imageName = "shieldGeneratorGray"
+                        
+
+                        c.globalAlpha = ".5";
+                        c.fillRect(buttonX + padding, buttonY + padding, buttonSizes, buttonSizes);
+                        c.globalAlpha = "1";
+                        c.drawImage(getImage(imageName), buttonX + padding + imagePadding / 2, buttonY + padding + imagePadding / 2, buttonSizes - imagePadding, buttonSizes - imagePadding);
+                        buttonY += buttonSizes + padding;
+                        typeI++;
+                    }
+
+                    buttonX += buttonSizes + padding;
+                    buttonY = yVal;
+                }
+
+                //Draw Selected Structure Panel -------------            
+                c.globalAlpha = 1;
+
+                if(planetShopSelection != null)
+                {
+                    var type = planetShopSelection;
+                    var level = 0;
+                    var upgrading = typeof planetShopSelection == "object";
+
+                    if(upgrading)
+                    {
+                        type = planetShopSelection.type;
+                        level = planetShopSelection.level;
+                    }
+                    else if(type == "spaceShip")
+                        level = spaceShip.level;
+
+                    var upgrades = structureUpgrades[type];
+
+                    if(upgrades == undefined)
+                        upgrades = playerUpgrades;
+
+                    var pannelWidth = selectedStructureImageSize * 8/7 + padding * 2;
+                    var pannelHeight = backgroundHeight;
+
+                    var panelX = xVal + backgroundWidth
+                    var panelY = canvas.height - pannelHeight - padding;
+
+                    turretButtonOffset += pannelWidth;
+
+                    //Header
+                    var headerX = panelX;
+
+                    c.globalAlpha = .2;
+                    c.fillStyle = "#ffffff";
+
+                    c.beginPath();
+                    c.moveTo(headerX + padding, yVal);
+                    c.lineTo(headerX + padding, yVal - yTextSize + cornerRadius);
+                    c.arc(headerX + padding + cornerRadius, yVal - yTextSize, cornerRadius, -180 * Math.PI / 180, -90 * Math.PI / 180);
+                    c.lineTo(headerX + pannelWidth - padding - cornerRadius, yVal - yTextSize - cornerRadius);
+                    c.arc(headerX + pannelWidth - padding - cornerRadius, yVal - yTextSize, cornerRadius, -90 * Math.PI / 180, 0);
+                    c.lineTo(headerX + pannelWidth - padding, yVal);
+                    c.fill();
+
+                    c.globalAlpha = 1;
+                    c.font = fontsize + "px Helvetica";
+                    c.textAlign = "center";
+
+                    var name = $('p#' + type).text();
+                    
+                    if(type == "spawner")
+                        name = $('p#' + planetShopSelection.spawnerType).text();
+
+                    var uppercasedType = name.charAt(0).toUpperCase() + name.slice(1);
+                    c.fillText(uppercasedType, headerX + pannelWidth / 2, yVal - padding);
+
+                    //Background
+                    c.globalAlpha = .2;
+                    c.fillRect(panelX, panelY, pannelWidth, pannelHeight);
+
+                    //Division Line
+                    c.globalAlpha = .5;
+                    c.fillRect(panelX - 2, panelY + 10, 4, pannelHeight - 20);
+
+                    //Image
+                    c.globalAlpha = 1;
+
+                    var fullyUpgraded = false;
+
+                    if(type == "spaceShip")
+                    {
+                        if(spaceShip.level > 0)
+                        {
+                            upgrading = true;
+                            fullyUpgraded = upgrades[level + 1] == null;
+                        }
+                        else{
+                            level = 1;
+                        }
+                    }
+
+                    if(upgrading)
+                        fullyUpgraded = upgrades[level + 1] == null;
+                    
+                    var imageLevel = level;
+
+                    if(upgrading && !fullyUpgraded)
+                        imageLevel = level + 1;
+
+                    if(type == "spawner" && upgrading)
+                        type = planetShopSelection.spawnerType;
+
+                    var imageName = type + imageLevel;
+
+                    if(type == "shield")
+                        imageName = "shieldGenerator" + imageLevel;
+
+                    c.drawImage(getImage(imageName), panelX + pannelWidth / 2 - selectedStructureImageSize / 2, panelY + padding, selectedStructureImageSize, selectedStructureImageSize);
+
+                    //Buy / Upgrade button
+                    var shopButtonWidth = pannelWidth * 2 / 3;
+                    var shopButtonHeight = pannelHeight / 10;
+
+                    var shopButtonX = panelX + pannelWidth / 2 - shopButtonWidth / 2;
+                    var shopButtonY = panelY + padding * 2 + selectedStructureImageSize;
+
+                    var label = $('p#buy').text();
+
+                    fontsize = Math.sqrt(canvas.height * canvas.width) / 60;
+
+                    if(upgrading)
+                    {
+                        if(fullyUpgraded){
+                            label = $('p#fullyUpgraded').text();
+                            fontsize = Math.sqrt(canvas.height * canvas.width) / 80;
+                        }
+                        else{
+                            label = $('p#upgrade').text();
+                            upgrading = true;
+                        }
+                    }
+                    if (!fullyUpgraded && mouseY > shopButtonY && mouseY < shopButtonY + shopButtonHeight && mouseX > shopButtonX && mouseX < shopButtonX + shopButtonWidth) {
+                        c.fillStyle = "#e2e2e2";
+
+                        if(mouse.clicked)
+                        {
+                            if(mouse.clickDown)
+                            {
+                                if(upgrading)
+                                {
+                                    var id = planetShopSelection.id;
+
+                                    if(type == "spaceShip")
+                                        id = clientId;
+                                    
+                                    var data = {id: id, worldId: worldId}
+                                    socket.emit('upgradeRequest', data);
+                                }
+                                else
+                                {
+                                    if(type == "landingPad")
+                                        requestStructureSpawn(type);
+                                    else if(type == "spaceShip")
+                                    {
+                                        var data = {id: clientId, worldId: worldId}
+                                        socket.emit('upgradeRequest', data);
+                                    }
+                                    else
+                                        boughtStructure = type;
+                                }
+                                
+                            }
+
+                            c.fillStyle = "#c6c6c6";
+                        }
+                    }
+                    else{
+                        c.fillStyle = "#ffffff";
+                    }
+
+                    c.fillRect(shopButtonX, shopButtonY, shopButtonWidth, shopButtonHeight);
+
+                    c.globalAlpha = .8;
+                    c.fillStyle = "black";
+                    c.font = "bold " + fontsize + "px Helvetica";
+                    c.textAlign = "center";
+                    c.fillText(label, shopButtonX + shopButtonWidth / 2, shopButtonY + shopButtonHeight - padding);
+
+                    // Cost
+                    if(!fullyUpgraded)
+                    {
+                        if(upgrading)
+                            level++;
+                        var upgradeCosts = upgrades[level].costs
+
+                        var costX = panelX + padding;
+                        var startCostY = shopButtonY + shopButtonHeight + padding;
+                        var costY = startCostY;
+                        
+                        var costSize = Math.sqrt(canvas.height * canvas.width) / 45;
+    
+                        var numberOfCosts = 0;
+
+                        if(upgradeCosts){
+                            for (var cost in upgradeCosts) {
+                                if (upgradeCosts.hasOwnProperty(cost)) {
+                                    var color = "white";
+    
+                                    if(!playerItems[cost] || playerItems[cost] < upgradeCosts[cost])
+                                        color = "#ff9696";
+                
+                                    c.drawImage(getImage(cost), costX, costY, costSize, costSize);
+                                    c.font = costSize / 1.5 + "px Helvetica";
+                                    c.fillStyle = color;
+                                    c.textAlign = "left";
+                                    c.fillText(upgradeCosts[cost], costX + costSize + padding, costY + costSize / 1.3);
+                    
+                                    costY += costSize + padding;
+                                    numberOfCosts++;
+
+                                    if(numberOfCosts == 3)
+                                    {
+                                        costY = startCostY;
+                                        costX += costSize + padding * 6;
+                                    }
+                                        
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Description
+                    if(typeof planetShopSelection == "string" && !(type == "spaceShip" && level > 0) )
+                    {
+                        var descBoxHeight = -1 * (costY + padding - canvas.height + padding);
+                        var descBoxWidth = pannelWidth - padding * 2;
+
+                        var descBoxX = panelX + pannelWidth / 2 - descBoxWidth / 2;
+                        var descBoxY = costY;
+
+                        var fontsize = Math.sqrt(canvas.height * canvas.width) / 65;
+                        c.globalAlpha = .2;
+                        c.fillStyle = "#ffffff";
+                        c.fillRect(descBoxX, descBoxY, descBoxWidth, descBoxHeight);
+
+                        c.globalAlpha = 1;
+                        c.textAlign = "left";
+                        c.fillStyle = "white";
+                        c.font = fontsize + "px Helvetica";
+                        wrapText(c, $('p#' + type + "Desc").text(), descBoxX + padding / 2, descBoxY + fontsize + padding / 5, descBoxWidth - padding / 2, fontsize);
+                    } 
+                }
+
+                var drawManualTurretButton = false;
+
+                for (let x = 0; x < currentPlanet.structures.length; x++) {
+                    const structure = currentPlanet.structures[x];
+                    
+                    if(structure.type == "turret")
+                    {
+                        drawManualTurretButton = true;
+                        break;
+                    }
+                }
+
+                if(drawManualTurretButton)
+                {
+
+                    var mtButtonSize = windowHeight / 15;
+
+                    var mtButtonX = backgroundWidth + turretButtonOffset + padding * 2;
+                    var mtButtonY = windowHeight - padding - mtButtonSize;
+
+                    c.fillStyle = "#e2e2e2";
+                    c.globalAlpha = .3;
+
+                    if (mouseY > mtButtonY && mouseY < mtButtonY + mtButtonSize && mouseX > mtButtonX && mouseX < mtButtonX + mtButtonSize) 
+                    {
+                        if(mouse.clickDown) //initial click
+                        {
+                            turretManualMode = !turretManualMode;
+
+                            if (!turretManualMode)
+                            {
+                                var data = {turrets: [], worldId:worldId};
+
+                                for(var i = 0; i < currentPlanet.structures.length; i++){
+                                    var structure = currentPlanet.structures[i];
+                                    if(structure.type == "turret")
+                                        data.turrets.push({id: structure.id, stop: true});
+                                } 
+    
+                                socket.emit("turretRot", data);
+                            }
+                        }
+                        else if(mouse.clicked) //mouse pressed down after initial click
+                            c.globalAlpha = .5; 
+                        else
+                            c.globalAlpha = .4; //just hovering
+                    }
+
+                    c.fillRect(mtButtonX, mtButtonY, mtButtonSize, mtButtonSize);
+                    c.globalAlpha = 1;
+                    c.drawImage(getImage("target"), mtButtonX + padding / 2, mtButtonY + padding / 2, mtButtonSize - padding, mtButtonSize - padding)
+                }
+
+                c.textAlign = "left";
+            }
+
         }
         
-        var miniMapSize = windowHeight / 8;
+        var miniMapSize = windowHeight / 5;
         var minimapPadding = windowHeight / 60;
 
         minimap(miniMapSize, windowWidth - miniMapSize - minimapPadding, windowHeight - miniMapSize - minimapPadding);
@@ -3019,15 +4311,13 @@ function animate() {
         }
 
         if(playerReloadTimer > 0){
-            if(playerReloadTimer - spaceShip.fireRate > 0)
-                playerReloadTimer -= spaceShip.fireRate;
-            else
-                playerReloadTimer = 0;
+
+            playerReloadTimer -= 1;
         }
 
         if(!currentPlanet){
             var width = canvas.width / 5;
-            displayBar(centerX * scale - width / 2, canvas.height - 30, width, 20, (1000 - playerReloadTimer) / 1000, "#ff5a51");
+            displayBar(centerX * scale - width / 2, canvas.height - 30, width, 20, (spaceShip.fireRate - playerReloadTimer) / spaceShip.fireRate, "#ff5a51");
         }
 
     }
@@ -3057,6 +4347,15 @@ function animate() {
         }
     }
 
+    for (var can in canvases) {
+        if (canvases.hasOwnProperty(can) && can != "mainCanvas") {
+            canvases[can].getContext('2d').scale(1 / scale, 1 / scale);
+        }
+    }
+
+    if(mouse.clickDown)
+        mouse.clickDown = false;
+
 }
 
 function displayMessage(text, timeToFade, fadeSpeed){
@@ -3070,7 +4369,7 @@ function drawLeaderBoard(){
 
     var width = windowHeight * .22;
     var height = windowHeight / 4;
-    var padding = windowHeight / 50;
+    var padding = windowHeight / 65;
 
     var PLAYERS_ON_BOARD = 5;
 
@@ -3079,11 +4378,13 @@ function drawLeaderBoard(){
     c.textAlign = "center";
     c.font = height / 10 + "px Helvetica";
     c.fillStyle = "white";
-    c.fillText($('input#leaderboard').val(), windowWidth - width / 2 - padding, padding * 2.5);
+    c.fillText($('p#leaderboard').text(), windowWidth - width / 2 - padding, padding * 2.8);
     c.textAlign = "left";
 
     c.globalAlpha = .25;
     c.fillStyle = "#898989";
+
+
     c.fillRect(windowWidth - width - padding, padding, width, height);
 
     var playerY = padding * 4.5;
@@ -3091,75 +4392,73 @@ function drawLeaderBoard(){
     c.font = height / 15 + "px Helvetica";
     c.globalAlpha = .75;
 
-    var IMAGE_SIZE = padding * 2;
-
+    var IMAGE_SIZE =  windowHeight / 35;
     var topPlayers = otherPlayers.concat(spaceShip);
+
+    for (let i = topPlayers.length - 1; i >= 0; i--) {
+        if(topPlayers[i].id == master.id || topPlayers[i].id.substring(0,5) == "enemy")
+            topPlayers.splice(i,1);
+    }
 
     topPlayers.sort(function (player1, player2) {
         if (player1.level > player2.level) return -1;
 	    if (player1.level < player2.level) return 1;
     });
 
+    if(master.obj)
+        topPlayers.unshift(master.obj);
+
+    topPlayers = topPlayers.slice(0, PLAYERS_ON_BOARD);
+
+    if(!topPlayers.includes(spaceShip))
+        topPlayers.push(spaceShip);
+
     var num = 0;
 
-    var playerOnBoard = false;
-
-    var placement = {};
-
-    topPlayers.forEach(player => {
-
-        if(num < PLAYERS_ON_BOARD)
+    for (let i = 0; i < topPlayers.length; i++) {
+        const player = topPlayers[i];
+        
+        if(i >= PLAYERS_ON_BOARD)
         {
-            var name;
-            if(player == spaceShip)
-            {
-                playerOnBoard = true;
-                name = username;
-            }
-            else
-                name = player.username;
+            playerY = height + padding * 3.6;
 
-                
-            c.drawImage(getImage("spaceship" + player.level), windowWidth - width - IMAGE_SIZE / 2.2 + padding, playerY - IMAGE_SIZE / 1.5, IMAGE_SIZE, IMAGE_SIZE);
-            
-            if(player == spaceShip)
-                c.globalAlpha = 1;
-            else 
-                c.globalAlpha = .5;
-
-            
-            c.fillStyle = "#e0ecff";
-            c.fillText(num + 1 + ")", windowWidth - width - padding / 1.3, playerY);
-            c.fillText(name, windowWidth - width + padding * 2.2, playerY);
+            c.globalAlpha = .25;
+            c.fillStyle = "#898989";
+            c.fillRect(windowWidth - width - padding, height + padding * 2, width, height / 5);
             c.globalAlpha = 1;
-            playerY += IMAGE_SIZE;
         }
 
-        placement[player.id] = num;
+        var name;
+        if(player == spaceShip)
+            name = username;
+        else
+            name = player.username;
 
-        num++;
-    });
+        c.save();
+        c.translate(windowWidth - width + padding * 1.4 + IMAGE_SIZE / 2, playerY);
+        c.rotate(Math.PI/2);
+        c.drawImage(getImage("spaceship" + player.level), IMAGE_SIZE / -2, IMAGE_SIZE / -2, IMAGE_SIZE, IMAGE_SIZE);
+        c.restore();
 
-    if(!playerOnBoard)
-    {
+        if(player == spaceShip)
+            c.globalAlpha = 1;
+        else 
+            c.globalAlpha = .5;
 
-        playerY = height + padding * 3.5;
 
-        c.globalAlpha = .25;
-        c.fillStyle = "#898989";
-        c.fillRect(windowWidth - width - padding, height + padding * 2, width, height / 5);
+        c.fillStyle = "#e0ecff";
 
+        if(player.id == master.id)
+            c.drawImage(getImage("crown"), windowWidth - width + padding / 4 + IMAGE_SIZE / -2, playerY + IMAGE_SIZE / -2, IMAGE_SIZE, IMAGE_SIZE);
+        else
+            c.fillText(i + 1 + ")", windowWidth - width, playerY);
+        
+        c.fillText(name, windowWidth - width + padding * 2 + IMAGE_SIZE, playerY);
+        playerY += IMAGE_SIZE + padding;
+        
         c.globalAlpha = 1;
-        c.drawImage(getImage("spaceship" + spaceShip.level), windowWidth - width - IMAGE_SIZE / 2.2 + padding, playerY - IMAGE_SIZE / 1.5, IMAGE_SIZE, IMAGE_SIZE);
-        c.globalAlpha = .5;
-        c.fillStyle = "white";
-        c.fillText(placement[clientId] + 1 + ")", windowWidth - width - padding / 1.3, playerY);
-        c.fillText(username, windowWidth - width + padding * 2.1, playerY);
-
-        playerY += IMAGE_SIZE;
-
     }
-
+    
     c.globalAlpha = 1;
 }
 
@@ -3193,6 +4492,7 @@ function drawShopPanel(type){
     //Background pane
     c.globalAlpha = .5;
     c.fillStyle = "#516689";
+    c.strokeStyle = "#516689";
     c.fillRect((windowWidth - width) / 2, (windowHeight - height) / 2, width, height);
     
     c.strokeRect((windowWidth - width) / 2, (windowHeight - height) / 2, width, height);
@@ -3208,20 +4508,20 @@ function drawShopPanel(type){
 
     switch (type) {
         case "bulletPenetration":
-            name = $('input#bulletPenetration').val();
-            description = $('input#bulletPenetrationDescription').val();
+            name = $('p#bulletPenetration').text();
+            description = $('p#bulletPenetrationDescription').text();
         break;
         case "boost":
-            name = $('input#boost').val();
-            description = $('input#boostDescription').val();
+            name = $('p#boost').text();
+            description = $('p#boostDescription').text();
         break;
         case "cloakTime":
-            name = $('input#cloakTime').val();
-            description = $('input#cloakTimeDescription').val();
+            name = $('p#cloakTime').text();
+            description = $('p#cloakTimeDescription').text();
         break;
         case "shipTurret":
-            name = $('input#shipTurret').val();
-            description = $('input#shipTurretDescription').val();
+            name = $('p#shipTurret').text();
+            description = $('p#shipTurretDescription').text();
         break;
     }
 
@@ -3252,7 +4552,7 @@ function drawShopPanel(type){
         c.font = height / 40 + "px Helvetica";
         c.textAlign = "center";
         c.fillStyle = "white";
-        c.fillText("Fully Upgraded", windowWidth / 2, (windowHeight - height) / 2 + height * .8);
+        c.fillText($('p#fullyUpgraded').text(), windowWidth / 2, (windowHeight - height) / 2 + height * .8);
         c.textAlign = "left";
     }
     else{
@@ -3260,7 +4560,7 @@ function drawShopPanel(type){
 
             var arrowSize = height / 20;
 
-            label = "Upgrade";
+            label = $('p#upgrade').text();
             c.fillRect((windowWidth - width) / 2 + imageSize / 2 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
             c.drawImage(getImage(type + (currentLevel - 1)), (windowWidth - width) / 2 + imageSize / 2, imageY, imageSize, imageSize);
             
@@ -3272,7 +4572,7 @@ function drawShopPanel(type){
             c.globalAlpha = .9;
         }
         else{
-            label = "Buy";
+            label = $('p#buy').text();
             c.globalAlpha = .9;
             c.fillRect(windowWidth / 2 - imageSize / 2 - padding / 2, imageY - padding / 2, imageSize + padding, imageSize + padding);
             c.drawImage(getImage(type + currentLevel), windowWidth / 2 - imageSize / 2, imageY, imageSize, imageSize);
@@ -3352,362 +4652,7 @@ function drawShopPanel(type){
     c.globalAlpha = 1;
 }
 
-var expandedUpgrades = [];
 var canClickArrow = true;
-
-function showUpgrades(){
-
-    if(currentPlanet)
-    {
-        currentPlanet.structures.forEach(structure => {
-            if(!structureUpgradeables.contains(structure.id))
-                structureUpgradeables.push(structure.id);
-        });
-    }
-
-    numberOfUpgrades = upgradeableObjects().length;
-    size = windowHeight / 10;
-    padding = windowHeight / 10;
-
-    var groupedUpgrades = {};
-    var numberOfGroups = 0;
-
-    for(var i = 0; i < numberOfUpgrades; i++){
-    
-        var upgradeeId = upgradeableObjects()[i];
-        var upgrade = Object.assign({}, findUpgrade(upgradeeId));
-
-        if(!upgrade || upgrade.identifier == "landingPad")
-            continue;
-
-        upgrade.id = upgradeeId;
-
-        var alreadyInside = false;
-
-        for (var group in groupedUpgrades) {
-
-            if (groupedUpgrades.hasOwnProperty(group)) {
-
-                if(group == upgrade.identifier){
-                    groupedUpgrades[group].push(upgrade);
-                    alreadyInside = true;
-                }
-            }
-        }
-
-        if(!alreadyInside){
-            if(upgrade.identifier){
-                groupedUpgrades[upgrade.identifier] = [upgrade];
-                numberOfGroups++;
-            }
-        }
-
-    }
-
-    var width = numberOfGroups * size + (numberOfGroups - 1) * padding;
-    var x = 0;
-
-    for (var group in groupedUpgrades) {
-        if (groupedUpgrades.hasOwnProperty(group)) {
-
-            var buttonX = x / scale + (centerX - width / scale / 2)
-            var buttonY = centerY - size / scale / 2;
-    
-            var drawx = x + (centerX * scale - .5 * width)
-            var drawy = scale + size;
-
-            var upgrade = null;
-            var upgradeCosts = {};
-            var groupIndex = 0;
-            
-            var costSize = windowHeight / 40;
-            var costPadding = windowHeight / 100;
-            var costX = 0;
-            var costY = size + 10;
-
-            var upgradeButtons = [];
-
-            var mouseX = mouse.x * scale;
-            var mouseY = mouse.y * scale;
-
-            var numberInGroup = groupedUpgrades[group].length;
-
-            if(numberInGroup == 1){
-                upgrade = groupedUpgrades[group][0];
-
-                if(!upgrade.fullyUpgraded)
-                    upgradeCosts = upgrade.costs;
-            }
-            else
-            {
-                upgrade = groupedUpgrades[group][groupIndex];
-
-                while(upgrade.fullyUpgraded && groupIndex < numberInGroup)
-                {
-                    upgrade = groupedUpgrades[group][groupIndex];
-                    groupIndex++;
-                }
-            }
-
-            if(numberInGroup == 1){
-                c.globalAlpha = .5;
-                c.fillStyle = planetColors[0];
-                c.fillRect(drawx, drawy, size, size);
-                c.globalAlpha = 1;
-
-                c.drawImage(getImage(upgrade.identifier + upgrade.upgradeToLevel), drawx, drawy, size, size);
-
-                if(!upgrade.fullyUpgraded){
-
-                    for (var cost in upgradeCosts) {
-                        if (upgradeCosts.hasOwnProperty(cost)) {
-
-                            var color = "white";
-                            if(!playerItems[cost] || playerItems[cost] < upgradeCosts[cost])
-                                color = "#ff9696";
-
-                            c.drawImage(getImage(cost), drawx + costX, drawy + costY, costSize, costSize);
-                            c.font = size / 4 + "px Helvetica";
-                            c.fillStyle = color;
-                            c.fillText(upgradeCosts[cost], drawx + costX + costSize * 1.2, drawy + costY + costSize / 1.3);
-            
-                            costY += costSize + costPadding;
-                        }
-                    }
-
-                    upgradeButtons.push({x: drawx, y: drawy, upgrades: [upgrade.id]});
-                }
-                else{
-                    c.font = size / 7 + "px Helvetica";
-                    c.fillStyle = "white"; 
-                    c.fillText("Fully Upgraded", drawx, drawy - costPadding);
-                }
-            } 
-            else{
-                var arrowSize = size / 8;
-                var arrowX = drawx + size / 2;
-                var arrowY = drawy - arrowSize - costPadding * 3;
-
-                var arrowButtonSize = size / 2;
-
-                var arrowbuttonX = arrowX - arrowButtonSize / 2;
-                var arrowbuttonY = arrowY - arrowButtonSize / 2;
-
-                c.fillStyle = planetColors[1];
-                c.fillRect(arrowbuttonX, arrowbuttonY, arrowButtonSize, arrowButtonSize);
-
-                if(expandedUpgrades.contains(upgrade.identifier)){
-
-                    var groupY = drawy;
-                    var groupCostY = size + costPadding + drawy;
-
-                    for (let i = 0; i < numberInGroup; i++) {
-
-                        var upgradeInGroup = groupedUpgrades[group][i];
-                        var numberOfCosts = 0;
-
-                        for (var cost in upgradeInGroup.costs) {
-                            if (upgradeInGroup.costs.hasOwnProperty(cost)) {
-
-                                var color = "white";
-                                if(!playerItems[cost] || playerItems[cost] < upgradeInGroup.costs[cost])
-                                    color = "#ff9696";
-
-                                c.drawImage(getImage(cost), drawx + costX, groupCostY, costSize, costSize);
-                                c.font = size / 4 + "px Helvetica";
-                                c.fillStyle = color;
-                                c.fillText(upgradeInGroup.costs[cost], drawx + costX + costSize * 1.2, groupCostY + costSize / 1.3);
-                
-                                groupCostY += costSize + costPadding;
-                                numberOfCosts++;
-                            }
-                        }
-
-                        c.globalAlpha = .5;
-                        c.fillStyle = planetColors[0];
-                        c.fillRect(drawx, groupY, size, size);
-                        c.globalAlpha = 1;
-
-                        c.globalAlpha = .8;
-                        c.drawImage(getImage(upgradeInGroup.identifier + upgradeInGroup.upgradeToLevel), drawx, groupY, size, size);
-
-                        if(upgradeInGroup.fullyUpgraded){
-                            c.globalAlpha = 1;
-                            c.font = size / 7 + "px Helvetica";
-                            c.fillStyle = "white"; 
-                            c.fillText("Fully Upgraded", drawx, groupY + size / 2);
-                        }
-                        else{
-                            upgradeButtons.push({x: drawx, y: groupY, upgrades: [upgradeInGroup.id]});
-                        }
-
-                        numberOfUpgrades++;
-                        groupCostY += size + costPadding;
-                        groupY += numberOfCosts * (costPadding + costSize) + size + costPadding;
-                    }
-                    
-                }
-                else
-                {
-                    var insertedCosts = [];
-                    var buttonUpgrades = [];
-                    var numFullyUpgraded = 0;
-
-                    for(var i = 0; i < numberInGroup; i++){
-    
-                        var upgradeInGroup = groupedUpgrades[group][i];
-
-                        if(!upgradeInGroup.fullyUpgraded){
-                            
-                            buttonUpgrades.push(upgradeInGroup.id);
-
-                            for (var cost in upgradeInGroup.costs) {
-                                if (upgradeInGroup.costs.hasOwnProperty(cost)) {
-                                    if(!insertedCosts.contains(cost)){
-                                        insertedCosts.push(cost);
-                                        upgradeCosts[cost] = upgradeInGroup.costs[cost];
-                                    }
-                                    else{
-                                        upgradeCosts[cost] += upgradeInGroup.costs[cost];
-                                    }
-                                
-                                }
-                            }
-                        }
-                        else
-                            numFullyUpgraded++;
-                    }
-
-                    c.globalAlpha = .5;
-                    c.fillStyle = planetColors[0];
-                    c.fillRect(drawx, drawy, size, size);
-
-                    c.drawImage(getImage(upgrade.identifier + upgrade.upgradeToLevel), drawx, drawy, size, size);
-                    c.globalAlpha = 1;
-
-                    if(numFullyUpgraded < numberInGroup)
-                    {
-                        upgradeButtons.push({x: drawx, y: drawy, upgrades: buttonUpgrades});
-
-                        for (var cost in upgradeCosts) {
-                            if (upgradeCosts.hasOwnProperty(cost)) {
-
-                                var color = "white";
-                                if(!playerItems[cost] || playerItems[cost] < upgradeCosts[cost])
-                                    color = "#ff9696";
-
-                                c.drawImage(getImage(cost), drawx + costX, drawy + costY, costSize, costSize);
-                                c.font = size / 4 + "px Helvetica";
-                                c.fillStyle = color;
-                                c.fillText(upgradeCosts[cost], drawx + costX + costSize * 1.2, drawy + costY + costSize / 1.3);
-                
-                                costY += costSize + costPadding;
-                            }
-                        }
-                        
-                        c.font = size / 7 + "px Helvetica";
-                        c.textAlign = "center";
-                        c.fillStyle = "white";
-                        c.fillText("Upgrade all (" + (numberInGroup - numFullyUpgraded) + ")", drawx + size / 2, drawy + size  / 2);
-                        c.textAlign = "left";
-                    }
-                    else{
-                        c.font = size / 7 + "px Helvetica";
-                        c.fillStyle = "white"; 
-                        c.fillText("Fully Upgraded", drawx, drawy - costPadding);
-                    }
-
-                    
-                }
-                
-                var arrowRotation = Math.PI * 1.25;
-                arrowY = drawy - arrowSize - costPadding * 3;
-
-                if(expandedUpgrades.contains(upgrade.identifier))
-                {
-                    arrowRotation = Math.PI / 4;
-                    arrowY = drawy - arrowSize * 3.5 - costPadding * 3;
-                }
-
-                if (mouseY > arrowbuttonY && mouseY < arrowbuttonY + arrowButtonSize && mouseX > arrowbuttonX && mouseX < arrowbuttonX + arrowButtonSize) {
-
-                    var arrowIncreasedSize = arrowSize * 1.2;
-
-                    c.globalAlpha = 1;
-                    drawArrow(arrowX, arrowY + arrowIncreasedSize, arrowRotation, "white", arrowIncreasedSize);
-
-                    if(mouse.clicked && canClickArrow){
-                        canClickArrow = false;
-
-                        if(expandedUpgrades.contains(upgrade.identifier))
-                        {
-                            for (let i = 0; i < expandedUpgrades.length; i++) {
-                                const identifier = expandedUpgrades[i];
-                                
-                                if(expandedUpgrades[i] == upgrade.identifier){
-                                    expandedUpgrades.splice(i, 1);
-                                    break;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            expandedUpgrades.push(upgrade.identifier);
-                        }
-                    }
-                }
-                else
-                {
-                    c.globalAlpha = 1;
-                    drawArrow(arrowX, arrowY + arrowSize, arrowRotation, "white", arrowSize);
-                }
-            }
-
-            for (let i = 0; i < upgradeButtons.length; i++) {
-                const button = upgradeButtons[i];
-
-                if (mouseY > button.y && mouseY < button.y + size && mouseX > button.x && mouseX < button.x + size) {
-
-                    c.globalAlpha = .5;
-                    c.fillStyle = "fffffff";
-                    c.fillRect(button.x, button.y, size, size);
-                    c.globalAlpha = 1;
-
-                    button.upgrades.forEach(upgradeId => {
-                        var object = findObjectWithId(allStructures.concat(spaceShip), upgradeId).object;
-    
-                        var circleX = object.x * scale;
-                        var circleY = object.y * scale;
-        
-                        if(object != spaceShip){
-                            c.beginPath();
-                            c.lineWidth = 3;
-                            c.strokeStyle = "#9ef442";
-                            c.arc(circleX, circleY, 10,0,2*Math.PI);
-                            c.stroke();
-                        }
-                        if(mouse.clicked){
-
-                            checklist.upgradeClick.done = true;
-
-                            var data = {id: upgradeId, worldId: worldId}
-                            socket.emit('upgradeRequest', data);
-                            clickedUpgrade = true;
-                        }
-                    });
-                }
-                
-            }
-        
-            x += size + padding;
-            
-        }
-
-        if (!mouse.clicked)
-            canClickArrow = true;
-    }
-    
-}
 
 function playerHasResources(costs)
 {
@@ -3748,16 +4693,45 @@ function minimap(size, x, y){
         c.globalAlpha = 0.75;
         c.beginPath();
         c.arc(x + planet.coordX / gridSize * size, y + planet.coordY / gridSize * size, size / 40, 0, Math.PI * 2, false);
-        c.fillStyle = "#5fd867";
+        c.fillStyle = planet.color;
         c.fill();
 
     });
 
-    c.globalAlpha = 0.75; 
-    c.beginPath();
-    c.arc(x + spaceShip.coordX / gridSize * size, y + spaceShip.coordY / gridSize * size, size / 30, 0, Math.PI * 2, false);
-    c.fillStyle = "white";
-    c.fill();    
+    var crownSize = size / 10;
+    var crownDrawn = false;
+
+    if(master.obj)
+    {
+        var crownX = master.obj.coordX;
+        var crownY = master.obj.coordY;
+
+        c.drawImage(getImage("crown"), x + crownX / gridSize * size - crownSize / 2, y + crownY / gridSize * size - crownSize / 2, crownSize, crownSize);
+        crownDrawn = true;
+    }
+
+    if(!crownDrawn)
+    {
+        for (var worldItem in worldItems) {
+            if (worldItems.hasOwnProperty(worldItem)) {
+                if(worldItems[worldItem].type == "crown")
+                {
+                    var crown = worldItems[worldItem];
+                    c.drawImage(getImage("crown"), x + crown.coordX / gridSize * size - crownSize / 2, y + crown.coordY / gridSize * size - crownSize / 2, crownSize, crownSize);
+                }
+            }
+        }
+    }
+    
+    if(master.id != clientId)
+    {
+        c.globalAlpha = 0.75; 
+        c.beginPath();
+        c.arc(x + spaceShip.coordX / gridSize * size, y + spaceShip.coordY / gridSize * size, size / 30, 0, Math.PI * 2, false);
+        c.fillStyle = "white";
+        c.fill();  
+    }
+      
 }
 
 function propertiesOverview(object, fill){
@@ -3830,7 +4804,7 @@ function propertiesOverview(object, fill){
 
         c.font = size / 5 + "px Arial";
         c.fillStyle = "white";
-        c.fillText("Owner: " + (name), pos.x + (size / 1.8) * flipX, pos.y - size / 2 - size / 20);
+        c.fillText($('p#owner').text() + ": " + (name), pos.x + (size / 1.8) * flipX, pos.y - size / 2 - size / 20);
 
         dropX += size * .8;
     }
@@ -3903,9 +4877,12 @@ function displayResources(){
 
 }
 
-function displayBar(x, y, width, height, fillPrecentage, color) {
-    c.globalAlpha = 0.75;
-    c.fillStyle = "#bababa";
+function displayBar(x, y, width, height, fillPrecentage, color, backgroundColor) {
+
+    var bg = backgroundColor == null ? "#bababa" : backgroundColor;
+
+    c.globalAlpha = 0.55;
+    c.fillStyle = bg;
     c.fillRect(x, y, width, height);
 
     c.fillStyle = color;
@@ -3931,6 +4908,9 @@ function findClosestUnoccupiedPlanet() {
     for(var i = 0; i < planetArray.length; i++){
 
         if(planetArray[i].owner && planetArray[i].owner != clientId)
+            continue;
+        
+        if(planetArray[i].id == "hive" && !playerItems["crown"] > 0)
             continue;
 
         var distance = Math.sqrt(Math.pow(centerX - planetArray[i].x, 2) + Math.pow(centerY - planetArray[i].y, 2));
@@ -4031,7 +5011,6 @@ function drawGrid(x, y, width, height, gridScale){
         c.stroke();
 
     }
-
 } 
 
 function spikyBall(ctx, x, y, radius, sides, startAngle, anticlockwise, spikyAmount) {
@@ -4052,7 +5031,6 @@ function spikyBall(ctx, x, y, radius, sides, startAngle, anticlockwise, spikyAmo
         inSpike = 1;
     else
         inSpike = spikyAmount;
-
     }
     ctx.closePath();
     ctx.restore();
@@ -4073,21 +5051,47 @@ function polygon(ctx, x, y, radius, sides, startAngle, anticlockwise) {
     ctx.restore();
   }
 
-function drawPointAroundCircle(startx, starty, radius, angle, distance){
-    var x = startx + radius * Math.cos(-angle*Math.PI/180) * distance;
-    var y = starty + radius * Math.sin(-angle*Math.PI/180) * distance;
+function structureSpawnPoint(structureSize, img, addedDist){
 
-    structureSpawnPosition = new Vector(x, y);
+    var positionAviable = true;
+    var rad = Math.atan2(mouse.y - currentPlanet.y, mouse.x - currentPlanet.x) * -57.2958;
+    structureSpawnRotation = rad;
 
-    rectWidth = 30;
-    rectHeight = 30;
+    var dist = 0
 
-    c.save();
-    c.translate(x, y);
-    c.rotate(angle / -57.2958);
-    c.fillStyle = "#42aaf4";
-    c.fillRect(-rectWidth/2+20,-rectHeight/2,rectWidth,rectHeight);
-    c.restore();
+    if(addedDist)
+        dist += addedDist;
+
+    var x = currentPlanet.x * scale + ((currentPlanet.radius + dist) * scale + structureSize / 2) * Math.cos(-rad*Math.PI/180);
+    var y = currentPlanet.y * scale + ((currentPlanet.radius + dist) * scale + structureSize / 2) * Math.sin(-rad*Math.PI/180);
+
+    structureSpawnPosition = new Vector(x / scale, y / scale);
+
+    currentPlanet.structures.forEach(structure => {
+
+        var distance = Math.sqrt(Math.pow(x / scale - structure.x, 2) + Math.pow(y / scale - structure.y, 2));
+
+        if(distance < structure.size / 2 + structureSize / 2 / scale)
+            positionAviable = false;
+    }); 
+
+    if(img)
+    {
+        if(positionAviable)
+            c.globalAlpha = 1;
+        else
+            c.globalAlpha = .5;
+
+        c.save();
+        c.translate(x, y);
+        c.rotate((rad - 90) * Math.PI / -180);
+        c.drawImage(getImage(img), -structureSize/2,-structureSize/2,structureSize,structureSize);
+        //c.fillStyle = "#42aaf4";
+        //c.fillRect(-rectWidth/2+20,-rectHeight/2,rectWidth,rectHeight);
+        c.restore();
+    }
+
+    return positionAviable;
 }
 
 function isOnScreen(x, y, size){
@@ -4130,39 +5134,27 @@ var uniqueId = function() {
     return 'id-' + Math.random().toString(36).substr(2, 16);
 };
 
-function findUpgrade(id){
-
-        var upgrade = {};
-        var upgrades;
-
-        var upgradee = findObjectWithId(allWorldObjects.concat(allStructures).concat(spaceShip), id);
-            
-        if(upgradee){
-            upgradee = upgradee.object;
-        }
-        else
-            return false;
-
-        if(upgradee.type){
-            upgrades = structureUpgrades[upgradee.type];
-        }
-        else
-        {
-            upgrades = playerUpgrades;
-        }
-
-        if(upgrades.length > upgradee.level + 1){
-            upgrade = upgrades[upgradee.level + 1];
-            upgrade.upgradeToLevel = upgradee.level + 1;
-            upgrade.fullyUpgraded = false;
-        }
-        else {
-            upgrade = {identifier: upgrades[upgradee.level].identifier};
-            upgrade.upgradeToLevel = upgradee.level;
-            upgrade.fullyUpgraded = true;
-        }
+CanvasRenderingContext2D.prototype.wavy = function(from, to, frequency, amplitude, step, negative) 
+{ 
+	var cx = 0, cy = 0, 
+		fx = from.x, fy = from.y, 
+		tx = to.x, ty = to.y,
+		i = 0, waveOffsetLength = 0,
+		
+		ang = Math.atan2(ty - fy, tx - fx),
+		distance = Math.sqrt((fx - tx) * (fx - tx) + (fy - ty) * (fy - ty)),
+		a = amplitude * (!negative ? 1 : -1),
+		f = Math.PI * frequency;
+	
+	for (i; i <= distance; i += step) 
+	{
+		waveOffsetLength = Math.sin((i / distance) * f) * a;
+		cx = from.x + Math.cos(ang) * i + Math.cos(ang - Math.PI/2) * waveOffsetLength;
+		cy = from.y + Math.sin(ang) * i + Math.sin(ang - Math.PI/2) * waveOffsetLength;
         
-        return upgrade;
+        if(i > 0)
+            this.lineTo(cx, cy);
+	}
 }
 
 setup();
