@@ -4678,7 +4678,7 @@ function updateAllMatter(){
             try {
                 matter.update();
             }
-            catch
+            catch (error)
             {
                 return;
             }
