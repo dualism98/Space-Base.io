@@ -152,15 +152,9 @@ function addWorld(){
 
     if(spawnHiveWithSpawners)
     {
-        spawnerDefender = new Structure(hive.id, hive.x + (hive.radius + 20), hive.y, 0, "spawner", "server", 0, worldId, uniqueId());
-        spawnerScout = new Structure(hive.id, hive.x - (hive.radius + 20), hive.y, -180, "spawner", "server", 0, worldId, uniqueId());
-        spawnerGuard = new Structure(hive.id, hive.x, hive.y + (hive.radius + 20), -90, "spawner", "server", 0, worldId, uniqueId());
-    
-        spawnerDefender.enemyType = "defender";
+        spawnerScout = new Structure(hive.id, hive.x, hive.y + (hive.radius + 20), -90, "spawner", "server", 0, worldId, uniqueId());
         spawnerScout.enemyType = "scout";
-        spawnerGuard.enemyType = "guard";
-    
-        hive.structures.push(spawnerDefender, spawnerScout, spawnerGuard);
+        hive.structures.push(spawnerScout);
     }
         
     worldsData[worldId] = {
@@ -2480,15 +2474,13 @@ function enemyAI(enemy, worldId, pointX, pointY, optimalDistance){
     var pointAI = optimalDistance && pointX && pointY;
 
     var distanceToPlayer = Math.sqrt(Math.pow(player.x - enemy.x, 2) + Math.pow(player.y - enemy.y, 2));
-    var distanceFromPlayerToHive = Math.sqrt(Math.pow(pointX - player.x, 2) + Math.pow(pointY - player.y, 2));
     var distanceToPoint = Math.sqrt(Math.pow(pointX - enemy.x, 2) + Math.pow(pointY - enemy.y, 2));
 
     var canVenture = true;
-
     var instantSnap = false;
 
     if(pointAI)
-        canVenture == distanceFromPlayerToHive < ventureDistance;
+        canVenture == distanceToPoint < ventureDistance;
 
     //In Range Of Player
     if (player && distanceToPlayer < attractDistance && canVenture)
@@ -3087,7 +3079,7 @@ function itemCollected(item, playerRecivingId, worldId) {
             player.drops[item.type] = item.amount;
 
         data = {drops: {}};
-        data.drops[item.type] = item.amount;
+        data.drops[item.type] = player.drops[item.type];
 
         if(item.type == "crown")
         {

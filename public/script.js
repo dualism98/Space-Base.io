@@ -936,13 +936,9 @@ function onAquiredItems(data){
 
                 ownedPlanets.push(hiveObj);
             }
-               
-            if(playerItems[drop])
-                playerItems[drop] += data.drops[drop];
-            else
-                playerItems[drop] = data.drops[drop];
 
-            aquiredItems[drop] = {amount: data.drops[drop], time: aquireItemsFadeTime};
+            aquiredItems[drop] = {amount: data.drops[drop] - playerItems[drop], time: aquireItemsFadeTime};
+            playerItems[drop] = data.drops[drop];
         }
     } 
 }
@@ -1076,8 +1072,10 @@ function playerExited(data){
                     if(planet.object)
                     {
                         planet.object.owner = null;
-                        planetStructureIndex = findObjectWithId(planet.object.structures, structure.id).index;
-                        planet.object.structures.splice(planetStructureIndex, 1);
+                        planetStructure = findObjectWithId(planet.object.structures, structure.id);
+
+                        if(planetStructure.index)
+                            planet.object.structures.splice(planetStructure.index, 1);
                     }
                 }
             });
@@ -1309,6 +1307,8 @@ $(document).keypress(function(e){
 
             currentPlanet.occupiedBy = null;
                 
+            turretManualMode = false;
+
             landed = false;
             currentPlanet = null;
             planetShopSelection = null;
@@ -2103,7 +2103,7 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
             {
                 var playerPos;
 
-                if(this.target.id != clientId)
+                if(this.target.id != clientId && this.target.displayPos && this.target.displayPos.y)
                     playerPos = cordsToScreenPos(this.target.displayPos.x, this.target.displayPos.y);
                 else
                     playerPos = cordsToScreenPos(this.target.coordX, this.target.coordY);
@@ -2217,7 +2217,7 @@ function Item(coordX, coordY, size, type, id) {
 
     this.displayPos = new Vector();
 
-    var jumpDistance = 5000;
+    var jumpDistance = 10000;
 
     this.update = function(){
         
@@ -4674,7 +4674,14 @@ function updateAllMatter(){
 
         if(isOnScreen(pos.x, pos.y, size) || isClosestAvaiblePlanet || isOwnedPlanet != null){
             matter.health = healthDict[matter.id];
-            matter.update();
+
+            try {
+                matter.update();
+            }
+            catch
+            {
+                return;
+            }
 
             var shop = findObjectWithId(worldObjects.shops, matter.id);
 
