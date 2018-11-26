@@ -1730,11 +1730,8 @@ function newConnetcion(socket){
 
         var shield = findObjectWithId(worldsData[data.worldId].hittableObjects, data.id);
 
-        if(shield.object)
-        {
+        if(shield)
             shield.object.on = data.on;
-            console.log("shield changed to: " + data.on);
-        }
             
     });
 
@@ -2486,7 +2483,6 @@ function enemyAI(enemy, worldId, pointX, pointY, optimalDistance){
     if (player && distanceToPlayer < attractDistance && canVenture)
     { 
         attractedByPlayer = true;
-
         playerRepultionDist = player.radius * 3 + 50;
 
         //Shoot
@@ -3115,6 +3111,7 @@ function syncDamage(worldId, changedIds){
 
     if(changedIds){
         var changedObjects = [];
+        
         changedIds.forEach(id => {
             changedObject = findObjectWithId(worldHittableObjects, id);
 
@@ -3125,8 +3122,8 @@ function syncDamage(worldId, changedIds){
                     health: changedObject.object.health, 
                     maxHealth: changedObject.object.maxHealth, 
                     radius: changedObject.object.radius, 
-                    x: changedObject.object.x, 
-                    y: changedObject.object.y, 
+                    x: Math.round(changedObject.object.x), 
+                    y: Math.round(changedObject.object.y), 
                     id: changedObject.object.id,
                     active: true
                 }
@@ -3150,8 +3147,8 @@ function syncDamage(worldId, changedIds){
                 health: worldHittableObjects[i].health, 
                 maxHealth: worldHittableObjects[i].maxHealth, 
                 radius: worldHittableObjects[i].radius, 
-                x: worldHittableObjects[i].x, 
-                y: worldHittableObjects[i].y, 
+                x: Math.round(worldHittableObjects[i].x), 
+                y: Math.round(worldHittableObjects[i].y), 
                 id: worldHittableObjects[i].id,
                 active: true
             }

@@ -383,8 +383,12 @@ body{
     position: relative;
 }
 
-#mainCanvas{
+#gridCanvas{
     background-color: #1B1730;
+    filter: blur(5px);
+}
+
+#mainCanvas{
     filter: blur(5px);
 }
 
