@@ -23,4 +23,5 @@ COPY . .
 
 EXPOSE 8080
 #CMD ["pm2-runtime", "--public", "d6ssou4xm41fu42", "--secret", "ycq6ns3d9gyehak", "server.js"]
-CMD ["pm2-runtime", "server.js"]
+CMD [ "npm", "start" ]
+#CMD ["pm2-runtime", "server.js"]
