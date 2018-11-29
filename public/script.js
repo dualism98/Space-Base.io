@@ -236,7 +236,7 @@ var requestAnimationFrameId;
 var scale = 1;
 var sunTint = {amount: 0, color: "#fffff"};
 
-var ownedPlanets = [];
+var ownedPlanets = {};
 var hiveObj = {};
 
 var windowWidth;
@@ -322,8 +322,8 @@ var checklist = {
 checklistFadeTime = 20;
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
-    socket = io.connect('http://space-base.io/');
+    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://space-base.io/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -466,7 +466,7 @@ function newWorldObjectSync(data){
     if(data.newObject.type == "planet"){
 
         var changedPlanet = findObjectWithId(worldObjects.planets, data.id);
-        var ownedPlanet = findObjectWithId(ownedPlanets, data.id);
+        var ownedPlanet = ownedPlanets[data.id];
 
         if(currentPlanet && data.id == currentPlanet.id){
             currentPlanet = null;
@@ -476,7 +476,7 @@ function newWorldObjectSync(data){
         if(ownedPlanet){
             ownedPlanet.object.structures = [];
             allStructures = getAllStructures();
-            ownedPlanets.splice(ownedPlanet.index, 1);
+            delete ownedPlanets[data.id];
         }
 
         if(data.dead && changedPlanet){
@@ -553,12 +553,16 @@ function receiveDamageSync(data){
             if(hittableObject.health < healthDict[hittableObject.id]){            
                 var ownPlanetAttacked = false;
     
-                ownedPlanets.forEach(ownedPlanet => {
-                    if(ownedPlanet.shield && ownedPlanet.shield.id == hittableObject.id)
-                        damagedOwnPlanet(true, hittableObject.health, ownedPlanet.shield.id);
-                    else if(ownedPlanet.id == hittableObject.id)
-                        damagedOwnPlanet(false, hittableObject.health, ownedPlanet.id);
-                });
+                for (var id in ownedPlanets) {
+                    if (ownedPlanets.hasOwnProperty(id)) {
+                        const ownedPlanet = ownedPlanets[id];
+
+                        if(ownedPlanet.shield && ownedPlanet.shield.id == hittableObject.id)
+                            damagedOwnPlanet(true, hittableObject.health, ownedPlanet.shield.id);
+                        else if(ownedPlanet.id == hittableObject.id)
+                            damagedOwnPlanet(false, hittableObject.health, ownedPlanet.id);
+                        }
+                }
             }
             
             healthDict[hittableObject.id] = hittableObject.health;
@@ -582,8 +586,6 @@ function receiveDamageSync(data){
 }
 
 function damagedOwnPlanet(attackOnShield, health, id){
-
-    var ownedPlanet = findObjectWithId(ownedPlanets, id.object);
 
     // if(attackOnShield)
     //     console.log("HALP WE ARE UNDER ATTACK. Shield Health Left: " + health);
@@ -630,22 +632,25 @@ function startLocalPlayer(data){
             landed = false;
             gridPos = new Vector(currentPlanet.coordX * -1, currentPlanet.coordY * -1);
             
-            var newOwnedPlanets = [];
+            var newOwnedPlanets = {};
 
-            ownedPlanets.forEach(planet => {
-                planetObject = findObjectWithId(worldObjects.planets, planet.id);
-                if(planetObject){
-                    newOwnedPlanets.push(planetObject.object);
-                    friendlyObjectIds.push(planetObject.object.id);
+            for (var id in ownedPlanets) {
+                if (ownedPlanets.hasOwnProperty(id)) {
+                    const planet = ownedPlanets[id];
 
-                    if(planetObject.object.shield)
-                        friendlyObjectIds.push(planetObject.object.shield.id);
+                    planetObject = findObjectWithId(worldObjects.planets, planet.id);
+
+                    if(planetObject){
+                        newOwnedPlanets[planet.id] = planetObject.object;
+                        friendlyObjectIds.push(planetObject.object.id);
+
+                        if(planetObject.object.shield)
+                            friendlyObjectIds.push(planetObject.object.shield.id);
+                    }
                 }
-            });
+            }
 
-            
             ownedPlanets = newOwnedPlanets;
-
         }
     }
     else{
@@ -702,7 +707,7 @@ function respawnTimer(){
 function respawn(){
     scale = 1;
     spaceShip = null;
-    ownedPlanets = [];
+    ownedPlanets = {};
     currentPlanet = null;
     shopOpen = {shopRef: null, type: null, open: false};
     planetShopSelection = null;
@@ -940,7 +945,7 @@ function onAquiredItems(data){
                     checklist.aquiredCrown.isActive = true;
                 }
 
-                ownedPlanets.push(hiveObj);
+                ownedPlanets[hiveObj.id] = hiveObj;
             }
 
             aquiredItems[drop] = {amount: data.drops[drop] - playerItems[drop], time: aquireItemsFadeTime};
@@ -1379,10 +1384,8 @@ $(document).keypress(function(e){
             if(currentPlanet.id == "hive" && checklist.aquiredCrown.isActive)
                 checklist.aquiredCrown.done = true;
 
-            if(playerHasResources(structureUpgrades["landingPad"][0].costs) && !ownedPlanets.contains(currentPlanet.id) && !checklist.landingPadDesc.done && !currentPlanet.id == "hive")
-            {
+            if(playerHasResources(structureUpgrades["landingPad"][0].costs) && !ownedPlanets[currentPlanet.id] && !checklist.landingPadDesc.done && !currentPlanet.id == "hive")
                 checklist.landingPadDesc.isActive = true;
-            }
 
         } 
     }
@@ -1686,7 +1689,7 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
                 
                 if(!isFacade){
                     friendlyObjectIds.push(planet.id);
-                    ownedPlanets.push(planet);
+                    ownedPlanets[planet.id] = planet;
                 }
             break;
         }
@@ -2216,7 +2219,7 @@ function Item(coordX, coordY, size, type, id) {
 
     this.displayPos = new Vector();
 
-    var jumpDistance = 10000;
+    var jumpDistance = 50000;
 
     this.update = function(){
         
@@ -2738,7 +2741,7 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
 
     this.displayPos = new Vector();
 
-    var jumpDistance = 10000;
+    var jumpDistance = 50000;
 
     this.turret;
 
@@ -3159,7 +3162,6 @@ function update() {
         // --------------------------------- Properties Overview    
         if(propertiesTimer.matter && propertiesTimer.time >= propertiesHoldTime && propertiesTimer.fill < 1)
             propertiesTimer.fill += .05;
-
         // --------------------------------- In Sun
         
         var isInSun = false;
@@ -3297,6 +3299,27 @@ function update() {
         }
     }
 
+    for (var id in ownedPlanets) {
+        if (ownedPlanets.hasOwnProperty(id)) {
+
+            var planet = ownedPlanets[id];
+
+            var size = planet.radius;
+
+            if(planet.shield)
+                size = planet.shield.radius;
+
+            var pos = cordsToScreenPos(planet.coordX, planet.coordY);
+
+            if(!isOnScreen(pos.x, pos.y, size))
+            {
+                planet.x = pos.x;
+                planet.y = pos.y;
+            }
+                
+        }
+    }
+
     miniMapSize = windowHeight / 5;
     minimapPadding = windowHeight / 60;
 
@@ -3373,7 +3396,7 @@ function animate() {
         proj.update();
     }
 
-    if(spaceShip && ownedPlanets.length > 0){
+    if(spaceShip && !jQuery.isEmptyObject(ownedPlanets)){
         drawArrowsToOwnedPlanets();
     }
 
@@ -3389,41 +3412,6 @@ function animate() {
     {
         c.fillStyle = "#ffffff";
         c.fillText("x: " + Math.round(spaceShip.coordX) + " y: " + Math.round(spaceShip.coordY), 5, canvas.height - 5);
-    }
-
-    if(spaceShip){
-
-        if(!currentPlanet && closestAvailablePlanet){
-
-            var shopInRange = false;
-
-            worldObjects.shops.forEach(shop => {
-                if(shop.isInRange)
-                    shopInRange = true;
-            });
-
-            if(!shopInRange)
-            {
-                c.font =  windowHeight / 17 + "px Arial";
-                c.fillStyle = "white";
-                c.globalAlpha = .2;
-                c.textAlign="center"; 
-                c.fillText($('p#land').text(), windowWidth / 2, (windowHeight - 80));
-                c.textAlign="left"; 
-    
-                c.globalAlpha = .5;
-                c.beginPath();
-                c.setLineDash([10, 30]);
-                c.moveTo(windowWidth / 2, windowHeight / 2);
-                c.strokeStyle = "gray";
-                c.lineWidth = 10;  
-                c.lineTo(closestAvailablePlanet.x * scale, closestAvailablePlanet.y * scale);
-                c.stroke();
-        
-                c.setLineDash([]);
-                c.globalAlpha = 1;
-            }
-        }
     }
 
     if(sunTint.amount > 0){
@@ -3446,6 +3434,9 @@ function animate() {
 
     //Display Stats
     if(spaceShip){
+
+        drawLeaderBoard();
+
         if(!currentPlanet)
             drawOxygen();
 
@@ -3482,6 +3473,40 @@ function animate() {
             c.globalAlpha = 1;
             c.textAlign = "left";
         }
+
+        //Shop and Landing Text ---------------------------------------------------
+
+        if(!currentPlanet && closestAvailablePlanet){
+
+            var shopInRange = false;
+
+            worldObjects.shops.forEach(shop => {
+                if(shop.isInRange)
+                    shopInRange = true;
+            });
+
+            if(!shopInRange)
+            {
+                c.font =  windowHeight / 17 + "px Arial";
+                c.fillStyle = "white";
+                c.globalAlpha = .2;
+                c.textAlign="center"; 
+                c.fillText($('p#land').text(), windowWidth / 2, (windowHeight - 80));
+                c.textAlign="left"; 
+    
+                c.globalAlpha = .5;
+                c.beginPath();
+                c.setLineDash([10, 30]);
+                c.moveTo(windowWidth / 2, windowHeight / 2);
+                c.strokeStyle = "gray";
+                c.lineWidth = 10;  
+                c.lineTo(closestAvailablePlanet.x * scale, closestAvailablePlanet.y * scale);
+                c.stroke();
+        
+                c.setLineDash([]);
+                c.globalAlpha = 1;
+            }
+        }
         
         //Planet Structure Placement -----------------------------------------------
         if(currentPlanet){
@@ -3505,8 +3530,7 @@ function animate() {
                             spawnerType = (boughtStructure.substring(7, boughtStructure.legnth));
                             spawnerType = spawnerType.charAt(0).toLowerCase() + spawnerType.substring(1, spawnerType.legnth);
                         }
-                            
-
+                        
                         requestStructureSpawn(boughtStructure, spawnerType);
                         boughtStructure = null;
 
@@ -3571,9 +3595,6 @@ function animate() {
         }
 
     }
-
-    if(spaceShip)
-        drawLeaderBoard();
 
     for (var can in canvases) {
         if (canvases.hasOwnProperty(can) && can != "mainCanvas") {
@@ -4100,9 +4121,13 @@ function drawPlanetShopPanel(){
         c.font = fontsize + "px Helvetica";
         c.textAlign = "center";
 
+        
+
         var name = $('p#' + type).text();
         
-        if(type == "spawner")
+        if(type == "spaceShip")
+            name = $('p#spaceShipp').text();
+        else if(type == "spawner")
             name = $('p#' + planetShopSelection.spawnerType).text();
 
         var uppercasedType = name.charAt(0).toUpperCase() + name.slice(1);
@@ -4344,111 +4369,110 @@ function drawPlanetShopPanel(){
 
 function drawArrowsToOwnedPlanets(){
 
-    for (let i = 0; i < ownedPlanets.length; i++) {
-    
-        const planet = ownedPlanets[i];
-        var size = planet.radius;
+    for (var id in ownedPlanets) {
+        if (ownedPlanets.hasOwnProperty(id)) {
+            const planet = ownedPlanets[id];
 
-        if(planet.shield)
-            size = planet.shield.radius;
+            var size = planet.radius;
 
-        //Out of screen Right                                           || Left                || Up                  || Down
-        if((planet.x + centerX - size > (windowWidth + centerX) / scale || planet.x + size < 0 || planet.y + size < 0 || planet.y + centerY - size > (windowHeight + centerY) / scale)){
+            if(planet.shield)
+                size = planet.shield.radius;
 
-            var padding = 20 / scale;
-            var screenWidth = windowWidth / scale - 2 * padding;
-            var screenHeight = windowHeight / scale - 2 * padding;
+            if(!isOnScreen(planet.x, planet.y, size)){
+                var padding = 20 / scale;
+                var screenWidth = windowWidth / scale - 2 * padding;
+                var screenHeight = windowHeight / scale - 2 * padding;
 
-            var x = planet.x;
-            var y = planet.y;
+                var x = planet.x;
+                var y = planet.y;
 
-            var arrowPos = {x: 0, y: 0};
+                var arrowPos = {x: 0, y: 0};
 
-            var slopeY = planet.y - screenHeight / 2;
-            var slopeX = planet.x - screenWidth / 2;
-            var slope = Math.abs(slopeY / slopeX);
-            var screenRatio = Math.abs(screenHeight / screenWidth);
+                var slopeY = planet.y - screenHeight / 2;
+                var slopeX = planet.x - screenWidth / 2;
+                var slope = Math.abs(slopeY / slopeX);
+                var screenRatio = Math.abs(screenHeight / screenWidth);
 
-            var xModifier = 1;
-            var yModifier = 1;
+                var xModifier = 1;
+                var yModifier = 1;
 
-            if(slopeX < 0)
-                xModifier = 0;
-
-            if(slopeY < 0)
-                yModifier = 0;
-
-            if(slope == screenRatio) //Corner
-            {
-                arrowPos.x = screenWidth * xModifier;
-                arrowPos.y = screenHeight * yModifier;   
-            }
-            else if(slope < screenRatio) //Top
-            {
                 if(slopeX < 0)
-                {
-                    arrowPos.x = padding;
-                    arrowPos.y = (screenWidth * slopeY / slopeX) / -2 + (screenHeight / 2) + (padding);
-                    
-                }
-                else{
-                    arrowPos.x = screenWidth + padding;
-                    arrowPos.y = (screenWidth * slopeY / slopeX) / 2 + (screenHeight / 2) + (padding);
-                }
+                    xModifier = 0;
 
-            }
-            else if(slope > screenRatio) //Top / Bottom
-            {
                 if(slopeY < 0)
+                    yModifier = 0;
+
+                if(slope == screenRatio) //Corner
                 {
-                    arrowPos.x = screenHeight * slopeX / slopeY / -2 + screenWidth / 2;
-                    arrowPos.y = padding;
+                    arrowPos.x = screenWidth * xModifier;
+                    arrowPos.y = screenHeight * yModifier;   
                 }
-                else{
-                    arrowPos.x = screenHeight *  slopeX / slopeY / 2 + screenWidth / 2 
-                    arrowPos.y = screenHeight + padding;
-                }
-
-                arrowPos.x += padding;
-            }
-
-            var arrowRotation = Math.atan2(centerY - planet.y, centerX - planet.x) - (45 * Math.PI / 180);
-            var arrowSize = 20 / scale;
-
-            var arrowColor = "#ffffff";
-
-            if(attackedPlanets[planet.id]){
-                if(!flashingPlanetArrows[planet.id]){
-                    flashingPlanetArrows[planet.id] = {times: 0, isFlashed: true, time: 0};
-                }
-                else{
-                    if(flashingPlanetArrows[planet.id].times > planetArrowFlashTimes)
+                else if(slope < screenRatio) //Top
+                {
+                    if(slopeX < 0)
                     {
-                        attackedPlanets[planet.id] = false;
-                        delete flashingPlanetArrows[planet.id];
+                        arrowPos.x = padding;
+                        arrowPos.y = (screenWidth * slopeY / slopeX) / -2 + (screenHeight / 2) + (padding);
+                        
                     }
                     else{
-                        if(flashingPlanetArrows[planet.id].time < planetArrowFlashInterval)
-                            flashingPlanetArrows[planet.id].time++;
-                        else
-                        {
-                            flashingPlanetArrows[planet.id].time = 0;
-                            flashingPlanetArrows[planet.id].isFlashed = !flashingPlanetArrows[planet.id].isFlashed;
-                            flashingPlanetArrows[planet.id].times++;
-                        }
-                    }       
-                }
-            }
-            
-            if(flashingPlanetArrows[planet.id] && flashingPlanetArrows[planet.id].isFlashed)
-                arrowColor = planet.color;
-            else
-                arrowColor = "#ffffff";
+                        arrowPos.x = screenWidth + padding;
+                        arrowPos.y = (screenWidth * slopeY / slopeX) / 2 + (screenHeight / 2) + (padding);
+                    }
 
-            drawArrow(arrowPos.x, arrowPos.y, arrowRotation, arrowColor, arrowSize);
+                }
+                else if(slope > screenRatio) //Top / Bottom
+                {
+                    if(slopeY < 0)
+                    {
+                        arrowPos.x = screenHeight * slopeX / slopeY / -2 + screenWidth / 2;
+                        arrowPos.y = padding;
+                    }
+                    else{
+                        arrowPos.x = screenHeight *  slopeX / slopeY / 2 + screenWidth / 2 
+                        arrowPos.y = screenHeight + padding;
+                    }
+
+                    arrowPos.x += padding;
+                }
+
+                var arrowRotation = Math.atan2(centerY - planet.y, centerX - planet.x) - (45 * Math.PI / 180);
+                var arrowSize = 20 / scale;
+
+                var arrowColor = "#ffffff";
+
+                if(attackedPlanets[planet.id]){
+                    if(!flashingPlanetArrows[planet.id]){
+                        flashingPlanetArrows[planet.id] = {times: 0, isFlashed: true, time: 0};
+                    }
+                    else{
+                        if(flashingPlanetArrows[planet.id].times > planetArrowFlashTimes)
+                        {
+                            attackedPlanets[planet.id] = false;
+                            delete flashingPlanetArrows[planet.id];
+                        }
+                        else{
+                            if(flashingPlanetArrows[planet.id].time < planetArrowFlashInterval)
+                                flashingPlanetArrows[planet.id].time++;
+                            else
+                            {
+                                flashingPlanetArrows[planet.id].time = 0;
+                                flashingPlanetArrows[planet.id].isFlashed = !flashingPlanetArrows[planet.id].isFlashed;
+                                flashingPlanetArrows[planet.id].times++;
+                            }
+                        }       
+                    }
+                }
+                
+                if(flashingPlanetArrows[planet.id] && flashingPlanetArrows[planet.id].isFlashed)
+                    arrowColor = planet.color;
+                else
+                    arrowColor = "#ffffff";
+
+                drawArrow(arrowPos.x, arrowPos.y, arrowRotation, arrowColor, arrowSize);
+            }
         }
     }
-
 }
 
 function drawChecklist()
@@ -4630,15 +4654,17 @@ function minimap(size, x, y){
 
     });
 
-    ownedPlanets.forEach(planet => {
+    for (var id in ownedPlanets) {
+        if (ownedPlanets.hasOwnProperty(id)) {
+            const planet = ownedPlanets[id];
         
-        c.globalAlpha = 0.75;
-        c.beginPath();
-        c.arc(x + planet.coordX / gridSize * size, y + planet.coordY / gridSize * size, size / 40, 0, Math.PI * 2, false);
-        c.fillStyle = planet.color;
-        c.fill();
-
-    });
+            c.globalAlpha = 0.75;
+            c.beginPath();
+            c.arc(x + planet.coordX / gridSize * size, y + planet.coordY / gridSize * size, size / 40, 0, Math.PI * 2, false);
+            c.fillStyle = planet.color;
+            c.fill();
+        }
+    }
 
     var crownSize = size / 10;
     var crownDrawn = false;
@@ -4673,6 +4699,8 @@ function minimap(size, x, y){
         c.fillStyle = "white";
         c.fill();  
     }
+
+    c.globalAlpha = 1;
       
 }
 
@@ -4694,16 +4722,9 @@ function updateAllMatter(){
         //     size += matter.shield.radius;
 
         var isClosestAvaiblePlanet = matter.id == closestAvailablePlanet;
-        var isOwnedPlanet = findObjectWithId(ownedPlanets, matter.id);
 
-
-        if(isOnScreen(pos.x, pos.y, size) || isClosestAvaiblePlanet || isOwnedPlanet != null){
+        if(isOnScreen(pos.x, pos.y, size) || isClosestAvaiblePlanet){
             matter.health = healthDict[matter.id];
-
-            updates++;
-
-            if(isOnScreen(pos.x, pos.y, size))
-                isOnScreenUpdates++;
 
             try {
                 matter.update();
@@ -4736,10 +4757,7 @@ function updateAllMatter(){
                 }
             }
         }
-
     });
-
-    //console.log(updates + " " + isOnScreenUpdates);
 
     if(!propertySelected)
         propertiesTimer = {time: 0, fill: 0, matter: null};
@@ -4757,14 +4775,10 @@ function propertiesOverview(object, fill){
     var flipX = 1;
 
     if(pos.x - 10 > centerX && object.id != clientId)
-    {
         flipX = -1;
-    }
 
     if(!isOnScreen(pos.x, pos.y, -20))
-    {
         pos = {x: mouse.x, y: mouse.y};
-    }
 
     var drops = dropDict[object.id];
     var dropX = 0;
@@ -5006,13 +5020,16 @@ function drawGrid(x, y, width, height, gridScale){
     for(var i = 0; i <= gridScale; i++){
 
         ypos = height - height / gridScale * i + (y);
-        xpos = x;
-        c.beginPath();
-        c.moveTo(x, ypos);
-        c.lineTo(x + width,  ypos);
-        c.strokeStyle = color;
-        c.stroke();
 
+        if(ypos > 0 && ypos < windowHeight / scale)
+        {
+            c.beginPath();
+            c.moveTo(x, ypos);
+            c.lineTo(x + width,  ypos);
+            c.strokeStyle = color;
+            c.stroke();
+        }
+        
     }
     
     //Draw Vertical Lines
@@ -5020,11 +5037,14 @@ function drawGrid(x, y, width, height, gridScale){
 
         xpos = width - width / gridScale * i + (x);
 
-        c.beginPath();
-        c.moveTo(xpos, y);
-        c.lineTo(xpos, y + height);
-        c.strokeStyle = color;
-        c.stroke();
+        if(xpos > 0 && xpos < windowWidth / scale)
+        {
+            c.beginPath();
+            c.moveTo(xpos, y);
+            c.lineTo(xpos, y + height);
+            c.strokeStyle = color;
+            c.stroke();
+        }
 
     }
 } 
@@ -5109,7 +5129,7 @@ function structureSpawnPoint(structureSize, img, addedDist){
 }
 
 function isOnScreen(x, y, size){
-    return (!(x - size > (windowWidth + centerX) / scale || x + size < 0 || y + size < 0 || y - size > (windowHeight + centerY) / scale));
+    return (!(x - size > windowWidth / scale || x + size < 0 || y + size < 0 || y - size > windowHeight / scale));
 }
 
 function getRndInteger(min, max) {
