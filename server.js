@@ -93,7 +93,10 @@ function positonAviable(size, x, y, hittableObjectsRef) {
     return true;
 }
 
-function generatePlanet(size, color, health, drops, worldObjectsRef, hittableObjectsRef, id = uniqueId()){
+function generatePlanet(size, color, health, drops, worldObjectsRef, hittableObjectsRef, id){
+
+    if(id == null)
+        id = uniqueId()
 
     var position = {};
     var reptitions = 0;
@@ -118,7 +121,11 @@ function generatePlanet(size, color, health, drops, worldObjectsRef, hittableObj
     return planet;
 }
 
-function generateSpaceMatter(size, color, health, drops, worldObjectsRef, hittableObjectsRef, type, id = uniqueId()){
+function generateSpaceMatter(size, color, health, drops, worldObjectsRef, hittableObjectsRef, type, id){
+
+    if(id == null)
+        id = uniqueId();
+
     var position = {};
     var reptitions = 0;
 
@@ -1099,8 +1106,8 @@ function newConnetcion(socket){
         {
             var playerPlanet = false;
 
-            for (let i = 0; i < worldsData[worldId].worldObjects.planets.length; i++) {
-                const planet = worldsData[worldId].worldObjects.planets[i];
+            for (var i = 0; i < worldsData[worldId].worldObjects.planets.length; i++) {
+                var planet = worldsData[worldId].worldObjects.planets[i];
                 if(planet.occupiedBy == null && planet.owner == null && planet.id != "hive")
                 {
                     playerPlanet = planet;
@@ -2326,9 +2333,9 @@ function updateEnemies(){
 
         var destroyedProjs = [];
 
-        for (let i = worldsData[worldId].projectiles.length - 1; i >= 0; i--) {
+        for (var i = worldsData[worldId].projectiles.length - 1; i >= 0; i--) {
             
-            const proj = worldsData[worldId].projectiles[i];
+            var proj = worldsData[worldId].projectiles[i];
 
             if(proj == null)
             {
@@ -2341,13 +2348,13 @@ function updateEnemies(){
             proj.x += proj.vel.x / 1.2;
             proj.y += proj.vel.y / 1.2;
     
-            for (let x = 0; x < worldsData[worldId].hittableObjects.length; x++) {
-                const obj = worldsData[worldId].hittableObjects[x];
+            for (var x = 0; x < worldsData[worldId].hittableObjects.length; x++) {
+                var obj = worldsData[worldId].hittableObjects[x];
                 
                 var isEnemy = false;
     
-                for (let e = 0; e < worldsData[worldId].enemies.length; e++) {
-                    const enemy = worldsData[worldId].enemies[e];
+                for (var e = 0; e < worldsData[worldId].enemies.length; e++) {
+                    var enemy = worldsData[worldId].enemies[e];
     
                     if(enemy.id == obj.id)
                     {
@@ -2392,8 +2399,8 @@ function updateEnemies(){
 
     });
 
-    for (let index = 0; index < worldIds.length; index++) {
-        const worldId = worldIds[index];
+    for (var index = 0; index < worldIds.length; index++) {
+        var worldId = worldIds[index];
 
         var enemyMaster = findObjectWithId(worldsData[worldId].clients, worldsData[worldId].master);
         var enemies = worldsData[worldId].enemies;
@@ -2401,8 +2408,8 @@ function updateEnemies(){
         var dataContainer = {};
         var urgentDataContainer = {};
         
-        for (let i = 0; i < enemies.length; i++) {
-            const enemy = enemies[i];
+        for (var i = 0; i < enemies.length; i++) {
+            var enemy = enemies[i];
 
             var instantSnap = false;
 
@@ -2577,8 +2584,8 @@ function enemyAI(enemy, worldId, pointX, pointY, optimalDistance){
 }
 
 function updateItems(){
-    for (let x = 0; x < worldIds.length; x++) {
-        const worldId = worldIds[x];
+    for (var x = 0; x < worldIds.length; x++) {
+        var worldId = worldIds[x];
 
         var items = worldsData[worldId].items;
         var data = [];
@@ -2637,8 +2644,8 @@ function updateItems(){
             var velMergeX = 0;
             var velMergeY = 0;
 
-            for (let x = 0; x < items.length; x++) {
-                const _item = items[x];
+            for (var x = 0; x < items.length; x++) {
+                var _item = items[x];
                 
                 if(_item != item && _item.type == item.type){
 
@@ -2752,11 +2759,11 @@ function oxygenDamage()
     var syncWorldIds = {};
     var spliced = [];
 
-    for (let i = 0; i < worldIds.length; i++) {
-        const worldId = worldIds[i];
+    for (var i = 0; i < worldIds.length; i++) {
+        var worldId = worldIds[i];
 
-        for (let x = worldsData[worldId].noOxygen.length - 1; x >= 0; x--) {
-            const clientId = worldsData[worldId].noOxygen[x];
+        for (var x = worldsData[worldId].noOxygen.length - 1; x >= 0; x--) {
+            var clientId = worldsData[worldId].noOxygen[x];
 
             var hittableObj = findObjectWithId(worldsData[worldId].hittableObjects, clientId);
             if(!hittableObj)
@@ -2820,7 +2827,7 @@ function shieldHeal()
 
 function despawnProjectiles()
 {
-    for (let i = 0; i < worldIds.length; i++) {
+    for (var i = 0; i < worldIds.length; i++) {
         var projectiles = worldsData[worldIds[i]].projectiles;
 
         var destroyedProjs = [];
@@ -2887,21 +2894,21 @@ function mineProduce()
 
 function spawnEnemies()
 {
-    for (let i = 0; i < worldIds.length; i++) {
-        const worldId = worldIds[i];
+    for (var i = 0; i < worldIds.length; i++) {
+        var worldId = worldIds[i];
 
         var structures = allStructures(worldId);
         var spawners = [];
 
-        for (let x = 0; x < structures.length; x++) {
-            const structure = structures[x];
+        for (var x = 0; x < structures.length; x++) {
+            var structure = structures[x];
 
             if(structure.type == "spawner")
                 spawners.push(structure);
         }
 
-        for (let y = 0; y < spawners.length; y++) {
-            const spawner = spawners[y];
+        for (var y = 0; y < spawners.length; y++) {
+            var spawner = spawners[y];
 
             if(worldsData[worldId].enemies.length < maxEnemiesPerWorld)
             {
@@ -2913,8 +2920,8 @@ function spawnEnemies()
 
 function respawnCrowns(){
 
-    for (let i = 0; i < worldIds.length; i++) {
-        const worldId = worldIds[i];
+    for (var i = 0; i < worldIds.length; i++) {
+        var worldId = worldIds[i];
 
         if(!checkForCrown(worldId)){
             var crown = new Item(gridSize / 2, gridSize / 2, {x: 0, y: 0}, "crown", 1, "item-" + uniqueId());
@@ -2928,15 +2935,15 @@ function checkForCrown(worldId){
     var clients = worldsData[worldId].clients;
     var items = worldsData[worldId].items;
 
-    for (let x = 0; x < items.length; x++) {
-        const item = items[x];
+    for (var x = 0; x < items.length; x++) {
+        var item = items[x];
 
         if(item.type == "crown")
             return true;
     }
 
-    for (let x = 0; x < clients.length; x++) {
-        const client = clients[x];
+    for (var x = 0; x < clients.length; x++) {
+        var client = clients[x];
 
         if(client.drops["crown"] > 0)
             return true;
@@ -2999,8 +3006,8 @@ function findClosestPlayer(x, y, worldId, ignoreIds = [], ignoreCloaked = false)
     if(!worldIds.contains(worldId))
         return null;
 
-    for (let i = 0; i < worldsData[worldId].clients.length; i++) {
-        const player = worldsData[worldId].clients[i];
+    for (var i = 0; i < worldsData[worldId].clients.length; i++) {
+        var player = worldsData[worldId].clients[i];
 
         var connectedClients = io.sockets.adapter.rooms[worldId].sockets;
         
@@ -3219,7 +3226,7 @@ function findObjectWithId(array, id){
 function allProjectiles(){
     projectiles = [];
 
-    for (let i = 0; i < worldIds.length; i++) {
+    for (var i = 0; i < worldIds.length; i++) {
         projectiles = projectiles.concat(worldsData[worldIds[i]].projectiles);
     }
 
@@ -3230,7 +3237,7 @@ function allClients(includeLobbyClients = false){
 
     clients = [];
 
-    for (let i = 0; i < worldIds.length; i++) {
+    for (var i = 0; i < worldIds.length; i++) {
         clients = clients.concat(worldsData[worldIds[i]].clients);
 
         if(includeLobbyClients)
@@ -3339,7 +3346,7 @@ function newPlayerData(worldId, x, y) {
 
 Array.prototype.contains = function(thing){
 
-    for (let i = 0; i  < this.length; i++) {
+    for (var i = 0; i  < this.length; i++) {
         if(this[i] == thing)
             return true;
     }
