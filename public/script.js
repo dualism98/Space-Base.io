@@ -1361,15 +1361,15 @@ $(document).keypress(function(e){
 
             if(shootCooldownTimer >= shootCooldownTime){
 
-                var shootBulvar = false;
+                var shootBullet = false;
 
                 if(isHoldingShoot)
                 {
                     if(playerReloadTimer <=0)
-                        shootBulvar = true;
+                        shootBullet = true;
                 }
                 else {
-                    shootBulvar = true;
+                    shootBullet = true;
                 }
 
                 if(shootBullet)

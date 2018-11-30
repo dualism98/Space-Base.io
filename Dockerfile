@@ -21,7 +21,6 @@ RUN npm install uglify-es -g
 # Bundle app source
 COPY . .
 
-RUN ls
 RUN uglifyjs ./public/script.js -c -m --mangle-props reserved=[text,fadeIn,fadeOut,removeAttr,css,width,height,attr,val,animate,click,ready,keyup,keypress,on],regex=/_$/,keep_quoted --output ./public/script.js
 
 #RUN pm2 link hidden 8q1avft2guza8y6
