@@ -4,8 +4,12 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 var c = canvas.getContext('2d');
 
-var FindCanvas = function(id, compositeOp, returnContext, _zIndex = -1)
+var FindCanvas = function(id, compositeOp, returnContext, _zIndex)
 {
+
+    if(_zIndex == null)
+        _zIndex = -1;
+
     var tempCanvas;
 
     if(canvases[id])
@@ -426,7 +430,7 @@ function setupLocalWorld(data){
     }
 
     //Planets
-    for(let i = 0; i < data.worldObjects.planets.length; i++){
+    for(var i = 0; i < data.worldObjects.planets.length; i++){
 
         var planet = data.worldObjects.planets[i];
 
@@ -441,7 +445,7 @@ function setupLocalWorld(data){
 
         //Add all existing structures
         for (var s = 0; s < planet.structures.length; s++) {
-            const structure = planet.structures[s];
+            var structure = planet.structures[s];
             var isFacade = structure.ownerId != clientId;
 
             if(structure.type == "spawner")
@@ -520,7 +524,7 @@ function newWorldObjectSync(data){
 }
 function receiveDamageSync(data){
 
-    for (let i = 0; i < data.deadObjects.length; i++) {
+    for (var i = 0; i < data.deadObjects.length; i++) {
         var localObj = hittableObjects[data.deadObjects[i]];
 
         if(localObj)
@@ -555,7 +559,7 @@ function receiveDamageSync(data){
     
                 for (var id in ownedPlanets) {
                     if (ownedPlanets.hasOwnProperty(id)) {
-                        const ownedPlanet = ownedPlanets[id];
+                        var ownedPlanet = ownedPlanets[id];
 
                         if(ownedPlanet.shield && ownedPlanet.shield.id == hittableObject.id)
                             damagedOwnPlanet(true, hittableObject.health, ownedPlanet.shield.id);
@@ -636,7 +640,7 @@ function startLocalPlayer(data){
 
             for (var id in ownedPlanets) {
                 if (ownedPlanets.hasOwnProperty(id)) {
-                    const planet = ownedPlanets[id];
+                    var planet = ownedPlanets[id];
 
                     planetObject = findObjectWithId(worldObjects.planets, planet.id);
 
@@ -957,8 +961,8 @@ function onAquiredItems(data){
 
 function updateItems(data){
 
-    for (let i = 0; i < data.length; i++) {
-        const item = data[i];
+    for (var i = 0; i < data.length; i++) {
+        var item = data[i];
         
         var localItem = worldItems[item.id];
 
@@ -992,8 +996,8 @@ function updateItems(data){
 
 function turretRot(data)
 {
-    for (let i = 0; i < data.length; i++) {
-        const turret = data[i];
+    for (var i = 0; i < data.length; i++) {
+        var turret = data[i];
 
         var localTurret = allStructures[turret.id];
 
@@ -1357,15 +1361,15 @@ $(document).keypress(function(e){
 
             if(shootCooldownTimer >= shootCooldownTime){
 
-                var shootBullet = false;
+                var shootBulvar = false;
 
                 if(isHoldingShoot)
                 {
                     if(playerReloadTimer <=0)
-                        shootBullet = true;
+                        shootBulvar = true;
                 }
                 else {
-                    shootBullet = true;
+                    shootBulvar = true;
                 }
 
                 if(shootBullet)
@@ -1546,8 +1550,8 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
         var powerAvailable = 0;
         var powerNeeded = 0;
 
-        for (let i = 0; i < this.structures.length; i++) {
-            const structure = this.structures[i];
+        for (var i = 0; i < this.structures.length; i++) {
+            var structure = this.structures[i];
             
             if(structure.type == "landingPad")
                 continue;
@@ -3671,8 +3675,8 @@ function drawLeaderBoard(){
     if(!topPlayers.includes(spaceShip))
         topPlayers.push(spaceShip);
 
-    for (let i = 0; i < topPlayers.length; i++) {
-        const player = topPlayers[i];
+    for (var i = 0; i < topPlayers.length; i++) {
+        var player = topPlayers[i];
         
         if(i >= PLAYERS_ON_BOARD)
         {
@@ -4032,9 +4036,9 @@ function drawPlanetShopPanel(){
 
     var typeI = 0;
 
-    for (let ix = 0; ix < numXButtons; ix++) {
+    for (var ix = 0; ix < numXButtons; ix++) {
 
-        for (let iy = 0; iy < numYButtons; iy++) {
+        for (var iy = 0; iy < numYButtons; iy++) {
             if (mouseY > buttonY + padding && mouseY < buttonY + padding + buttonSizes && mouseX > buttonX + padding && mouseX < buttonX + padding + buttonSizes) 
             {
                 if(mouse.clicked)
@@ -4315,8 +4319,8 @@ function drawPlanetShopPanel(){
 
     var drawManualTurretButton = false;
 
-    for (let x = 0; x < currentPlanet.structures.length; x++) {
-        const structure = currentPlanet.structures[x];
+    for (var x = 0; x < currentPlanet.structures.length; x++) {
+        var structure = currentPlanet.structures[x];
         
         if(structure.type == "turret")
         {
@@ -4374,7 +4378,7 @@ function drawArrowsToOwnedPlanets(){
 
     for (var id in ownedPlanets) {
         if (ownedPlanets.hasOwnProperty(id)) {
-            const planet = ownedPlanets[id];
+            var planet = ownedPlanets[id];
 
             var size = planet.radius;
 
@@ -4659,7 +4663,7 @@ function minimap(size, x, y){
 
     for (var id in ownedPlanets) {
         if (ownedPlanets.hasOwnProperty(id)) {
-            const planet = ownedPlanets[id];
+            var planet = ownedPlanets[id];
         
             c.globalAlpha = 0.75;
             c.beginPath();
