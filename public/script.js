@@ -322,8 +322,8 @@ var checklist = {
 checklistFadeTime = 20;
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
-    socket = io.connect('http://space-base.io/');
+    socket = io.connect('http://localhost:8080');
+    //socket = io.connect('http://space-base.io/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -605,7 +605,7 @@ function showWorld(){
         location.reload();
     }
 
-    setInterval(update, UPDATE_RATE);
+    // setInterval(update, UPDATE_RATE);
     animate();
 }
 
@@ -817,8 +817,9 @@ function returnMsg(data){
     displayMessage(compiledString, 35, 5);
 }
 function upgradeSync(data){
+    var allUpgradeables = Object.assign({}, allPlayers);
+    Object.assign(allUpgradeables, allStructures);
 
-    var allUpgradeables = Object.assign(allStructures, allPlayers);
     upgradedObject = allUpgradeables[data.id];
 
     if(upgradedObject)
@@ -1269,7 +1270,7 @@ $(document).keypress(function(e){
 
         if(currentPlanet.id != "hive")
         {
-            if(e.keyCode == 104) // H
+            if(e.keyCode == 104 || e.keyCode == 72) // H
             {
                 if(currentPlanet.health < currentPlanet.maxHealth)
                     socket.emit("heal", {id: currentPlanet.id, worldId: worldId});
@@ -1277,27 +1278,34 @@ $(document).keypress(function(e){
                     socket.emit("heal", {id: clientId, worldId: worldId});
             }
     
-            
             if(structureSpawnPoint(50 * scale))
             {
                 switch (e.keyCode)
                 {
-                    case 108 : // L
+                    case 108 : // l
+                    case 76 : // L
                         requestStructureSpawn("landingPad");
                         break;
-                    case 115: // S
+                    case 115: // s
                         requestStructureSpawn("shield");
                         break;
-                    case 109: // M
+                    case 83: // S
+                        requestStructureSpawn("satellite");
+                        break;
+                    case 109: // m
+                    case 77: // M
                         requestStructureSpawn("mine");
                         break;
-                    case 116: // T
+                    case 116: // t
+                    case 84: // T
                         requestStructureSpawn("turret");
                         break;
-                    case 101: // E
+                    case 101: // e
+                    case 69: // E
                         requestStructureSpawn("electricity");
                         break;
-                    case 113: // Q
+                    case 113: // q
+                    case 81: // Q
                         requestStructureSpawn("satellite");
                         break;
                 }
@@ -1320,7 +1328,7 @@ $(document).keypress(function(e){
         }
     }
     else if(spaceShip){
-        if(e.keyCode == 99 && !cloaked && cloakCoolDownTime >= cloakCoolDown) //C
+        if(e.keyCode == 99 || e.keyCode == 67 && !cloaked && cloakCoolDownTime >= cloakCoolDown) //C
         {
             if(spaceShip.shopUpgrades["cloakTime"].level > 0){
                 spaceShip.alpha = .1;
@@ -1340,7 +1348,7 @@ $(document).keypress(function(e){
                 displayMessage("Purchase cloak ability at shop first", 10, 2);
         }
 
-        if(e.keyCode == 104) // H
+        if(e.keyCode == 104 || e.keyCode == 72) // H
             socket.emit("heal", {id: clientId, worldId: worldId});
 
         if(e.keyCode == 32){ //SPACE
@@ -1373,7 +1381,7 @@ $(document).keypress(function(e){
             isHoldingShoot = true;
             
         } 
-        if(e.keyCode == 106 && closestAvailablePlanet != null){ // J
+        if(e.keyCode == 106 || e.keyCode == 74 && closestAvailablePlanet != null){ // J
 
             socket.emit('planetOccupancy', {planetId: closestAvailablePlanet.id, playerId: clientId, worldId: worldId})
 
@@ -1404,7 +1412,7 @@ $(document).on('keydown', function(e){
             }
         }
 
-        if(e.keyCode == 83 && !currentPlanet){ // S
+        if(e.keyCode == 83 || e.keyCode == 115 && !currentPlanet){ // S
 
             if(!shopOpen.open){
                 var shopInRange = false;
@@ -2360,7 +2368,6 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
             if (hittableObjects.hasOwnProperty(id)) {
 
                 var hittableObj = hittableObjects[id];
-                
                 var isShield = allStructures[id];
 
                 if(isShield && isShield.type == "shield" && !isShield.planet.powered)
@@ -2376,7 +2383,7 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
                     continue;
 
                 var pos = cordsToScreenPos(hittableObj.x, hittableObj.y);
-                var hitObject = {x: pos.x, y: pos.y, radius: hittableObj.radius} 
+                var hitObject = {x: pos.x, y: pos.y, radius: hittableObj.radius};
 
                 if(isCollidingCircles(this, hitObject)){
 
@@ -2974,16 +2981,10 @@ function update() {
     centerX = (canvas.width / 2 / scale);
     centerY = (canvas.height / 2 / scale);  
     
-    
-    if(spaceShip)
-    {
-        var spaceshipObj = {};
-        spaceshipObj[spaceShip.id] = spaceShip;
+    allPlayers = Object.assign({}, otherPlayers);
 
-        allPlayers = Object.assign(otherPlayers, spaceshipObj);
-    }
-    else
-        allPlayers = otherPlayers;
+    if(spaceShip)
+        allPlayers[spaceShip.id] = spaceShip;
 
 
     for (var id in otherPlayers) {
@@ -3328,6 +3329,7 @@ function update() {
 //------------------------------------------------------- ANIMATE ------------------------------------------------------
 
 function animate() { 
+    update();
 
     requestAnimationFrameId = requestAnimationFrame(animate);
 
@@ -3348,7 +3350,8 @@ function animate() {
     
     for (var id in otherPlayers) {
         if (otherPlayers.hasOwnProperty(id)) {
-            otherPlayers[id].draw();
+            if(isOnScreen(otherPlayers[id].x, otherPlayers[id].y, otherPlayers[id].radius))
+                otherPlayers[id].draw();
         }
     }
 
@@ -4708,18 +4711,16 @@ function updateAllMatter(){
 
     var propertySelected = false;
 
-    var updates = 0;
-    var isOnScreenUpdates = 0;
 
     allWorldObjects.forEach(function(matter){
         var pos = cordsToScreenPos(matter.coordX, matter.coordY);
         var size = matter.radius;
 
-        // if(matter.type == "sun")
-        //     size += 500;
+        if(matter.type == "sun")
+            size += 500;
 
-        // if(matter.shield)
-        //     size += matter.shield.radius;
+        if(matter.shield)
+            size = matter.shield.radius;
 
         var isClosestAvaiblePlanet = matter.id == closestAvailablePlanet;
 
