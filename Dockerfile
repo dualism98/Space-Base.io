@@ -13,7 +13,7 @@ RUN npm install
 RUN npm install pm2 -g
 RUN pm2 update
 
-RUN npm install uglify-es -g
+# RUN npm install uglify-es -g
 
 # If you are building your code for production
 # RUN npm install --only=production
@@ -21,7 +21,7 @@ RUN npm install uglify-es -g
 # Bundle app source
 COPY . .
 
-RUN uglifyjs ./public/script.js -c -m --mangle-props reserved=[text,fadeIn,fadeOut,removeAttr,css,width,height,attr,val,animate,click,ready,keyup,keypress,on],regex=/_$/,keep_quoted --output ./public/script.js
+# RUN uglifyjs ./public/script.js -c -m --mangle-props reserved=[text,fadeIn,fadeOut,removeAttr,css,width,height,attr,val,animate,click,ready,keyup,keypress,on],regex=/_$/,keep_quoted --output ./public/script.js
 
 #RUN pm2 link hidden 8q1avft2guza8y6
 
