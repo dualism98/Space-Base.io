@@ -909,7 +909,7 @@ function mineProduce(data){
     data.forEach(mine => {
         localMine = findObjectWithId(producingMines, mine.id);
 
-        if(localMine && localMine.object.planet.powered)
+        if(localMine)
         {
             localMine.object.productionEffect(mine.item);
         
@@ -931,9 +931,7 @@ function mineProduce(data){
     
     for (var item in added) {
         if (added.hasOwnProperty(item)) {
-
             aquiredItems[item] = {amount: added[item], time: aquireItemsFadeTime};
-
         }
     }
 }
@@ -952,6 +950,9 @@ function onAquiredItems(data){
 
                 ownedPlanets[hiveObj.id] = hiveObj;
             }
+
+            if(playerItems[drop] == undefined)
+                playerItems[drop] = 0;
 
             aquiredItems[drop] = {amount: data.drops[drop] - playerItems[drop], time: aquireItemsFadeTime};
             playerItems[drop] = data.drops[drop];
@@ -1413,6 +1414,7 @@ $(document).on('keydown', function(e){
         {
             if(e.keyCode == 27){ // Escape
                 shopOpen.open = false;
+                boughtStructure = null;
             }
         }
 
@@ -1504,6 +1506,7 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
     this.landingPad = null;
 
     this.powered = false;
+    this.lastPowered = null;
 
     var healthBarWidth = 100;
 
@@ -1562,7 +1565,29 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
                 powerNeeded += structure.level + 1;
         }
 
-        this.powered = powerAvailable >= powerNeeded;
+        this.powered = powerAvailable >= powerNeeded && powerNeeded != 0;
+
+        if(this.lastPowered != this.powered)
+        {
+            this.lastPowered = this.powered;
+
+            var sendData = {on: this.powered, worldId: worldId, planetId: this.id};
+
+            var mines = false;
+
+            for (var i = 0; i < this.structures.length; i++) {
+                var structure = this.structures[i];
+                
+                if(structure.type == "mine")
+                {
+                    mines = true;
+                    break;
+                }   
+            }
+
+            if(mines || this.shield)
+                socket.emit('electricity', sendData);
+        }
 
         if(this.stripeVars == null)
         {
@@ -1716,6 +1741,9 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
                 level: level
             }
 
+            if(!isFacade && !planet.powered)
+                socket.emit('electricity', {on: false, worldId: worldId, planetId: planet.id});
+
             this.structures.push(addedStructure);
             allStructures = getAllStructures();
             upgradeSync(data);
@@ -1741,9 +1769,6 @@ function Shield(planet, x, y, rotation, level, ownerId, id){
     this.coordX = x;
     this.coordY = y;
 
-    this.lastPowered = null;
-
-
     this.health;
     this.maxHealth;
 
@@ -1756,12 +1781,6 @@ function Shield(planet, x, y, rotation, level, ownerId, id){
         if(context != null)
             ctx = context;    
 
-        if(this.lastPowered !== planet.powered)
-        {
-            this.lastPowered = planet.powered;
-            socket.emit("shield", {on: planet.powered, id: this.id, worldId: worldId});
-        }
-        
         //Draw Shield
         if(planet.powered)
         {
@@ -3304,11 +3323,19 @@ function update() {
         }
     }
 
-    for (var id in ownedPlanets) {
-        if (ownedPlanets.hasOwnProperty(id)) {
+    var planets = Object.assign({}, ownedPlanets);
 
-            var planet = ownedPlanets[id];
+    if(closestAvailablePlanet)
+    {
+        var tempObj = {};
+        tempObj[closestAvailablePlanet.id] = closestAvailablePlanet;
+        Object.assign(planets, tempObj);
+    }
+        
+    for (var id in planets) {
+        if (planets.hasOwnProperty(id)) {
 
+            var planet = planets[id];
             var size = planet.radius;
 
             if(planet.shield)
@@ -3482,7 +3509,6 @@ function animate() {
         }
 
         //Shop and Landing Text ---------------------------------------------------
-
         if(!currentPlanet && closestAvailablePlanet){
 
             var shopInRange = false;

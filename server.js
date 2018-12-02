@@ -328,7 +328,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {};//{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
+    this.drops = {}; //{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
 
     this.shipTurret;
 
@@ -422,6 +422,7 @@ function Structure(planetId, x, y, rotation, type, ownerId, level, worldId, id){
     this.type = type;
     this.ownerId = ownerId;
     this.level = level;
+    this.on = true;
     this.worldId = worldId;
     this.id = id;
 }
@@ -1105,14 +1106,24 @@ function newConnetcion(socket){
         if(!lobbyClient.object.planet)
         {
             var playerPlanet = false;
+            var planets = shuffle(worldsData[worldId].worldObjects.planets);
 
-            for (var i = 0; i < worldsData[worldId].worldObjects.planets.length; i++) {
-                var planet = worldsData[worldId].worldObjects.planets[i];
+            for (var i = 0; i < planets.length; i++) {
+                var planet = planets[i];
                 if(planet.occupiedBy == null && planet.owner == null && planet.id != "hive")
                 {
                     playerPlanet = planet;
                     planet.occupiedBy = player.id;
                     planet.owner = player.id;
+
+                    var planetHealth = findObjectWithId(worldsData[worldId].hittableObjects, planet.id);
+
+                    if(planetHealth)
+                    {
+                        planetHealth.object.health = planetHealth.object.maxHealth;
+                        syncDamage(worldId, [planet.id]);
+                    }
+
                     break;
                 }
             }
@@ -1733,13 +1744,19 @@ function newConnetcion(socket){
     
     });
 
-    socket.on('shield', function(data){
+    socket.on('electricity', function(data){
 
-        var shield = findObjectWithId(worldsData[data.worldId].hittableObjects, data.id);
+        if(data.planetId)
+        {
+            var planet = findObjectWithId(worldsData[data.worldId].worldObjects.planets, data.planetId);
 
-        if(shield)
-            shield.object.on = data.on;
-            
+            if(planet)
+            {
+                planet.object.structures.forEach(structure => {
+                    structure.on = data.on;
+                });
+            }
+        }
     });
 
     socket.on('disconnect', function (data) {
@@ -2112,6 +2129,8 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
     else {
         target.object.health = 0;
 
+        damageSyncIds.push(target.object.id);
+
         if(target.object.structure){ //Is a structure (shield)
             worldWorldObjects.planets.forEach(function(planet){
                 var possibleStructure = findObjectWithId(planet.structures, target.object.id);
@@ -2119,7 +2138,6 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
                 if(possibleStructure){
                     planet.structures.splice(possibleStructure.index, 1);
                     worldHittableObjects.splice(target.index, 1);
-                    syncDamage(worldId, [possibleStructure.object.id]);
                 }
             });
         }
@@ -2247,9 +2265,9 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
                         newObject: newObject,
                         dead: dead
                     }
-                }
 
-                io.to(worldId).emit('newWorldObjectSync', changedWorldObject);
+                    io.to(worldId).emit('newWorldObjectSync', changedWorldObject);
+                }
 
                 if(unspawnedObjects.length > 0)
                 {
@@ -2273,7 +2291,6 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
                             newUnspawnedObject = generatePlanet(obj.radius, obj.color, obj.health, obj.drops, worldWorldObjects, worldHittableObjects, obj.id);
                         }
                             
-                            
                         if(newUnspawnedObject){
 
                             if(!obj.type)
@@ -2289,7 +2306,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
                             }
                         
                             io.to(worldId).emit('newWorldObjectSync', changedWorldObject);
-                            syncDamage(worldId, [obj.id]);
+                            damageSyncIds.push(obj.id);
                         }
                     }
                     
@@ -2867,8 +2884,7 @@ function mineProduce()
         var mineData = [];
     
         client.structures.forEach(structure => {
-            if(structure.type == "mine"){
-
+            if(structure.type == "mine" && structure.on){
                 for(var i = 0; i < mineProduceItems.length; i++){
                 
                     var mineProduceItem = mineProduceItems[i].item;
@@ -2993,7 +3009,7 @@ function spawnEnemy(x, y, type, level, worldId)
     worldsData[worldId].enemies.push(enemy);
     worldsData[worldId].hittableObjects.push(enemy);
 
-    syncDamage(worldId);
+    syncDamage(worldId, [enemy.id]);
     io.to(worldId).emit('newPlayer', enemy);
     
 }
@@ -3352,6 +3368,25 @@ Array.prototype.contains = function(thing){
     }
     return false;
 };
+
+function shuffle(array) {
+    var currentIndex = array.length, temporaryValue, randomIndex;
+  
+    // While there remain elements to shuffle...
+    while (0 !== currentIndex) {
+  
+      // Pick a remaining element...
+      randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex -= 1;
+  
+      // And swap it with the current element.
+      temporaryValue = array[currentIndex];
+      array[currentIndex] = array[randomIndex];
+      array[randomIndex] = temporaryValue;
+    }
+  
+    return array;
+}
 
 process.on('uncaughtException', function(error) {
 
