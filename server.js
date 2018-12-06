@@ -14,27 +14,30 @@ var worldIds = [];
 console.log("server started");
 
 //Server Config Options
-var numOfasteroids = 4000;
+var numOfAsteroids = 4000;
 var numOfPlanets = 55;
 var numOfMoons = 200;
 var numOfSuns = 10;
 var numOfCrystals = 150;
 var numOfBlackHoles = 8;
+var numOfScrapMetal = 200;
+var numOfDirtThings = 150;
 var numOfWormHoles = 6;
 var gridSize = 15000;
 var gridBoxScale = 200;
 var spawnTries = 5;
 
-// var numOfasteroids = 0;
-// var numOfPlanets = 0;
-// var numOfMoons = 0;
-// var numOfSuns = 0;
-// var numOfCrystals = 0;
-// var numOfBlackHoles = 0;
-// var numOfWormHoles = 0;
-// var gridSize = 1000;
-// var gridBoxScale = 10;
-// var spawnTries = 5;
+var numOfAsteroids = 0;
+var numOfPlanets = 1;
+var numOfMoons = 0;
+var numOfSuns = 0;
+var numOfCrystals = 0;
+var numOfBlackHoles = 0;
+var numOfScrapMetal = 200;
+var numOfWormHoles = 0;
+var gridSize = 5000;
+var gridBoxScale = 10;
+var spawnTries = 5;
 
 var edgeSpawnPadding = 2000;
 var precentItemKillBoost = .5;
@@ -261,14 +264,24 @@ function generateWorld(){
         var colorindex = getRndInteger(0, moonColors.length - 1);
         var color = moonColors[colorindex];
         var size = getRndInteger(50, 75);
-        var health = size * 5;
+        var health = size * 3;
         var type = "moon";
         var drops = {asteroidBits: Math.round(size * 2.4), water: Math.round(size / 2), iron: Math.round(size * 1.6)};
 
         generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
     }
 
-    for(var i = 0; i < numOfasteroids; i++){
+    for(var i = 0; i < numOfScrapMetal; i++){
+        var type = "scrapmetal";
+        var size = getRndInteger(30, 50);
+        var color = getRndInteger(0, 2);
+        var health = size * 15;
+        var drops = {iron: Math.round(size / 2), circuit: Math.round(size / 4)};
+
+        generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
+    }
+
+    for(var i = 0; i < numOfAsteroids; i++){
         var asteroidSize = getRndInteger(10, 30);
         var asteroidColor = getRandomGray();
         var asteroidHealth = asteroidSize * .4;
@@ -276,6 +289,16 @@ function generateWorld(){
         var drops = {asteroidBits: Math.round(asteroidSize / 2.5), water: Math.round(asteroidSize / 10)};
 
         generateSpaceMatter(asteroidSize, asteroidColor, asteroidHealth, drops, generatedWorldObjects, generatedHittableObjects, type);
+    }
+
+    for(var i = 0; i < numOfDirtThings; i++){
+        var size = getRndInteger(10, 30);
+        var color = "#997d5a";
+        var health = size * .4;
+        var type = "dirtthing";
+        var drops = {earth: Math.round(size / 2.5), water: Math.round(size / 10)};
+
+        generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
     }
 
     for(var i = 0; i < numOfCrystals; i++){
@@ -328,7 +351,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {}; //{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
+    this.drops = {};//{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
 
     this.shipTurret;
 
@@ -1870,6 +1893,8 @@ function disconnectPlayer(id, killed, worldId){
 
                 if(planet){
                     planet = planet.object;
+
+                    planet.drops = {asteroidBits: Math.round(planet.radius * 12), water: Math.round(planet.radius * 4), earth: Math.round(planet.radius * 6), iron: Math.round(planet.radius * 5)};
 
                     if(!killed || planet.id == "hive") //If the player disconects or they had control over hive with structures on it
                     {

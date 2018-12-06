@@ -2531,6 +2531,47 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
                 c.fill();
                 c.stroke();
             break;
+            case "dirtthing":
+
+                c.fillStyle = "#72ce56";
+                c.strokeStyle = "#a0f771"
+                c.lineWidth = 2;
+                c.beginPath();
+                c.arc(this.x, this.y, this.radius - 1, 0, Math.PI * 2, false);
+                c.fill();
+                c.stroke();
+
+                c.beginPath();
+                c.fillStyle = shadeColorHex(this.color, 0);
+                spikyBall(c, this.x, this.y, this.radius - 6, 10, 0, -Math.PI/2, .9);
+                c.fill();
+                // c.fillStyle = "#58a83f";
+                // c.strokeStyle = "#72ce56";
+                // c.lineWidth = 2;
+                // c.beginPath();
+                // c.arc(this.x, this.y, this.radius - 1, 0, Math.PI * 2, false);
+                // c.fill();
+                // c.stroke();
+
+                // c.fillStyle = shadeColorHex(this.color, 0);
+                // c.beginPath();
+                // c.arc(this.x, this.y, this.radius - 10, 0, Math.PI * 2, false);
+                // c.fill();
+            break;
+            case "scrapmetal":
+
+                if(this.rotation == null)
+                    this.rotation = Math.random();
+                else
+                    this.rotation += .001;
+
+                c.translate(this.x, this.y);
+                c.rotate(this.rotation);
+                c.drawImage(getImage("scrapmetal" + this.color), -this.radius * .75, -this.radius * .75, this.radius * 1.5, this.radius * 1.5);
+                c.rotate(-this.rotation);
+                c.translate(-this.x, -this.y);
+
+            break;  
             case "sun":
                 c.shadowBlur = 200 * scale;
                 c.shadowColor = this.color;
@@ -2548,7 +2589,6 @@ function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id)
                 c.shadowBlur = 0;
             break;
             case "moon":
-
                 c.fillStyle = this.color;
                 c.beginPath();
                 c.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
@@ -3254,7 +3294,7 @@ function update() {
                
                 var worldObject = findObjectWithId(allWorldObjects, changed);
     
-                if(worldObject)
+                if(worldObject && worldObject.object.type != "scrapmetal")
                 {
                     if(colorChangedHitObjects[changed].time > 0)
                     {
