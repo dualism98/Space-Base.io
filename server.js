@@ -27,17 +27,17 @@ var gridSize = 15000;
 var gridBoxScale = 200;
 var spawnTries = 5;
 
-//var numOfAsteroids = 0;
-//var numOfPlanets = 1;
-//var numOfMoons = 0;
-//var numOfSuns = 0;
-//var numOfCrystals = 0;
-//var numOfBlackHoles = 0;
-//var numOfScrapMetal = 200;
-//var numOfWormHoles = 0;
-//var gridSize = 5000;
-//var gridBoxScale = 10;
-//var spawnTries = 5;
+// var numOfAsteroids = 100;
+// var numOfPlanets = 1;
+// var numOfMoons = 0;
+// var numOfSuns = 0;
+// var numOfCrystals = 0;
+// var numOfBlackHoles = 0;
+// var numOfScrapMetal = 20;
+// var numOfWormHoles = 0;
+// var gridSize = 5000;
+// var gridBoxScale = 10;
+// var spawnTries = 5;
 
 var edgeSpawnPadding = 2000;
 var precentItemKillBoost = .5;
@@ -2423,7 +2423,6 @@ function updateEnemies(){
                                 dropItems = true;
                         }
 
-
                         if(obj.structure && !obj.on) //The thing being attacked is a shield and it is not on
                             continue;
 
@@ -2449,10 +2448,9 @@ function updateEnemies(){
         
         var dataContainer = {};
         var urgentDataContainer = {};
-        
+
         for (var i = 0; i < enemies.length; i++) {
             var enemy = enemies[i];
-
             var instantSnap = false;
 
             switch(enemy.username)
@@ -2473,7 +2471,7 @@ function updateEnemies(){
 
             var place = 10;
             var data = {x: Math.round(enemy.x * place) / place, y: Math.round(enemy.y * place) / place, rot: Math.round((enemy.rotation + Math.PI / 2) * place * 10) / (place * 10), id: enemy.id, instantSnap: instantSnap};
-            
+
             if(instantSnap){
                 if(!urgentDataContainer[worldId])
                     urgentDataContainer[worldId] = [data];
@@ -2538,7 +2536,6 @@ function enemyAI(enemy, worldId, pointX, pointY, optimalDistance){
         if(enemy.shootTimer > 0)
             enemy.shootTimer--;
         else{
-
             var projVelX = Math.cos(enemy.rotation) * enemy.projectileSpeed;
             var projVelY = Math.sin(enemy.rotation) * enemy.projectileSpeed;
             
@@ -2562,7 +2559,7 @@ function enemyAI(enemy, worldId, pointX, pointY, optimalDistance){
         if(pointAI)
         {
             var dist = distanceToPoint - optimalDistance;
-    
+
             if(dist > maxDist)
                 dist = maxDist;
     
@@ -2592,13 +2589,21 @@ function enemyAI(enemy, worldId, pointX, pointY, optimalDistance){
             
             if (distanceToOtherEnemy < repultionDistance)
             {
+                if(distanceToOtherEnemy == 0)
+                    distanceToOtherEnemy = 1;
+
                 var repforce = repultionForce * 2 / distanceToOtherEnemy;
 
                 if(attractedByPlayer) //Also Being Attracted By Player
                     repforce = repultionForce / distanceToOtherEnemy;
 
-                repulsionTargetForceX -= (otherEnemy.x - enemy.x) / Math.abs(otherEnemy.x - enemy.x) * repforce;
-                repulsionTargetForceY -= (otherEnemy.y - enemy.y) / Math.abs(otherEnemy.y - enemy.y) * repforce;
+                var xDif = (otherEnemy.x - enemy.x)
+                var yDif = (otherEnemy.y - enemy.y)
+
+                if(xDif != 0)
+                    repulsionTargetForceX -= xDif / Math.abs(xDif) * repforce;
+                if(yDif != 0)
+                    repulsionTargetForceY -= yDif / Math.abs(yDif) * repforce;
             }
         }
     }
@@ -3012,10 +3017,8 @@ function spawnEnemy(x, y, type, level, worldId)
             enemy.speed /= 7;
         break;
     }
-
     
     enemy.currentSpeed = enemy.speed;
-
 
     enemy.username = type;
     enemy.drops = {iron: level * 10, circuit: level * 2};
@@ -3036,7 +3039,7 @@ function spawnEnemy(x, y, type, level, worldId)
 
     syncDamage(worldId, [enemy.id]);
     io.to(worldId).emit('newPlayer', enemy);
-    
+
 }
 
 function findClosestPlayer(x, y, worldId, ignoreIds = [], ignoreCloaked = false){
