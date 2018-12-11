@@ -54,7 +54,7 @@ var updateItemsRate = 20;
 var respawnCrownRate = 10000;
 
 var itemCollectDist = 10;
-var itemMergeDist = 5;
+var itemMergeDist = 5;  
 var itemMergeRange = 200;
 var itemAttractDist = 1000;
 var itemDespawnTime = 2000;
@@ -2512,7 +2512,7 @@ var maxDist = 500;
 
 function enemyAI(enemy, worldId, pointX, pointY, optimalDistance){
     var enemies = worldsData[worldId].enemies;
-    var player = findClosestPlayer(enemy.x, enemy.y, worldId, [worldsData[worldId].master], true);
+    var player = findClosestPlayer(enemy.x, enemy.y, worldId, [worldsData[worldId].master], true, 2);
     var attractedByPlayer = false;
 
     var pointAI = optimalDistance && pointX && pointY;
@@ -3042,7 +3042,7 @@ function spawnEnemy(x, y, type, level, worldId)
 
 }
 
-function findClosestPlayer(x, y, worldId, ignoreIds = [], ignoreCloaked = false){
+function findClosestPlayer(x, y, worldId, ignoreIds = [], ignoreCloaked = false, ignoreLevelsUpTo = 0){
 
     var dist = null;
     var closestPlayer = false;
@@ -3059,6 +3059,9 @@ function findClosestPlayer(x, y, worldId, ignoreIds = [], ignoreCloaked = false)
             continue;
 
         if(ignoreIds.contains(player.id) || (ignoreCloaked && player.cloaked))
+            continue;
+
+        if(player.level < ignoreLevelsUpTo)
             continue;
 
         var playerDist = Math.sqrt(Math.pow(player.x - x, 2) + Math.pow(player.y - y, 2));
