@@ -28,14 +28,14 @@ var gridBoxScale = 200;
 var spawnTries = 5;
 
 // var numOfAsteroids = 100;
-// var numOfPlanets = 1;
-// var numOfMoons = 0;
+// var numOfPlanets = 3;
+// var numOfMoons = 10;
 // var numOfSuns = 0;
 // var numOfCrystals = 0;
 // var numOfBlackHoles = 0;
 // var numOfScrapMetal = 20;
 // var numOfWormHoles = 0;
-// var gridSize = 5000;
+// var gridSize = 2000;
 // var gridBoxScale = 10;
 // var spawnTries = 5;
 
@@ -68,6 +68,8 @@ var moonColors = ["#929aa8", "#758196", "#758196", "#2d3c56"];
 var clientsPerWorld = 30;
 var maxEnemiesPerWorld = 30;
 var numberOfWorlds = 0;
+
+var spawnLevel = 0;
 
 var spawnHiveWithSpawners = true;
 
@@ -1078,7 +1080,7 @@ function newConnetcion(socket){
 
         var lobbyClient = findObjectWithId(worldsData[data.worldId].lobbyClients, socket.id);
 
-        var level = 0;
+        var level = spawnLevel;
         var position = {x: 0, y: 0};
         var structures = [];
         var playerShopUpgrades = false;
@@ -1126,6 +1128,8 @@ function newConnetcion(socket){
 
         //SPAWN PLAYER ON A PLANET AN MAKE A LANDING PAD ON THAT PLANET ----
 
+        var syncDamagePlanet = null;
+
         if(!lobbyClient.object.planet)
         {
             var playerPlanet = false;
@@ -1144,9 +1148,8 @@ function newConnetcion(socket){
                     if(planetHealth)
                     {
                         planetHealth.object.health = planetHealth.object.maxHealth;
-                        syncDamage(worldId, [planet.id]);
+                        syncDamagePlanet = planet.id;
                     }
-
                     break;
                 }
             }
@@ -1192,7 +1195,11 @@ function newConnetcion(socket){
             
         }
 
-        syncDamage(data.worldId);
+        if(syncDamagePlanet)
+            syncDamage(worldId, [syncDamagePlanet]);
+        else
+            syncDamage(worldId);
+
     });
 
     socket.on('blackHoleDeath', function(data){

@@ -3438,7 +3438,7 @@ function animate() {
                 if(obj.radius && obj.active){
                     var pos = cordsToScreenPos(obj.x, obj.y);
     
-                    if(isOnScreen(pos.x, pos.y, size)){
+                    if(isOnScreen(pos.x, pos.y, obj.radius)){
                         c.beginPath();
                         c.arc(pos.x, pos.y, obj.radius, 0, Math.PI * 2, false);
                         c.lineWidth = 2;
