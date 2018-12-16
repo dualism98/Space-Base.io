@@ -375,7 +375,6 @@ function Player(x, y, rotation, level, id, worldId){
             level: 0,
             value: 0
         }
-
     }
 
     this.bulletRange = playerUpgrades[level].bulletRange;
@@ -1060,7 +1059,7 @@ function newConnetcion(socket){
     }
 
     socket.join(worldId);
-        
+
     socket.emit("setupLocalWorld", playerData);
     syncDamage(worldId);
     socket.emit("showWorld");
@@ -1128,8 +1127,6 @@ function newConnetcion(socket){
 
         //SPAWN PLAYER ON A PLANET AN MAKE A LANDING PAD ON THAT PLANET ----
 
-        var syncDamagePlanet = null;
-
         if(!lobbyClient.object.planet)
         {
             var playerPlanet = false;
@@ -1148,7 +1145,6 @@ function newConnetcion(socket){
                     if(planetHealth)
                     {
                         planetHealth.object.health = planetHealth.object.maxHealth;
-                        syncDamagePlanet = planet.id;
                     }
                     break;
                 }
@@ -1195,10 +1191,7 @@ function newConnetcion(socket){
             
         }
 
-        if(syncDamagePlanet)
-            syncDamage(worldId, [syncDamagePlanet]);
-        else
-            syncDamage(worldId);
+        syncDamage(worldId);
 
     });
 
@@ -2219,6 +2212,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
                     {
                         var shieldIndex = findObjectWithId(worldHittableObjects, possiblePlanet.object.shield.id).index;
                         worldHittableObjects.splice(shieldIndex, 1);
+                        damageSyncIds.pusht(possiblePlanet.object.shield.id);
                     }
 
                     if(possiblePlanet.object.owner){
@@ -2232,12 +2226,19 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
                     worldHittableObjects.splice(target.index, 1);
                     worldWorldObjects.planets.splice(possiblePlanet.index, 1);
 
-                    newObject = generatePlanet(radius, color, health, drops, worldWorldObjects, worldHittableObjects, target.object.id);
+                    var unspawnedHittableObjects = [];
+                    var unspawnedWorldObjects = {planets:[]};
+
+                    newObject = generatePlanet(radius, color, health, drops, unspawnedWorldObjects, unspawnedHittableObjects, target.object.id);
 
                     if(!newObject){
                         newObject = {};
                         unspawnedObjects.push({radius: radius, color: color, health: health, drops: drops, worldId: worldId, id: target.object.id});
                         dead = true;
+                    }
+                    else{
+                        worldHittableObjects.push(unspawnedHittableObjects[0]);
+                        worldWorldObjects.planets.push(unspawnedWorldObjects.planets[0]);
                     }
 
                     newObject.type = "planet";
@@ -2312,21 +2313,31 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
                         {
                             unspawnedObjects.splice(i, 1);
                             continue;
-                        }
+                        } 
 
                         worldHittableObjects = worldsData[obj.worldId].hittableObjects;
                         worldWorldObjects = worldsData[obj.worldId].worldObjects;
                         
+                        var unspawnedHittableObjects = [];
+                        var unspawnedWorldObjects = {planets:[], spaceMatter:[]};
+
                         if(obj.type)
-                            newUnspawnedObject = generateSpaceMatter(obj.radius, obj.color, obj.health, obj.drops, worldWorldObjects, worldHittableObjects, obj.type, obj.id);
+                            newUnspawnedObject = generateSpaceMatter(obj.radius, obj.color, obj.health, obj.drops, unspawnedWorldObjects, unspawnedHittableObjects, obj.type, obj.id);
                         else{
-                            newUnspawnedObject = generatePlanet(obj.radius, obj.color, obj.health, obj.drops, worldWorldObjects, worldHittableObjects, obj.id);
+                            newUnspawnedObject = generatePlanet(obj.radius, obj.color, obj.health, obj.drops, unspawnedWorldObjects, unspawnedHittableObjects, obj.id);
                         }
                             
                         if(newUnspawnedObject){
 
+                            worldHittableObjects.push(unspawnedHittableObjects[0]);
+
                             if(!obj.type)
+                            {
                                 newUnspawnedObject.type = "planet";
+                                worldWorldObjects.planets.push(unspawnedWorldObjects.planets[0]);
+                            }
+                            else
+                                worldWorldObjects.spaceMatter.push(unspawnedWorldObjects.spaceMatter[0]);
 
                             unspawnedObjects.splice(i, 1);
 

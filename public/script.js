@@ -2349,6 +2349,8 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
     this.hitAnimTime = this.hitAnimDuration;
     this.coord = new Vector(x, y);
 
+    this.projectileDeathCounter = {time: 0, limit: 200};
+
     this.draw = function(){
 
         var color = shadeColorHex(this.color, 100 - this.hitAnimTime / this.hitAnimDuration * 100);
@@ -2367,12 +2369,24 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
         var localPos = cordsToScreenPos(this.coord.x, this.coord.y);
 
         this.pos = localPos;
-        
+            
+
         if(this.hitAnimTime < this.hitAnimDuration){
             this.hitAnimTime++;
         }
 
         if(!this.facade){
+
+            if(this.projectileDeathCounter.time <= this.projectileDeathCounter.limit)
+                this.projectileDeathCounter.time++
+            else
+            {
+                if(projectiles.contains(this))
+                {
+                    projectiles.splice(projectiles.indexOf(this), 1);
+                }
+            }
+
             if(this.checkForCollisions()){
                 this.hitAnimTime = 0;
                 this.hitsLeft--;
@@ -3054,7 +3068,6 @@ function update() {
         if (otherPlayers.hasOwnProperty(id)) {
 
             var player = otherPlayers[id];
-
             player.health = healthDict[player.id];
 
             if(hittableObjects[player.id])
