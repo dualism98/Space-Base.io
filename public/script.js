@@ -978,6 +978,7 @@ function updateItems(data){
         else{
             localItem.coordX = item.x;
             localItem.coordY = item.y;
+            localItem.size = item.size;
         }
         
         if(item.iVel)
