@@ -1061,7 +1061,7 @@ function newConnetcion(socket){
     socket.join(worldId);
 
     socket.emit("setupLocalWorld", playerData);
-    syncDamage(worldId);
+    syncDamage(worldId, "sendAll", socket);
     socket.emit("showWorld");
 
     worldsData[worldId].lobbyClients.push(playerObject);
@@ -1191,7 +1191,7 @@ function newConnetcion(socket){
             
         }
 
-        syncDamage(worldId);
+        syncDamage(worldId, "sendAll", socket);
 
     });
 
@@ -1359,8 +1359,10 @@ function newConnetcion(socket){
             data.percentDamage = 0;
         }
 
+        var roundPlace = 10;
+
         socket.broadcast.to(data.worldId).emit('spawnProj', data);
-        worldsData[data.worldId].projectiles.push(new Projectile(data.x, data.y, data.vel, data.size, data.color, shooter.object.damage * data.percentDamage, shooter.object.bulletRange, bulletPenetration, data.worldId, data.id));
+        worldsData[data.worldId].projectiles.push(new Projectile(Math.round(data.x * roundPlace) / roundPlace, Math.round(data.y * roundPlace) / roundPlace, {x: Math.round(data.vel.x * roundPlace) / roundPlace, y: Math.round(data.vel.y * 10) / 10}, data.size, data.color, shooter.object.damage * data.percentDamage, shooter.object.bulletRange, bulletPenetration, data.worldId, data.id));
     });
 
     socket.on('requestSpawnStructure', function(data){
@@ -2471,7 +2473,7 @@ function updateEnemies(){
             }
 
             var place = 10;
-            var data = {x: Math.round(enemy.x * place) / place, y: Math.round(enemy.y * place) / place, rot: Math.round((enemy.rotation + Math.PI / 2) * place * 10) / (place * 10), id: enemy.id, instantSnap: instantSnap};
+            var data = {x: Math.round(enemy.x * place) / place, y: Math.round(enemy.y * place) / place, rot: Math.round((enemy.rotation + Math.PI / 2) * place * 10) / (place * 10), id: enemy.id, is: instantSnap};
 
             if(instantSnap){
                 if(!urgentDataContainer[worldId])
@@ -2510,6 +2512,10 @@ var ventureDistance = 1000;
 var enemyOptimalDistanceFromHive = 100;
 var enemyOptimalDistanceFromPlayer = 200;
 var maxDist = 500;
+
+// function updatePlayerPos(){
+
+// }
 
 function enemyAI(enemy, worldId, pointX, pointY, optimalDistance){
     var enemies = worldsData[worldId].enemies;
@@ -2638,6 +2644,7 @@ function updateItems(){
         var items = worldsData[worldId].items;
         var data = [];
         var dataUrgent = [];
+        var placesSent = 10;
 
         for (var i = items.length - 1; i >= 0; i--){
 
@@ -2738,11 +2745,11 @@ function updateItems(){
                     size = 30;
     
                 if(item.new)
-                    data.push({x: item.x, y: item.y, rot: item.rotation, size: size, type: item.type, id: item.id});
+                    data.push({x: Math.round(item.x * placesSent) / placesSent, y: Math.round(item.y * placesSent) / placesSent, rot: Math.round(item.rotation * placesSent) / placesSent, size: size, type: item.type, id: item.id});
                 else
                 {
                     item.new = true;
-                    dataUrgent.push({x: item.x, y: item.y, rot: item.rotation, size: size, type: item.type, id: item.id, iVel: {x: item.iVel.x, y: item.iVel.y}});
+                    dataUrgent.push({x: Math.round(item.x * placesSent) / placesSent, y: Math.round(item.y * placesSent) / placesSent, rot: Math.round(item.rotation * placesSent) / placesSent, size: size, type: item.type, id: item.id, iVel: {x: item.iVel.x, y: item.iVel.y}});
                 }
 
                 item.iVel.x *= .9;
@@ -2753,7 +2760,9 @@ function updateItems(){
         if(itemSendi >= itterationsBeforeItemsSend)
         {
             itemSendi = 0;
-            io.to(worldId).emit('updateItems', data.concat(dataUrgent));
+
+            if(data.length > 0 || dataUrgent.length > 0)
+                io.to(worldId).emit('updateItems', data.concat(dataUrgent));
         }
         else
         {
@@ -3154,7 +3163,7 @@ function itemCollected(item, playerRecivingId, worldId) {
     }
 }
 
-function syncDamage(worldId, changedIds){
+function syncDamage(worldId, changedIds, _socket){
 
     if(!worldIds.contains(worldId)){
         console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "world Id not accounted for on server. (syncDamage) most likely old session. worldID: " + worldId);
@@ -3164,7 +3173,7 @@ function syncDamage(worldId, changedIds){
     var healthData = {hittableObjects: [], deadObjects:[]};
     var worldHittableObjects = worldsData[worldId].hittableObjects;
 
-    if(changedIds){
+    if(changedIds != "sendAll"){
         var changedObjects = [];
         
         changedIds.forEach(id => {
@@ -3192,6 +3201,7 @@ function syncDamage(worldId, changedIds){
         
         healthData.hittableObjects = changedObjects;
 
+        io.to(worldId).emit('damageSync', healthData);
     }
     else{
 
@@ -3211,9 +3221,9 @@ function syncDamage(worldId, changedIds){
             healthData.hittableObjects.push(healthObj);
 
         }
-    }
 
-    io.to(worldId).emit('damageSync', healthData);
+        _socket.emit('damageSync', healthData);
+    }
 }
 
 //Utility Functions --------------------------------------------------------------------------------------------------

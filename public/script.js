@@ -269,6 +269,9 @@ var boost = false;
 var boostAmount = 0;
 var boostReady = false;
 
+var lastPlayerPos = {x: 0, y: 0};
+var lastPlayerRot;
+
 var landed = false;
 
 var turretManualMode = false;
@@ -739,7 +742,7 @@ function updatePlayerPosition(data){
             otherPlayer.coordY = player.y;
             otherPlayer.targetRotation = player.rot;
 
-            if(player.instantSnap)
+            if(player.is)
             {
                 otherPlayer.rotLerpAmount = 0;
                 otherPlayer.rotLerpTime = 0;
@@ -3231,7 +3234,13 @@ function update() {
         {
             positionSendTime = 0;
             var playerPos = new Vector(-gridPos.x, -gridPos.y);
-            sendPlayerPosition(playerPos, spaceShip.rotation);
+
+            if(playerPos.x != lastPlayerPos.x || playerPos.y != lastPlayerPos.y || Math.round(lastPlayerRot * 10) / 10 != Math.round(spaceShip.rotation * 10) / 10)
+            {
+                sendPlayerPosition(playerPos, spaceShip.rotation);
+                lastPlayerPos = playerPos;
+                lastPlayerRot = spaceShip.rotation;
+            }
         }
         else{
             positionSendTime++;
