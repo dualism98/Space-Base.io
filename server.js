@@ -2490,32 +2490,33 @@ function updateEnemies(){
         }        
     }
 
-    for (var worldId in urgentDataContainer) {
-        if (urgentDataContainer.hasOwnProperty(worldId)) 
-            io.to(worldId).emit('playerPos', urgentDataContainer[worldId]);
-    }
+    if(worldsData[worldId].players > 0){
 
-    if(enemySendi >= itterationsBeforeEnemySend)
-    {
-        enemySendi = 0;
-
-        for (var worldId in dataContainer) {
-            if (dataContainer.hasOwnProperty(worldId)) 
-                io.to(worldId).emit('playerPos', dataContainer[worldId]);
+        for (var worldId in urgentDataContainer) {
+            if (urgentDataContainer.hasOwnProperty(worldId)) 
+                io.to(worldId).emit('playerPos', urgentDataContainer[worldId]);
         }
+    
+        if(enemySendi >= itterationsBeforeEnemySend)
+        {
+            enemySendi = 0;
+    
+            for (var worldId in dataContainer) {
+                if (dataContainer.hasOwnProperty(worldId)) 
+                    io.to(worldId).emit('playerPos', dataContainer[worldId]);
+            }
+        }
+        else
+            enemySendi++;
+            
     }
-    else
-        enemySendi++;
+    
 }
 
 var ventureDistance = 1000;
 var enemyOptimalDistanceFromHive = 100;
 var enemyOptimalDistanceFromPlayer = 200;
 var maxDist = 500;
-
-// function updatePlayerPos(){
-
-// }
 
 function enemyAI(enemy, worldId, pointX, pointY, optimalDistance){
     var enemies = worldsData[worldId].enemies;
@@ -2640,6 +2641,9 @@ function enemyAI(enemy, worldId, pointX, pointY, optimalDistance){
 function updateItems(){
     for (var x = 0; x < worldIds.length; x++) {
         var worldId = worldIds[x];
+
+        if(worldsData[worldId].players == 0)
+            continue;
 
         var items = worldsData[worldId].items;
         var data = [];
