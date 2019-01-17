@@ -196,6 +196,8 @@ function addWorld(){
 
 function removeWorld(worldId){
 
+    numberOfWorlds--;
+
     for(var i = 0; i < worldIds.length; i++){
         if(worldIds[i] == worldId)
             worldIds.splice(i, 1);
@@ -208,7 +210,6 @@ function removeWorld(worldId){
 
     delete worldsData[worldId];
 
-    numberOfWorlds--;
     console.log('deleted world. total: ', numberOfWorlds, "worldIds: ", worldIds.length);
 }
 
@@ -1703,6 +1704,12 @@ function newConnetcion(socket){
     }
 
     socket.on('planetOccupancy', function(data){
+
+        if(!worldIds.contains(data.worldId)){
+            console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "world Id not accounted for on server. (planetOccupancy) most likely old session.");
+            return;
+        }
+
         worldsData[data.worldId].worldObjects.planets.forEach(planet => {
             if(planet.id == data.planetId)
             {
@@ -1799,7 +1806,7 @@ function newConnetcion(socket){
         {
             console.log('\x1b[31m%s\x1b[0m', "player disconected: ", socket.id,  " clients connected: ", worldsData[worldId].clients.length, "In loby: ", worldsData[worldId].lobbyClients.length);
 
-            if(worldsData[worldId].clients.length + worldsData[worldId].lobbyClients.length == 0){
+            if(worldsData[worldId].clients.length + worldsData[worldId].lobbyClients.length == 0 && worldIds.length > 1){
                 removeWorld(worldId);
             }
         }
@@ -2375,7 +2382,7 @@ setInterval(respawnCrowns, respawnCrownRate)
 
 function updateEnemies(){
     worldIds.forEach(worldId => {
-
+        
         var destroyedProjs = [];
 
         for (var i = worldsData[worldId].projectiles.length - 1; i >= 0; i--) {
@@ -2490,7 +2497,13 @@ function updateEnemies(){
         }        
     }
 
-    if(worldsData[worldId].players > 0){
+    if(worldsData[worldId] == null)
+    {
+        console.log('\x1b[31m%s\x1b[0m', "[ERROR]","World Not Found (Update Enemies)");
+        return;
+    }
+
+    if(worldsData[worldId].clients.length > 0){
 
         for (var worldId in urgentDataContainer) {
             if (urgentDataContainer.hasOwnProperty(worldId)) 

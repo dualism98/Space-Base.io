@@ -823,7 +823,8 @@ function returnMsg(data){
 
     displayMessage(compiledString, 35, 5);
 }
-function upgradeSync(data){
+function upgradeSync(data) {
+    
     var allUpgradeables = Object.assign({}, allPlayers);
     Object.assign(allUpgradeables, allStructures);
 
@@ -868,8 +869,6 @@ function upgradeSync(data){
             }
         }
     }
-
-    
 }
 function shopUpgrade(data){
 
