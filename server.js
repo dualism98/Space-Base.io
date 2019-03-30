@@ -69,7 +69,7 @@ var clientsPerWorld = 30;
 var maxEnemiesPerWorld = 30;
 var numberOfWorlds = 0;
 
-var spawnLevel = 0;
+var spawnLevel = 15;
 
 var spawnHiveWithSpawners = true;
 
@@ -118,7 +118,7 @@ function generatePlanet(size, color, health, drops, worldObjectsRef, hittableObj
     } while (!positonAviable(size, position.x, position.y, hittableObjectsRef));
 
     var structures = [];
-    var planet = new Planet(position.x , position.y , size, structures, color, health, drops, id);
+    var planet = new Planet(position.x , position.y, size, structures, color, health, drops, id);
 
     hittableObjectsRef.push(planet);
     worldObjectsRef.planets.push(planet);
@@ -2058,7 +2058,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
         });
     }
 
-    if(possiblePlanet && !ignoreShield)
+    if(possiblePlanet && !ignoreShield) //If the thing being hit is a planet and it has a shield that is on -> hit shield instead
     {
         var shieldRef = false;
 
@@ -2093,9 +2093,8 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
             return;
         }
     }
-
+    
     if(target.object.drops && !possibleClient && !possibleEnemy && spawnItems){
-
         if(possiblePlanet && possiblePlanet.object.structures)
         {
             possiblePlanet.object.structures.forEach(structure => {
@@ -2113,7 +2112,6 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
                     }
                 }
             });
-            
         }
         
         if(target.object.type == 'crystal')
@@ -2165,7 +2163,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
 
         damageSyncIds.push(target.object.id);
 
-        if(target.object.structure){ //Is a structure (shield)
+        if(target.object.structure){ //If the thing being attacked has structure tag (means it is a shield)
             worldWorldObjects.planets.forEach(function(planet){
                 var possibleStructure = findObjectWithId(planet.structures, target.object.id);
 
@@ -2209,19 +2207,25 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
                 var dead = false;
 
                 if(possiblePlanet){
+
+                    if(possiblePlanet.object.id == "hive")
+                        return;
+
                     var radius = possiblePlanet.object.radius
                     var color = possiblePlanet.object.color;
                     var health = possiblePlanet.object.maxHealth;
                     var drops = possiblePlanet.object.drops;
 
-                    if(possiblePlanet.object.id == "hive")
-                        return;
-
-                    if(possiblePlanet.object.shield)
+                    if(possiblePlanet.object.structures.length > 0)
                     {
-                        var shieldIndex = findObjectWithId(worldHittableObjects, possiblePlanet.object.shield.id).index;
-                        worldHittableObjects.splice(shieldIndex, 1);
-                        damageSyncIds.pusht(possiblePlanet.object.shield.id);
+                        possiblePlanet.object.structures.forEach(structure => {
+                            if(structure.type == "shield") //Structure is a shield
+                            {
+                                var shieldIndex = findObjectWithId(worldHittableObjects, structure.id).index;
+                                worldHittableObjects.splice(shieldIndex, 1);
+                                damageSyncIds.push(structure.id);
+                            }
+                        });
                     }
 
                     if(possiblePlanet.object.owner){
@@ -3201,7 +3205,7 @@ function syncDamage(worldId, changedIds, _socket){
 
                 var healthObj = {
                     health: changedObject.object.health, 
-                    maxHealth: changedObject.object.maxHealth, 
+                    maxHealth: changedObject.object.maxHealth,
                     radius: changedObject.object.radius, 
                     x: Math.round(changedObject.object.x), 
                     y: Math.round(changedObject.object.y), 

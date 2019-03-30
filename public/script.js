@@ -481,7 +481,7 @@ function newWorldObjectSync(data){
         }
 
         if(ownedPlanet){
-            ownedPlanet.object.structures = [];
+            ownedPlanet.structures = [];
             allStructures = getAllStructures();
             delete ownedPlanets[data.id];
         }
@@ -1389,7 +1389,7 @@ $(document).keypress(function(e){
             isHoldingShoot = true;
             
         } 
-        if(e.keyCode == 106 || e.keyCode == 74 && closestAvailablePlanet != null){ // J
+        if((e.keyCode == 106 || e.keyCode == 74) && closestAvailablePlanet != null){ // J
 
             socket.emit('planetOccupancy', {planetId: closestAvailablePlanet.id, playerId: clientId, worldId: worldId})
 
