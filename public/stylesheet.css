@@ -337,14 +337,28 @@ a:hover{
     object-fit: contain;
 }
 
-#bottomAd{
-    width: 100%;
-    margin-top: 3vh;
+.bottomAd{
+    position: absolute;
+    bottom: 10vh;
+    width: 50%;
+    height: 10%;
+    margin-left: 25%;
+    display: inline-block;
+}
+
+
+.bottomAd.lowered {
+    -webkit-transition: 1s;
+    -moz-transition:    1s;
+    -ms-transition:     1s;
+    -o-transition:      1s;
+    transition:         1s;
+    bottom: 1vh;
 }
 
 #redditLink{
     text-decoration: none;
-}
+}rgb(255, 255, 255)
 
 #redditAnnouncement{
     vertical-align: middle;

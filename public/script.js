@@ -311,6 +311,11 @@ var minimapPadding;
 
 var master = {id: null, obj: null};
 
+function infoPosY()
+{
+    return $(window).height() - $(window).height() / 6;
+}
+
 var checklist = {
     fly:{
         isActive: false
@@ -1198,6 +1203,7 @@ $("#startGame").click(function(){
 });
 
 function startGame(){
+
     if($("#playerNameInput").val() != ""){
         username = $("#playerNameInput").val().toString();
         username = username.slice(0, 15);
@@ -1213,6 +1219,9 @@ function startGame(){
         });
         return;
     }
+
+
+    $(".bottomAd").toggleClass('lowered', 2);
 
     socket.emit("playerStartGame", {username: username, worldId: worldId});
 
@@ -2711,8 +2720,8 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     this.update = function(){
         this.draw();
 
-        if(this.oxygen)
-            this.doOxygen();
+        // if(this.oxygen)
+        //     this.doOxygen();
 
         if(this.turret){
             var pos = screenPosToCords(centerX, centerY);
@@ -2980,7 +2989,7 @@ function Shop(coordX, coordY, radius, upgradeType){
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText($('p#openShop').text(), centerX, (windowHeight - 80) / scale);
+                c.fillText($('p#openShop').text(), centerX, infoPosY() / scale);
                 c.textAlign="left"; 
                 c.globalAlpha = 1;
             }
@@ -2989,7 +2998,7 @@ function Shop(coordX, coordY, radius, upgradeType){
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText($('p#closeShop').text(), centerX, (windowHeight - 80) / scale);
+                c.fillText($('p#closeShop').text(), centerX, infoPosY() / scale);
                 c.textAlign="left"; 
                 c.globalAlpha = 1;
             }
@@ -3533,8 +3542,8 @@ function animate() {
 
         drawLeaderBoard();
 
-        if(!currentPlanet)
-            drawOxygen();
+        // if(!currentPlanet)
+        //     drawOxygen();
 
         if(currentPlanet)
         {
@@ -3586,7 +3595,7 @@ function animate() {
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText($('p#land').text(), windowWidth / 2, (windowHeight - 80));
+                c.fillText($('p#land').text(), windowWidth / 2, infoPosY());
                 c.textAlign="left"; 
     
                 c.globalAlpha = .5;
@@ -3643,7 +3652,7 @@ function animate() {
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText($('p#placeStructue').text() + boughtStructure, windowWidth / 2, (windowHeight - 80));
+                c.fillText($('p#placeStructue').text() + boughtStructure, windowWidth / 2, infoPosY());
                 c.textAlign="left"; 
                 c.globalAlpha = 1;
             }
@@ -3652,7 +3661,7 @@ function animate() {
                 c.fillStyle = "white";
                 c.globalAlpha = .2;
                 c.textAlign="center"; 
-                c.fillText($('p#takeOff').text(), windowWidth / 2, (windowHeight - 80));
+                c.fillText($('p#takeOff').text(), windowWidth / 2, infoPosY());
                 c.textAlign="left"; 
                 c.globalAlpha = 1;
             }
@@ -3686,7 +3695,8 @@ function animate() {
 
         if(!currentPlanet){
             var width = canvas.width / 5;
-            displayBar(centerX * scale - width / 2, canvas.height - 30, width, 20, (spaceShip.fireRate - playerReloadTimer) / spaceShip.fireRate, "#ff5a51");
+            var ypos = $(window).height() - $(window).height() / 7;
+            displayBar(centerX * scale - width / 2, ypos, width, 20, (spaceShip.fireRate - playerReloadTimer) / spaceShip.fireRate, "#ff5a51");
         }
 
     }

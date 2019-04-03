@@ -14,17 +14,17 @@ var worldIds = [];
 console.log("server started");
 
 //Server Config Options
-var numOfAsteroids = 4000;
-var numOfPlanets = 55;
-var numOfMoons = 200;
-var numOfSuns = 10;
-var numOfCrystals = 150;
-var numOfBlackHoles = 8;
-var numOfScrapMetal = 200;
-var numOfDirtThings = 150;
+var numOfAsteroids = 1200;
+var numOfPlanets = 35;
+var numOfMoons = 100;
+var numOfSuns = 5;
+var numOfCrystals = 100;
+var numOfBlackHoles = 5;
+var numOfScrapMetal = 100;
+var numOfDirtThings = 100;
 var numOfWormHoles = 6;
-var gridSize = 15000;
-var gridBoxScale = 200;
+var gridSize = 10000;
+var gridBoxScale = 100;
 var spawnTries = 5;
 
 // var numOfAsteroids = 100;
@@ -69,7 +69,7 @@ var clientsPerWorld = 30;
 var maxEnemiesPerWorld = 30;
 var numberOfWorlds = 0;
 
-var spawnLevel = 15;
+var spawnLevel = 0;
 
 var spawnHiveWithSpawners = true;
 
