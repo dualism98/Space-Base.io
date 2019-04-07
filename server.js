@@ -1603,13 +1603,13 @@ function newConnetcion(socket){
 
         for (var cost in costsForNextLvl) {
             if (costsForNextLvl.hasOwnProperty(cost)) {
-                if(player.drops[cost] && costsForNextLvl[cost] <= player.drops[cost]){
+                if((player.drops[cost] && costsForNextLvl[cost] <= player.drops[cost]) || costsForNextLvl[cost] == 0){
                     hasResourceCounter++;
                 }
                 neededResources++;
             }
         } 
-
+        
         if(hasResourceCounter == neededResources){
             
             for (var cost in costsForNextLvl) {
