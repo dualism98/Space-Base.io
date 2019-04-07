@@ -27,17 +27,17 @@ var gridSize = 10000;
 var gridBoxScale = 100;
 var spawnTries = 5;
 
-// var numOfAsteroids = 100;
-// var numOfPlanets = 3;
-// var numOfMoons = 10;
-// var numOfSuns = 0;
-// var numOfCrystals = 0;
-// var numOfBlackHoles = 0;
-// var numOfScrapMetal = 20;
-// var numOfWormHoles = 0;
-// var gridSize = 2000;
-// var gridBoxScale = 10;
-// var spawnTries = 5;
+var numOfAsteroids = 100;
+var numOfPlanets = 3;
+var numOfMoons = 10;
+var numOfSuns = 0;
+var numOfCrystals = 0;
+var numOfBlackHoles = 0;
+var numOfScrapMetal = 20;
+var numOfWormHoles = 0;
+var gridSize = 2000;
+var gridBoxScale = 10;
+var spawnTries = 5;
 
 var edgeSpawnPadding = 2000;
 var precentItemKillBoost = .5;
@@ -66,10 +66,11 @@ var crystalColors = ["#5b94ef", "#d957ed", "#f9f454", "#85f954"];
 var moonColors = ["#929aa8", "#758196", "#758196", "#2d3c56"];
 
 var clientsPerWorld = 30;
-var maxEnemiesPerWorld = 30;
+var maxEnemiesPerWorld = 20;
 var numberOfWorlds = 0;
 
 var spawnLevel = 0;
+var levelsOfStatUpgrades = 16;
 
 var spawnHiveWithSpawners = true;
 
@@ -325,7 +326,7 @@ function generateWorld(){
         var type = "blackHole";
         var size = getRndInteger(80, 100);
         var health = size;
-        var drops = {};
+        var drops = {darkMatter: 50};
 
         generateSpaceMatter(size, color, health, drops, generatedWorldObjects, generatedHittableObjects, type);
     }
@@ -347,6 +348,26 @@ function SpaceMatter(x, y, radius, color, maxHealth, drops, type, id){
     this.id = id;
 } 
 
+function Enemy(x, y, rotation, level, id, worldId){
+    this.x = x;
+    this.y = y;
+    this.rotation = rotation;
+    this.id = id;
+    this.worldId = worldId;
+    this.level = level;
+    this.drops = {};//{gem: 10000, iron: 1000000, asteroidBits: 1234500000, earth: 100000, water: 100000, crystal: 100000, darkMatter: 10000000, circuit: 100000, stardust: 100000000000};
+
+    this.bulletRange = enemyUpgrades[level].bulletRange;
+    this.turningSpeed = enemyUpgrades[level].turningSpeed;
+    this.radius = enemyUpgrades[level].radius;
+    this.damage = enemyUpgrades[level].damage;
+    this.maxHealth = enemyUpgrades[level].maxHealth;
+    this.health = enemyUpgrades[level].maxHealth;
+    this.speed = enemyUpgrades[level].speed;
+    this.fireRate = enemyUpgrades[level].fireRate;
+    this.projectileSpeed = enemyUpgrades[level].projectileSpeed;
+}
+
 function Player(x, y, rotation, level, id, worldId){
     this.x = x;
     this.y = y;
@@ -354,10 +375,9 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {};//{gem: 10000, iron: 100000, asteroidBits: 1000000, earth: 100000, water: 100000, crystal: 100000};
+    this.drops = {gem: 10000, iron: 1000000, asteroidBits: 1234500000, earth: 100000, water: 100000, crystal: 100000, darkMatter: 10000000, circuit: 100000, stardust: 100000000000};
 
     this.shipTurret;
-
     this.shopUpgrades = {
 
         bulletPenetration: {
@@ -387,7 +407,14 @@ function Player(x, y, rotation, level, id, worldId){
     this.speed = playerUpgrades[level].speed;
     this.fireRate = playerUpgrades[level].fireRate;
     this.projectileSpeed = playerUpgrades[level].projectileSpeed;
-    this.oxygen = playerUpgrades[level].oxygen;
+    this.numUpgrades = playerUpgrades[level].numUpgrades;
+
+    this.statLevels = {
+        speed: 0,
+        fireRate: 0,
+        maxHealth: 0,
+        damage: 0
+    }
 
     this.structures = [];
 }
@@ -464,216 +491,204 @@ function Item(x, y, initialVelocity, type, amount, id) {
     this.id = id;
     this.despawnTime = 0;
 }
- 
+
+var playerStatUpgrades = {
+    roundToPlace: function(value, places){
+        var val = Math.round(value);
+
+        if(val.toString().length < places)
+            return val;
+
+        var place = Math.pow(10, val.toString().length - places);
+        return Math.round(val / place) * place;
+    },
+    speed: function(lvl){
+        return {val: Math.round(lvl * 1.5 + 10), costs:{iron: this.roundToPlace(Math.pow(lvl, 3), 2), crystal: this.roundToPlace(Math.pow(lvl / 5,  3.2), 2)}};
+    },
+    fireRate: function(lvl){
+        return {val: 100 - Math.round(lvl * 5), costs:{iron: this.roundToPlace(Math.pow(lvl, 3), 2), circuit: this.roundToPlace(Math.pow(lvl / 5,  3.6), 2)}};
+    },
+    maxHealth: function(lvl){
+        return {val: this.roundToPlace(Math.pow(lvl + 1, 3.005) + 9, 2), costs:{iron: this.roundToPlace(Math.pow(lvl, 3), 2), earth: this.roundToPlace(Math.pow(lvl / 5,  7), 2)}};
+    },
+    damage: function(lvl){
+        return {val: lvl * 6 + 1, costs:{iron: this.roundToPlace(Math.pow(lvl, 3), 2), darkMatter: this.roundToPlace(Math.pow(lvl / 5,  3.2), 2)}};
+    },
+}
+
+var enemyUpgrades = [
+    {   
+        speed: 30,
+        fireRate: 50,
+        maxHealth: 10,
+        damage: 1,
+        radius: 18,
+        turningSpeed: .05,
+        bulletRange: .5,
+        projectileSpeed: 6,
+        identifier: "enemy"
+    },
+    {   
+        speed: 40,
+        fireRate: 30,
+        maxHealth: 50,
+        damage: 3,
+        radius: 25,
+        turningSpeed: .05,
+        bulletRange: .5,
+        projectileSpeed: 7,
+        identifier: "enemy"
+    },
+]
+
 var playerUpgrades = [
         {   
             speed: 20,
             fireRate: 50,
-            maxHealth: 5,
+            maxHealth: 10,
             damage: 1,
             radius: 8,
             turningSpeed: .05,
             bulletRange: .5,
             projectileSpeed: 6,
-            oxygen: 2000,
+            numUpgrades: 3,
             identifier: "spaceship"
         },
         {   
             costs: {asteroidBits: 5},
-            speed: 50,
-            fireRate: 100,
-            maxHealth: 10,
-            damage: 2,
             radius: 10,
             turningSpeed: .1,
             bulletRange: 1,
             projectileSpeed: 20,
-            oxygen: 3000,
+            numUpgrades: 6,
             identifier: "spaceship"
         },
         {   
             costs: {asteroidBits: 15},
-            speed: 48,
-            fireRate: 95,
-            maxHealth: 20,
-            damage: 3,
             radius: 15,
             turningSpeed: .1,
             bulletRange: 1,
             projectileSpeed: 20,
-            oxygen: 3200,
+            numUpgrades: 9,
             identifier: "spaceship"
         },
         {   
             costs: {asteroidBits: 20},
-            speed: 46,
-            fireRate: 90,
-            maxHealth: 30,
-            damage: 4,
             radius: 20,
             turningSpeed: .1,
             bulletRange: 2,
             projectileSpeed: 19,
-            oxygen: 3400,
+            numUpgrades: 12,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 50},
-            speed: 44,
-            fireRate: 85,
-            maxHealth: 50,
-            damage: 5,
+            costs: {asteroidBits: 50, iron: 10},
             radius: 25,
             turningSpeed: .09,
             bulletRange: 2,
             projectileSpeed: 19,
-            oxygen: 3600,
+            numUpgrades: 15,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 100, iron: 5},
-            speed: 42,
-            fireRate: 80,
-            maxHealth: 80,
-            damage: 8,
+            costs: {asteroidBits: 100, iron: 50},
             radius: 30,
             turningSpeed: .085,
             bulletRange: 3,
             projectileSpeed: 18,
-            oxygen: 3800,
+            numUpgrades: 18,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 300, iron: 10},
-            speed: 40,
-            fireRate: 75,
-            maxHealth: 130,
-            damage: 13,
+            costs: {asteroidBits: 300, iron: 100},
             radius: 35,
             turningSpeed: .08,
             bulletRange: 4,
             projectileSpeed: 18,
-            oxygen: 4000,
+            numUpgrades: 21,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 750, iron: 50},
-            speed: 38,
-            fireRate: 70,
-            maxHealth: 210,
-            damage: 21,
+            costs: {asteroidBits: 750, iron: 300},
             radius: 40,
             turningSpeed: .075,
             bulletRange: 5,
             projectileSpeed: 17,
-            oxygen: 4200,
+            numUpgrades: 24,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 1200, iron: 100, earth: 10},
-            speed: 36,
-            fireRate: 65,
-            maxHealth: 340,
-            damage: 34,
+            costs: {asteroidBits: 1200, iron: 800},
             radius: 45,
             turningSpeed: .07,
             bulletRange: 6,
             projectileSpeed: 17,
-            oxygen: 4400,
+            numUpgrades: 27,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 2000, iron: 300, earth: 50, crystal: 5},
-            speed: 34,
-            fireRate: 60,
-            maxHealth: 500,
-            damage: 55,
+            costs: {asteroidBits: 2000, iron: 2500},
             radius: 50,
             turningSpeed: .065,
             bulletRange: 7,
             projectileSpeed: 16,
-            oxygen: 4600,
+            numUpgrades: 30,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 5000, iron: 800, earth: 300, crystal: 10},
-            speed: 32,
-            fireRate: 55,
-            maxHealth: 890,
-            damage: 89,
+            costs: {asteroidBits: 5000, iron: 5000},
             radius: 55,
             turningSpeed: .06,
             bulletRange: 8,
             projectileSpeed: 16,
-            oxygen: 4800,
+            numUpgrades: 33,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 10000, iron: 2500, earth: 500, crystal: 20},
-            speed: 30,
-            fireRate: 50,
-            maxHealth: 1440,
-            damage: 144,
+            costs: {asteroidBits: 10000, iron: 10000},
             radius: 60,
             turningSpeed: .055,
             bulletRange: 9,
             projectileSpeed: 15,
-            oxygen: 5000,
+            numUpgrades: 36,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 50000, iron: 5000, earth: 800, crystal: 50},
-            speed: 28,
-            fireRate: 45,
-            maxHealth: 2330,
-            damage: 233,
+            costs: {asteroidBits: 50000, iron: 20000},
             radius: 65,
             turningSpeed: .05,
             bulletRange: 10,
             projectileSpeed: 15,
-            oxygen: 5200,
+            numUpgrades: 39,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 100000, iron: 10000, earth: 1200, circuit: 75, gem: 5},
-            speed: 26,
-            fireRate: 40,
-            maxHealth: 3000,
-            damage: 300,
+            costs: {asteroidBits: 100000, iron: 50000},
             radius: 70,
             turningSpeed: .045,
             bulletRange: 11,
             projectileSpeed: 14,
-            oxygen: 5400,
+            numUpgrades: 42,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 250000, iron: 20000, earth: 2500, circuit: 100, gem: 10},
-            speed: 24,
-            fireRate: 35,
-            maxHealth: 4000,
-            damage: 400,
+            costs: {asteroidBits: 250000, iron: 100000},
             radius: 75,
             turningSpeed: .04,
             bulletRange: 12,
             projectileSpeed: 14,
-            oxygen: 5600,
+            numUpgrades: 45,
             identifier: "spaceship"
         },
         {   
-            costs: {asteroidBits: 500000, iron: 50000, earth: 5000, circuit: 130, gem: 25},
-            speed: 22,
-            fireRate: 30,
-            maxHealth: 5000,
-            damage: 500,
+            costs: {asteroidBits: 500000, iron: 250000},
             radius: 80,
             turningSpeed: .035,
             bulletRange: 13,
             projectileSpeed: 13,
-            oxygen: 5800,
+            numUpgrades: 48,
             identifier: "spaceship"
         }
-        
 ];
 
 var structureUpgrades = {
@@ -923,11 +938,11 @@ var structureUpgrades = {
     ],
     spawner: [
         {
-            costs: {crystal: 20, water: 20, iron: 200},
+            costs: {crystal: 20},
             identifier: "spawner"
         },
         {
-            costs: {crystal: 50, water: 20, iron: 1000},
+            costs: {crystal: 50, water: 100, iron: 1000},
             identifier: "spawner"
         }
     ]
@@ -1085,6 +1100,7 @@ function newConnetcion(socket){
         var structures = [];
         var playerShopUpgrades = false;
         var shipTurret = false;
+        var statLevels = false;
 
         if(lobbyClient){
             position.x = lobbyClient.object.x;
@@ -1095,6 +1111,10 @@ function newConnetcion(socket){
                 
                 if(lobbyClient.object.shipTurret){
                     shipTurret = lobbyClient.object.shipTurret;                
+                }
+
+                if(lobbyClient.object.statLevels){
+                    statLevels = lobbyClient.object.statLevels;                
                 }
             }
                 
@@ -1117,6 +1137,22 @@ function newConnetcion(socket){
         worldsData[data.worldId].clients.push(player);
         player.structures = structures;
         player.shipTurret = shipTurret;
+        
+        if(statLevels)
+        {
+            player.statLevels = statLevels;
+
+            Object.keys(playerStatUpgrades).forEach(key => {
+                if(key != "roundToPlace")
+                {
+                    player[key] = playerStatUpgrades[key](player.statLevels[key]).val;
+
+                    if(key == "maxHealth")
+                        player.health = player[key];
+                }
+                    
+            });
+        }
 
         if(playerShopUpgrades)
             player.shopUpgrades = playerShopUpgrades;
@@ -1173,7 +1209,6 @@ function newConnetcion(socket){
         }
 
         // -----------------------------------------------------------------
-
         socket.broadcast.to(data.worldId).emit('newPlayer', player);
         socket.emit("newPlayerStart", {player: player, planet: lobbyClient.object.planet});
 
@@ -1230,7 +1265,7 @@ function newConnetcion(socket){
         var worldHittableObjects = worldsData[data.worldId].hittableObjects;
         var target = findObjectWithId(worldHittableObjects, data.id);
 
-        if(target != null && (target.type == "blackHole" || target.type == "wormHole"))
+        if(target != null && (target.type == "wormHole"))
             return;
 
         damageObject(data.worldId, data.id, damageDealt, true, data.hitX, data.hitY, data.ignoreShield);
@@ -1421,9 +1456,14 @@ function newConnetcion(socket){
             }
         }
 
-        if(structureUpgrades[data.type]){
+        var upgradeType = data.type;
 
-            var costsForNextLvl = structureUpgrades[data.type][0].costs;
+        if(data.type.substring(0, 7) == "spawner")
+            upgradeType = "spawner";
+
+        if(structureUpgrades[upgradeType]){
+
+            var costsForNextLvl = structureUpgrades[upgradeType][0].costs;
             var hasResourceCounter = 0;
             var neededResources = 0; 
 
@@ -1452,7 +1492,6 @@ function newConnetcion(socket){
         else
             enoughResources = true;
 
-
         if(enoughResources){
             var structure;
             data.level = 0;
@@ -1465,10 +1504,18 @@ function newConnetcion(socket){
                     structure.type = "spawner";
 
                     if(planet.id != "hive")
+                    {
+                        console.log("Client trying to spawn spawner on non hive");
                         return;
+                    }
+                        
                 }
                 else if (planet.id == "hive") // spawning structures other than spawners on the hive
+                {
+                    console.log("Client trying to spawn non-spawner structure on hive");
                     return;
+                }
+                    
                 
                 if(data.type == "landingPad"){
                     planet.owner = socket.id;
@@ -1485,9 +1532,7 @@ function newConnetcion(socket){
                     
                     for (var upgrade in upgrades) {
                         if (upgrades.hasOwnProperty(upgrade)) {
-                            
                             structure[upgrade] = upgrades[upgrade];
-
                         }
                     }
 
@@ -1581,7 +1626,7 @@ function newConnetcion(socket){
 
             if(data.type == "shipTurret"){
                 if(player.shipTurret){
-                    upgrade(player.shipTurret, structureUpgrades.turret[shopUpgrades[data.type][level].value], {}, {id: socket.id}, worldId);
+                    upgrade(player.shipTurret, structureUpgrades.turret[shopUpgrades[data.type][level].value], {}, {id: socket.id}, false, worldId);
                 }
                 else{
                     turretId = uniqueId();
@@ -1618,7 +1663,6 @@ function newConnetcion(socket){
 
     socket.on('upgradeRequest', function(data){
         var allUpgradeableObjects = allWorldObjects(data.worldId).concat(allStructures(data.worldId).concat(worldsData[data.worldId].clients));
-
         var playerUpgrading = findObjectWithId(worldsData[data.worldId].clients, socket.id);
 
         if(playerUpgrading)
@@ -1628,24 +1672,42 @@ function newConnetcion(socket){
             console.log('\x1b[31m%s\x1b[0m', "[ERROR]", "playerUpgrading not found");
             return;
         }
-            
-            
+        
         var upgradee = findObjectWithId(allUpgradeableObjects, data.id).object;
         var upgrades;
 
-        if(upgradee.type)
-            upgrades = structureUpgrades[upgradee.type];
-        else
-            upgrades = playerUpgrades;
-
-        if(!upgrades[upgradee.level + 1]){
-            console.log("upgrade not found");
-            return;
+        if(data.type) //upgrade individual player stat
+        {
+            if(upgradee.statLevels[data.type] >= levelsOfStatUpgrades)
+            {
+                console.log("upgrade not found");
+                return;
+            }
+            else
+                upgrades = playerStatUpgrades;
         }
+            
+        else
+        {
+            if(upgradee.type) //The thing being upgraded is a structure
+                upgrades = structureUpgrades[upgradee.type];
+            else//The thing being upgraded is a player
+                upgrades = playerUpgrades;
 
-        var costsForNextLvl = upgrades[upgradee.level + 1].costs;
+            if(!upgrades[upgradee.level + 1]){
+                console.log("upgrade not found");
+                return;
+            }
+        }
+        
+        var costsForNextLvl;
         var hasResourceCounter = 0;
-        var neededResources = 0; 
+        var neededResources = 0;
+
+        if(data.type)
+            costsForNextLvl = upgrades[data.type](upgradee.statLevels[data.type] + 1).costs;
+        else
+            costsForNextLvl = upgrades[upgradee.level + 1].costs;
 
         for (var cost in costsForNextLvl) {
             if (costsForNextLvl.hasOwnProperty(cost)) {
@@ -1656,24 +1718,33 @@ function newConnetcion(socket){
             }
         }
 
+        var doUpgrades;
+        var increaseStatLevel = false;
+
+        if(data.type)
+        {
+            increaseStatLevel = data.type;
+            doUpgrades = {};
+            doUpgrades[data.type] = upgrades[data.type](upgradee.statLevels[data.type] + 1).val;
+        } 
+        else
+            doUpgrades = upgrades[upgradee.level + 1];
+
         if(hasResourceCounter == neededResources){
-            upgrade(upgradee, upgrades[upgradee.level + 1], costsForNextLvl, playerUpgrading, data.worldId);
+            upgrade(upgradee, doUpgrades, costsForNextLvl, playerUpgrading, increaseStatLevel, data.worldId);
             syncDamage(data.worldId, [data.id]);
         }
-        else{
+        else
             io.sockets.connected[socket.id].emit("returnMsg", ["NER"]); // "Not enough resources"
-        }
-        
     });
 
-    function upgrade(thing, upgrade, costs, playerUpgrading, worldId){
+    function upgrade(thing, upgrade, costs, playerUpgrading, increaseStatLevel, worldId){
 
         for (var property in upgrade) {
             if (upgrade.hasOwnProperty(property)) {
 
                 if(property == "maxHealth"){
                     var hittableThingObject = findObjectWithId(worldsData[worldId].hittableObjects, thing.id).object;
-
                     var precent = hittableThingObject["health"] / hittableThingObject[property];
 
                     hittableThingObject.maxHealth = upgrade[property];
@@ -1690,14 +1761,26 @@ function newConnetcion(socket){
             }
         }
 
-        thing.level++;
+        var returnLvl;
+
+        if(increaseStatLevel)
+        {
+            thing.statLevels[increaseStatLevel]++;
+            returnLvl = thing.statLevels[increaseStatLevel];
+        }   
+        else
+        {
+            thing.level++;
+            returnLvl = thing.level;
+        } 
 
         var data = {
             upgrade: upgrade,
             id: thing.id,
             costs: costs,
             playerId: playerUpgrading.id,
-            level: thing.level
+            level: returnLvl,
+            type: increaseStatLevel
         }
 
         io.to(worldId).emit('upgradeSync', data);
@@ -1887,7 +1970,6 @@ function disconnectPlayer(id, killed, worldId){
 
         if(noOxygen.contains(id))
             noOxygen.splice(noOxygen.indexOf(id), 1);
-    
 
         var data = {
             clientId: client.object.id,
@@ -1971,7 +2053,7 @@ function disconnectPlayer(id, killed, worldId){
                 io.sockets.connected[id].emit("respawn");
             }
 
-            playerObject = {id: id, worldId: worldId, x: playerPosition.x, y: playerPosition.y, level: level, planet: respawnPlanet.id, structures: client.object.structures, shopUpgrades: client.object.shopUpgrades, shipTurret: client.object.shipTurret};
+            playerObject = {id: id, worldId: worldId, x: playerPosition.x, y: playerPosition.y, level: level, planet: respawnPlanet.id, structures: client.object.structures, shopUpgrades: client.object.shopUpgrades, shipTurret: client.object.shipTurret, statLevels: client.object.statLevels};
             worldsData[worldId].lobbyClients.push(playerObject);
 
         } 
@@ -2135,7 +2217,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
         }
     }   
 
-    if(target.object.type == 'sun'){
+    if(target.object.type == 'sun' || target.object.type == 'blackHole'){
         return;
     }
 
@@ -2938,7 +3020,7 @@ function despawnProjectiles()
 
 function mineProduce()
 {
-    var mineProduceItems = [{item: 'iron', chance: .1}, {item: 'asteroidBits', chance: 1}];
+    var mineProduceItems = [{item: 'iron', chance: 1}, {item: 'asteroidBits', chance: .1}];
 
     allClients().forEach(client => {
 
@@ -2989,7 +3071,7 @@ function spawnEnemies()
 
             if(worldsData[worldId].enemies.length < maxEnemiesPerWorld)
             {
-                spawnEnemy(spawner.x, spawner.y, spawner.enemyType, (spawner.level + 1) * 3, worldId);
+                spawnEnemy(spawner.x, spawner.y, spawner.enemyType, spawner.level, worldId);
             }
         }
     }
@@ -3034,7 +3116,7 @@ function checkForCrown(worldId){
 
 function spawnEnemy(x, y, type, level, worldId)
 {
-    var enemy = new Player(x, y, Math.random() * Math.PI * 2, level, "enemy-" + uniqueId(), worldId); 
+    var enemy = new Enemy(x, y, Math.random() * Math.PI * 2, level, "enemy-" + uniqueId(), worldId); 
 
     switch(type)
     {
@@ -3070,7 +3152,6 @@ function spawnEnemy(x, y, type, level, worldId)
 
     syncDamage(worldId, [enemy.id]);
     io.to(worldId).emit('newPlayer', enemy);
-
 }
 
 function findClosestPlayer(x, y, worldId, ignoreIds = [], ignoreCloaked = false, ignoreLevelsUpTo = 0){
@@ -3402,9 +3483,15 @@ function allStructures(worldId){
 }
 
 function newPlayerData(worldId, x, y) {
-
     var upgradeInfo = {
         structureUpgrades: structureUpgrades,
+        playerStatUpgrades: JSON.stringify(playerStatUpgrades, function(key, value) {
+            if (typeof value === 'function') {
+                return "(" + value.toString() + ")";
+            } else {
+                return value;
+            }
+        }),
         playerUpgrades: playerUpgrades,
         shopUpgrades: shopUpgrades
     }
@@ -3417,6 +3504,7 @@ function newPlayerData(worldId, x, y) {
         worldId: worldId,
         master: worldsData[worldId].master,
         upgrades: upgradeInfo,
+        numStats: levelsOfStatUpgrades,
         x: x,
         y: y
     };
@@ -3458,6 +3546,5 @@ process.on('uncaughtException', function(error) {
     console.log("--------------------------------------------------------------------------------");
     //process.exit(1);
 });
-
 
 addWorld();

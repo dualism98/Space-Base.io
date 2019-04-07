@@ -344,6 +344,12 @@ a:hover{
     height: 10%;
     margin-left: 25%;
     display: inline-block;
+
+    user-select: none;
+    -moz-user-select: none;
+    -khtml-user-select: none;
+    -webkit-user-select: none;
+    -o-user-select: none;
 }
 
 
