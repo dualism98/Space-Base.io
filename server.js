@@ -27,17 +27,17 @@ var gridSize = 10000;
 var gridBoxScale = 100;
 var spawnTries = 5;
 
-var numOfAsteroids = 100;
-var numOfPlanets = 3;
-var numOfMoons = 10;
-var numOfSuns = 0;
-var numOfCrystals = 0;
-var numOfBlackHoles = 0;
-var numOfScrapMetal = 20;
-var numOfWormHoles = 0;
-var gridSize = 2000;
-var gridBoxScale = 10;
-var spawnTries = 5;
+// var numOfAsteroids = 100;
+// var numOfPlanets = 3;
+// var numOfMoons = 10;
+// var numOfSuns = 0;
+// var numOfCrystals = 0;
+// var numOfBlackHoles = 0;
+// var numOfScrapMetal = 20;
+// var numOfWormHoles = 0;
+// var gridSize = 2000;
+// var gridBoxScale = 10;
+// var spawnTries = 5;
 
 var edgeSpawnPadding = 2000;
 var precentItemKillBoost = .5;
@@ -355,7 +355,7 @@ function Enemy(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {};//{gem: 10000, iron: 1000000, asteroidBits: 1234500000, earth: 100000, water: 100000, crystal: 100000, darkMatter: 10000000, circuit: 100000, stardust: 100000000000};
+    this.drops = {circuit: getRndInteger(3, 5) * (level + 1), iron: getRndInteger(10, 15) * (level + 1)};//{gem: 10000, iron: 1000000, asteroidBits: 1234500000, earth: 100000, water: 100000, crystal: 100000, darkMatter: 10000000, circuit: 100000, stardust: 100000000000};
 
     this.bulletRange = enemyUpgrades[level].bulletRange;
     this.turningSpeed = enemyUpgrades[level].turningSpeed;
@@ -375,7 +375,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {gem: 10000, iron: 1000000, asteroidBits: 1234500000, earth: 100000, water: 100000, crystal: 100000, darkMatter: 10000000, circuit: 100000, stardust: 100000000000};
+    this.drops = {};//{gem: 10000, iron: 1000000, asteroidBits: 1234500000, earth: 100000, water: 100000, crystal: 100000, darkMatter: 10000000, circuit: 100000, stardust: 100000000000};
 
     this.shipTurret;
     this.shopUpgrades = {
@@ -2272,6 +2272,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
                     var enemyData = {clientId: enemy.object.id};
                     io.to(worldId).emit('playerExited', enemyData);
 
+                    console.log(enemy.object.drops);
                     itemDropped(xHit, yHit, enemy.object.drops, worldId, 1); 
 
                     worldsData[possibleEnemy.object.worldId].enemies.splice(enemy.index, 1);
@@ -3134,7 +3135,6 @@ function spawnEnemy(x, y, type, level, worldId)
     enemy.currentSpeed = enemy.speed;
 
     enemy.username = type;
-    enemy.drops = {iron: level * 10, circuit: level * 2};
 
     var velX = Math.random() - 0.5;
     var velY = Math.random() - 0.5;
