@@ -1711,7 +1711,7 @@ function newConnetcion(socket){
 
         for (var cost in costsForNextLvl) {
             if (costsForNextLvl.hasOwnProperty(cost)) {
-                if(playerUpgrading.drops[cost] && costsForNextLvl[cost] <= playerUpgrading.drops[cost]){
+                if((playerUpgrading.drops[cost] && costsForNextLvl[cost] <= playerUpgrading.drops[cost]) || costsForNextLvl[cost] == 0){
                     hasResourceCounter++;
                 }
                 neededResources++;

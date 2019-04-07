@@ -897,7 +897,7 @@ function upgradeSync(data) {
 
     if(data.playerId == clientId){
         for (var cost in data.costs) {
-            if (data.costs.hasOwnProperty(cost)) {
+            if (data.costs.hasOwnProperty(cost) && playerItems[cost]) {
                 playerItems[cost] -= data.costs[cost];
             }
         }
@@ -2679,13 +2679,14 @@ function drawPlanetShopPanel(){
         if(upgrading)
         {
             type = planetShopSelection.type;
+            upgradeType = planetShopSelection.type;
             level = planetShopSelection.level;
         }
         else if(type == "spaceShip")
             level = spaceShip.level;
 
         if(type.substring(0, 7) == "spawner")
-        upgradeType = "spawner";
+            upgradeType = "spawner";
 
         var upgrades = structureUpgrades[upgradeType];
 
@@ -2771,7 +2772,6 @@ function drawPlanetShopPanel(){
 
         c.drawImage(getImage(imageName), panelX + pannelWidth / 2 - selectedStructureImageSize / 2, panelY + padding / 2, selectedStructureImageSize, selectedStructureImageSize);
 
-
         //Buy / Upgrade button
         var shopButtonWidth = pannelWidth * 2 / 3;
         var shopButtonHeight = pannelHeight / 10;
@@ -2788,7 +2788,7 @@ function drawPlanetShopPanel(){
 
         fontsize = Math.sqrt(canvas.height * canvas.width) / 60;
 
-        if(upgrading)
+        if(upgrading || type == "spaceShip")
         {
             if(fullyUpgraded){
                 label = $('p#fullyUpgraded').text();
@@ -2884,8 +2884,18 @@ function drawPlanetShopPanel(){
             //Draw used upgrades
             c.textAlign = "left";
             c.fillStyle = "white";
+
+            var addToNumUpgrades = 0;
+
+            if(hoveringOnBuy)
+            {
+                c.fillStyle = "#9aff75";
+                addToNumUpgrades = 3;
+            }
+                
+
             c.font = Math.sqrt(canvas.height * canvas.width) / 85 + "px Helvetica";
-            c.fillText(usedUpgrades + "/" + spaceShip.numUpgrades, panelX + padding, panelY + selectedStructureImageSize + padding / 2);
+            c.fillText(usedUpgrades + "/" + (spaceShip.numUpgrades + addToNumUpgrades), panelX + padding, panelY + selectedStructureImageSize + padding / 2);
 
             //Draw Upgrade Buttons
             for (let i = 0; i < upgradeBars.length; i++) {
@@ -2915,9 +2925,7 @@ function drawPlanetShopPanel(){
                             
                         upgradeCosts = playerStatUpgrades[upgradeBars[i]](spaceShip.statLevels[upgradeBars[i]] + 1).costs;
                     }
-
                 }
-                
 
                 roundRect(c, buttonX, buttonY, buttonWidth, barHeight, 5);
 
@@ -2940,7 +2948,11 @@ function drawPlanetShopPanel(){
             for (let i = 0; i < upgradeBars.length; i++) {
 
                 var level = spaceShip.statLevels[upgradeBars[i]];
-                var filled = level % (numberOfSegments);
+
+                if(highlighted == upgradeBars[i])
+                    level++;
+
+                var filled = level % (numberOfSegments);                
 
                 if(filled == 0 && level != 0)
                     filled = numberOfSegments;
