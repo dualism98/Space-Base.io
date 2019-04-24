@@ -338,11 +338,9 @@ a:hover{
 }
 
 .bottomAd{
-    position: absolute;
-    bottom: 10vh;
+    margin-top: 5vh;
     width: 50%;
-    height: 10%;
-    margin-left: 25%;
+    height: 15vh;
     display: inline-block;
 
     user-select: none;
@@ -364,7 +362,7 @@ a:hover{
 
 #redditLink{
     text-decoration: none;
-}rgb(255, 255, 255)
+}
 
 #redditAnnouncement{
     vertical-align: middle;

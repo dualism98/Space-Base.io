@@ -1324,6 +1324,13 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
     this.id = id;
     this.level = level;
 
+    this.statLevels = {
+        speed: 0,
+        fireRate: 0,
+        maxHealth: 0,
+        damage: 0
+    }
+
     this.alpha = 1;
 
     this.coordX = coordX;

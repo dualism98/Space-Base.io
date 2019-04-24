@@ -109,7 +109,7 @@ Array.prototype.contains = function(thing){
 var socket;
 var clientId;
 var otherPlayers = {};
-var worldObjects = [];
+var worldObjects = {};
 var worldItems = {};
 var hittableObjects = {};
 var gridSize;
@@ -120,24 +120,29 @@ var worldId;
 function getAllWorldObjects(){
     var objects = [];
 
-    objects = worldObjects.planets.concat(worldObjects.spaceMatter).concat(worldObjects.shops);
+    objects = Object.assign({}, worldObjects.planets, worldObjects.spaceMatter, worldObjects.shops);
 
     if(spaceShip)
-        objects.push(spaceShip);
+        objects[spaceShip.id] = spaceShip;
 
     return objects;
 }
 
 function getAllStructures(){
     var structures = {};
+    var planets = worldObjects.planets;
 
-    for(var i = 0; i < worldObjects.planets.length; i++){
-        if(worldObjects.planets[i].health >= 0)
-        {
-            var planetStructures = worldObjects.planets[i].structures;
+    for (var planetId in planets) {
+        if (planets.hasOwnProperty(planetId)) {
+            var planet = planets[planetId];
 
-            for(var x = 0; x < planetStructures.length; x++){
-                structures[planetStructures[x].id] = planetStructures[x];
+            if(worldObjects.planets[planet.id].health >= 0)
+            {
+                var planetStructures = planet.structures;
+    
+                for(var x = 0; x < planetStructures.length; x++){
+                    structures[planetStructures[x].id] = planetStructures[x];
+                }
             }
         }
     }
@@ -398,86 +403,98 @@ function setupLocalWorld(data){
     //Spawn other players
     otherPlayers = {};
 
-    for(var i = 0; i < data.existingPlayers.length; i++){
-        client = data.existingPlayers[i];
+    var existingPlayers = data.worldObjects.existingPlayers;
+
+    for (var playerId in existingPlayers) {
+        if (existingPlayers.hasOwnProperty(shopsId)) {
+            var client = existingPlayers[playerId];
             
-        if(client.id != clientId){
-            var player = new NetworkSpaceShip(client.x, client.y, client.maxHealth, client.health, 0, client.level, client.radius, client.username, client.id);
+            if(client.id != clientId){
+                var player = new NetworkSpaceShip(client.x, client.y, client.maxHealth, client.health, 0, client.level, client.radius, client.username, client.id);
 
-            if(client.id == master.id)
-            master.obj = player;
+                if(client.id == master.id)
+                master.obj = player;
 
-            if(client.shipTurret){
-                var isFacade = player.id != clientId;
+                if(client.shipTurret){
+                    var isFacade = player.id != clientId;
 
-                player.turret = new Turret(player, client.x, client.y, 0, client.shipTurret.level - 1, isFacade, player.id, client.shipTurret.id);
-                player.turret.distanceFromPlanet = 0;
-                player.turret.headDistanceFromBase = 0;
-                player.turret.type = "shipTurretBase";
-            }        
+                    player.turret = new Turret(player, client.x, client.y, 0, client.shipTurret.level - 1, isFacade, player.id, client.shipTurret.id);
+                    player.turret.distanceFromPlanet = 0;
+                    player.turret.headDistanceFromBase = 0;
+                    player.turret.type = "shipTurretBase";
+                }        
 
-            otherPlayers[player.id] = player;
+                otherPlayers[player.id] = player;
+            }
         }
-        
     }
 
     //Spawn World Objects
-    worldObjects = {spaceMatter: [], planets: [], shops: []};// = data.worldObjects;
+    worldObjects = {spaceMatter: {}, planets: {}, shops: {}};// = data.worldObjects;
 
     //Shops
-    for(var i = 0; i < data.worldObjects.shops.length; i++){
+    var shops = data.worldObjects.shops;
 
-        var shop = data.worldObjects.shops[i];
+    for (var shopsId in shops) {
+        if (shops.hasOwnProperty(shopsId)) {
+            var shop = shops[shopsId];
 
-        var shopObject = new Shop(shop.x, shop.y, shop.radius, shop.upgradeType);
-        worldObjects.shops.push(shopObject);
+            var shopObject = new Shop(shop.x, shop.y, shop.radius, shop.upgradeType);
+            worldObjects.shops[shop.id] = shopObject;
+        }
     }
 
     //Space Matter
-    for(var i = 0; i < data.worldObjects.spaceMatter.length; i++){
+    var spaceMatterObjs = data.worldObjects.spaceMatter;
 
-        var spaceMatter = data.worldObjects.spaceMatter[i];
+    for (var matterId in spaceMatterObjs) {
+        if (spaceMatterObjs.hasOwnProperty(matterId)) {
+            var spaceMatter = spaceMatterObjs[matterId];
 
-        if(!spaceMatter || spaceMatter.health <= 0)
-            continue;
+            if(!spaceMatter || spaceMatter.health <= 0)
+                continue;
 
-        var spaceMatterObj = new SpaceMatter(spaceMatter.x, spaceMatter.y, spaceMatter.radius, spaceMatter.color, spaceMatter.maxHealth, spaceMatter.health, spaceMatter.type, spaceMatter.id);
-        worldObjects.spaceMatter.push(spaceMatterObj);
-        dropDict[spaceMatter.id] = spaceMatter.drops;
+            var spaceMatterObj = new SpaceMatter(spaceMatter.x, spaceMatter.y, spaceMatter.radius, spaceMatter.color, spaceMatter.maxHealth, spaceMatter.health, spaceMatter.type, spaceMatter.id);
+            worldObjects.spaceMatter[spaceMatterObj.id] = spaceMatterObj;
+            dropDict[spaceMatter.id] = spaceMatter.drops;
 
-        if(spaceMatterObj.id == "hiveObj")
-            hiveObj = spaceMatterObj;
+            if(spaceMatterObj.id == "hiveObj")
+                hiveObj = spaceMatterObj;
+        }
     }
 
     //Planets
-    for(var i = 0; i < data.worldObjects.planets.length; i++){
+    var planets = data.worldObjects.planets;
 
-        var planet = data.worldObjects.planets[i];
+    for (var planetId in planets) {
+        if (planets.hasOwnProperty(planetId)) {
+            var planet = planets[planetId];
 
-        if(!planet || planet.health <= 0)
-            continue;
+            if(!planet || planet.health <= 0)
+                continue;
 
-        var planetObject = new Planet(planet.x, planet.y, planet.radius, planet.color, planet.health, planet.maxHealth, planet.id);
-        planetObject.occupiedBy = planet.occupiedBy;
-        planetObject.owner = planet.owner; 
+            var planetObject = new Planet(planet.x, planet.y, planet.radius, planet.color, planet.health, planet.maxHealth, planet.id);
+            planetObject.occupiedBy = planet.occupiedBy;
+            planetObject.owner = planet.owner; 
 
-        worldObjects.planets.push(planetObject);
+            worldObjects.planets[planetObject.id] = planetObject;
 
-        //Add all existing structures
-        for (var s = 0; s < planet.structures.length; s++) {
-            var structure = planet.structures[s];
-            var isFacade = structure.ownerId != clientId;
+            //Add all existing structures
+            for (var s = 0; s < planet.structures.length; s++) {
+                var structure = planet.structures[s];
+                var isFacade = structure.ownerId != clientId;
 
-            if(structure.type == "spawner")
-            {
-                var uppercasedType = structure.enemyType.charAt(0).toUpperCase() + structure.enemyType.slice(1);
-                structure.type = "spawner" + uppercasedType;
+                if(structure.type == "spawner")
+                {
+                    var uppercasedType = structure.enemyType.charAt(0).toUpperCase() + structure.enemyType.slice(1);
+                    structure.type = "spawner" + uppercasedType;
+                }
+
+                planetObject.addStructure(planetObject, structure.x, structure.y, structure.rotation, structure.type, structure.level, isFacade, structure.ownerId, structure.id);
             }
 
-            planetObject.addStructure(planetObject, structure.x, structure.y, structure.rotation, structure.type, structure.level, isFacade, structure.ownerId, structure.id);
+            dropDict[planetObject.id] = planet.drops;
         }
-
-        dropDict[planetObject.id] = planet.drops;
     }
 
     allWorldObjects = getAllWorldObjects();
@@ -489,7 +506,7 @@ function newWorldObjectSync(data){
     
     if(data.newObject.type == "planet"){
 
-        var changedPlanet = findObjectWithId(worldObjects.planets, data.id);
+        var changedPlanet = worldObjects.planets[data.id];
         var ownedPlanet = ownedPlanets[data.id];
 
         if(currentPlanet && data.id == currentPlanet.id){
@@ -505,7 +522,7 @@ function newWorldObjectSync(data){
 
         if(data.dead && changedPlanet){
 
-            worldObjects.planets.splice(changedPlanet.index, 1);
+            delete worldObjects.planets[changedPlanet.id]
             delete hittableObjects[data.id];
         }
         else{
@@ -515,27 +532,27 @@ function newWorldObjectSync(data){
             planetObject.owner = planet.owner;
 
             if(changedPlanet)
-                worldObjects.planets[changedPlanet.index] = planetObject;
+                worldObjects.planets[changedPlanet.id] = planetObject;
             else
-                worldObjects.planets.push(planetObject);
+                worldObjects.planets[planetObject.id] = planetObject;
         }
     }
     else{
 
-        var changedSpaceMatter = findObjectWithId(worldObjects.spaceMatter, data.id);
+        var changedSpaceMatter = worldObjects.spaceMatter[data.id];
 
         if(data.dead && changedSpaceMatter)
         {
-            worldObjects.spaceMatter.splice(changedSpaceMatter.index, 1);
+            delete worldObjects.spaceMatter[changedSpaceMatter.id]
             delete hittableObjects[data.id];
         }
         else{
             var newSpaceMatter = new SpaceMatter(data.newObject.x, data.newObject.y, data.newObject.radius, data.newObject.color, data.newObject.maxHealth, data.newObject.health, data.newObject.type, data.id);
 
             if(changedSpaceMatter)
-                worldObjects.spaceMatter[changedSpaceMatter.index] = newSpaceMatter;
+                worldObjects.spaceMatter[changedSpaceMatter.id] = newSpaceMatter;
             else
-                worldObjects.spaceMatter.push(newSpaceMatter);
+                worldObjects.spaceMatter[newSpaceMatter.id] = newSpaceMatter;
         }
 
     }
@@ -658,11 +675,11 @@ function startLocalPlayer(data){
 
     if(data.planet)
     {
-        var localPlanet = findObjectWithId(worldObjects.planets, data.planet);
+        var localPlanet = worldObjects.planets[data.planet]
 
         if(localPlanet)
         {
-            currentPlanet = localPlanet.object;
+            currentPlanet = localPlanet;
             closestAvailablePlanet = null;
             landed = false;
             gridPos = new Vector(currentPlanet.coordX * -1, currentPlanet.coordY * -1);
@@ -673,14 +690,14 @@ function startLocalPlayer(data){
                 if (ownedPlanets.hasOwnProperty(id)) {
                     var planet = ownedPlanets[id];
 
-                    planetObject = findObjectWithId(worldObjects.planets, planet.id);
+                    planetObject = worldObjects.planets[planet.id];
 
                     if(planetObject){
-                        newOwnedPlanets[planet.id] = planetObject.object;
-                        friendlyObjectIds.push(planetObject.object.id);
+                        newOwnedPlanets[planet.id] = planetObject;
+                        friendlyObjectIds.push(planetObject.id);
 
-                        if(planetObject.object.shield)
-                            friendlyObjectIds.push(planetObject.object.shield.id);
+                        if(planetObject.shield)
+                            friendlyObjectIds.push(planetObject.shield.id);
                     }
                 }
             }
@@ -800,10 +817,7 @@ function destroyNetworkedProjectiles(data){
     
 }
 function updatePlanetOccupier(data){
-     worldObjects.planets.forEach(planet => {
-        if(planet.id == data.planetId)
-            planet.occupiedBy = data.playerId;
-    });
+    worldObjects.planets[data.planetId].occupiedBy = data.playerId;
 }
 function ejectPlayer()
 {
@@ -813,10 +827,10 @@ function ejectPlayer()
 }
 function spawnNetworkedStructure(data)
 {
-    planet = findObjectWithId(worldObjects.planets, data.planetId)
+    planet = worldObjects.planets[data.planetId];
 
     if(planet)
-        planet.object.addStructure(planet.object, data.x, data.y, data.rotation, data.type, data.level, data.isFacade, data.ownerId, data.id);
+        planet.addStructure(planet, data.x, data.y, data.rotation, data.type, data.level, data.isFacade, data.ownerId, data.id);
 
     if(data.ownerId == clientId){
         for (var cost in data.costs) {
@@ -997,8 +1011,11 @@ function onAquiredItems(data){
 
 function updateItems(data){
 
-    for (var i = 0; i < data.length; i++) {
-        var item = data[i];
+    var items = data;
+    var itemIds = Object.keys(items);
+
+    for (var i = 0; i < itemIds.length; i++) {
+        var item = items[itemIds[i]];
         
         var localItem = worldItems[item.id];
 
@@ -1089,11 +1106,14 @@ function playerExited(data){
     var otherPlayer = otherPlayers[data.clientId];
 
     if(otherPlayer){
+        for (var [planetId] in  worldObjects.planets) {
+            if ( worldObjects.planets.hasOwnProperty(planetId)) {
+                var planet = worldObjects.planets;
 
-        worldObjects.planets.forEach(planet => {
-            if(planet.occupiedBy == data.clientId)
-                planet.occupiedBy = null;
-        });
+                if(planet.occupiedBy == data.clientId)
+                    planet.occupiedBy = null;
+            }
+        }
 
         delete otherPlayers[data.clientId];
 
@@ -1111,15 +1131,15 @@ function playerExited(data){
 
             if(localStructure)
             {
-                var planet = findObjectWithId(worldObjects.planets, localStructure.planet.id);
+                var planet = worldObjects.planets[localStructure.planet.id];
 
                 if(planet)
                 {
-                    planet.object.owner = null;
-                    planetStructure = findObjectWithId(planet.object.structures, localStructure.id);
+                    planet.owner = null;
+                    planetStructure = findObjectWithId(planet.structures, localStructure.id);
     
                     if(planetStructure)
-                        planet.object.structures.splice(planetStructure.index, 1);
+                        planet.structures.splice(planetStructure.index, 1);
                 }
             }
             
@@ -1249,7 +1269,7 @@ function startGame(){
     }
 
 
-    $(".bottomAd").toggleClass('lowered', 2);
+    //$(".bottomAd").toggleClass('lowered', 2);
 
     socket.emit("playerStartGame", {username: username, worldId: worldId});
 
@@ -1463,7 +1483,9 @@ $(document).on('keydown', function(e){
             if(!shopOpen.open){
                 var shopInRange = false;
 
-                worldObjects.shops.forEach(shop => {
+                var shopIds = Object.keys(worldObjects.shops);
+                shopIds.forEach(shopId => {
+                    var shop = worldObjects.shops[shopId];
     
                     if(shop.isInRange){
                         shopOpen.type = shop.upgradeType;
@@ -1663,7 +1685,10 @@ function update() {
             ? new Vector()
             : new Vector(mousePullx, mousePully);
 
-        worldObjects.spaceMatter.forEach(function(spaceMatter){
+        var matterIds = Object.keys(worldObjects.spaceMatter);
+        matterIds.forEach(function(matterId){
+
+            spaceMatter = worldObjects.spaceMatter[matterId];
 
             if(spaceMatter.type == "blackHole" && !currentPlanet)
             {
@@ -1750,8 +1775,9 @@ function update() {
         // --------------------------------- In Sun
         
         var isInSun = false;
+        matterIds.forEach(function(matterId){
 
-        worldObjects.spaceMatter.forEach(spaceMatter => {
+            spaceMatter = worldObjects.spaceMatter[matterId];
             
             if(spaceMatter.type == "sun"){
 
@@ -1923,8 +1949,6 @@ function update() {
 function animate() { 
     update();
 
-    requestAnimationFrameId = requestAnimationFrame(animate);
-
     for (var can in canvases) {
         if (canvases.hasOwnProperty(can)) {
             canvases[can].getContext('2d').clearRect(0, 0, innerWidth, innerHeight);
@@ -1939,6 +1963,8 @@ function animate() {
 
     drawGrid(gridPos.x + centerX, gridPos.y + centerY, gridSize, gridSize, gridBoxScale);
     updateAllMatter();
+
+    //console.log("Call to doSomething took " + (Math.round((averageTime)*100) / 100) + " milliseconds.");
     
     for (var id in otherPlayers) {
         if (otherPlayers.hasOwnProperty(id)) {
@@ -2074,7 +2100,10 @@ function animate() {
 
             var shopInRange = false;
 
-            worldObjects.shops.forEach(shop => {
+            var shopIds = Object.keys(worldObjects.shops);
+            shopIds.forEach(shopId => {
+                var shop = worldObjects.shops[shopId];
+
                 if(shop.isInRange)
                     shopInRange = true;
             });
@@ -2200,6 +2229,7 @@ function animate() {
     if(mouse.clickDown)
         mouse.clickDown = false;
 
+    requestAnimationFrameId = requestAnimationFrame(animate);
 }
 
 function displayMessage(text, timeToFade, fadeSpeed){
@@ -3394,7 +3424,10 @@ function minimap(size, x, y){
     c.fillStyle = "#bcbcbc";
     c.fillRect(x, y, size, size);
 
-    worldObjects.shops.forEach(shop => {
+    var shopIds = Object.keys(worldObjects.shops);
+
+    shopIds.forEach(shopId => {
+        var shop = worldObjects.shops[shopId];
         
         c.globalAlpha = 0.75;
         c.beginPath();
@@ -3454,12 +3487,29 @@ function minimap(size, x, y){
       
 }
 
+var averageTime;
+var t0;
+
+function perfStart(){
+    t0 = performance.now();
+}
+function perfEnd(){
+    var t1 = performance.now();
+
+    if(!averageTime)
+        averageTime = (t1 - t0);
+    else
+        averageTime = (averageTime + (t1 - t0)) / 2;
+}
+
 function updateAllMatter(){
 
     var propertySelected = false;
+    var allWorldObjectsIds = Object.keys(allWorldObjects);
 
+    allWorldObjectsIds.forEach(function(objId){
+        var matter = allWorldObjects[objId];
 
-    allWorldObjects.forEach(function(matter){
         var pos = cordsToScreenPos(matter.coordX, matter.coordY);
         var size = matter.radius;
 
@@ -3471,18 +3521,12 @@ function updateAllMatter(){
 
         var isClosestAvaiblePlanet = matter.id == closestAvailablePlanet;
 
+        //perfStart();
         if(isOnScreen(pos.x, pos.y, size) || isClosestAvaiblePlanet){
             matter.health = healthDict[matter.id];
+            matter.update();
 
-            try {
-                matter.update();
-            }
-            catch (error)
-            {
-                return;
-            }
-
-            var shop = findObjectWithId(worldObjects.shops, matter.id);
+            var shop = worldObjects.shops[matter.id];
 
             if(!shop)
             {
@@ -3505,6 +3549,10 @@ function updateAllMatter(){
                 }
             }
         }
+
+
+        //perfEnd();
+        
     });
 
     if(!propertySelected)
@@ -3689,31 +3737,34 @@ function shoot(x, y, rotation, speed, size, bulletPenetration, color, shooterId,
 
 function findClosestUnoccupiedPlanet() {
     var closestPlanet;
-    var planetArray = worldObjects.planets;
+    var planetIds = Object.keys(worldObjects.planets);
 
-    for(var i = 0; i < planetArray.length; i++){
+    for(var i = 0; i < planetIds.length; i++){
 
-        if(planetArray[i].owner && planetArray[i].owner != clientId)
+        var planet = worldObjects.planets[planetIds[i]];
+
+
+        if(planet.owner && planet.owner != clientId)
             continue;
         
-        if(planetArray[i].id == "hive" && !playerItems["crown"] > 0)
+        if(planet.id == "hive" && !playerItems["crown"] > 0)
             continue;
 
-        var distance = Math.sqrt(Math.pow(centerX - planetArray[i].x, 2) + Math.pow(centerY - planetArray[i].y, 2));
+        var distance = Math.sqrt(Math.pow(centerX - planet.x, 2) + Math.pow(centerY - planet.y, 2));
 
-        distance -= planetArray[i].radius;
+        distance -= planet.radius;
 
         if(closestPlanet != null){
             var targetDistance = Math.sqrt(Math.pow(centerX - closestPlanet.x, 2) + Math.pow(centerY - closestPlanet.y, 2));
             
             targetDistance -= closestPlanet.radius;
 
-            if(distance < targetDistance && !planetArray[i].occupiedBy && distance <= LANDING_DISTANCE){
-                closestPlanet = planetArray[i];
+            if(distance < targetDistance && !planet.occupiedBy && distance <= LANDING_DISTANCE){
+                closestPlanet = planet;
             }
         }
-        else if(!planetArray[i].occupiedBy && distance <= LANDING_DISTANCE){
-            closestPlanet = planetArray[i];
+        else if(!planet.occupiedBy && distance <= LANDING_DISTANCE){
+            closestPlanet = planet;
         }
     }
     return closestPlanet;
