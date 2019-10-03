@@ -386,7 +386,7 @@ function Player(x, y, rotation, level, id, worldId){
     this.id = id;
     this.worldId = worldId;
     this.level = level;
-    this.drops = {gem: 10000, iron: 1000000, asteroidBits: 1234500000, earth: 100000, water: 100000, crystal: 100000, darkMatter: 10000000, circuit: 100000, stardust: 100000000000};
+    this.drops = {};//{gem: 10000, iron: 1000000, asteroidBits: 1234500000, earth: 100000, water: 100000, crystal: 100000, darkMatter: 10000000, circuit: 100000, stardust: 100000000000};
 
     this.shipTurret;
     this.shopUpgrades = {
