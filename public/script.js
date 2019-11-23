@@ -403,7 +403,7 @@ function setupLocalWorld(data){
     //Spawn other players
     otherPlayers = {};
 
-    var existingPlayers = data.worldObjects.existingPlayers;
+    var existingPlayers = data.existingPlayers;
 
     for (var playerId in existingPlayers) {
         if (existingPlayers.hasOwnProperty(shopsId)) {

@@ -1094,10 +1094,9 @@ function newConnetcion(socket){
 
     worldsData[worldId].lobbyClients[playerObject.id] = playerObject;
 
-    console.log('\x1b[36m%s\x1b[0m', "player connected  : ", socket.id , " clients connected: ", Object.keys(worldsData[worldId].clients).length + Object.keys(worldsData[worldId].lobbyClients).length, "In loby: ", Object.keys(worldsData[worldId].lobbyClients).length);
+    console.log('\x1b[36m%s\x1b[0m', "player connected  : ", socket.id , " Clients in game: ", Object.keys(worldsData[worldId].clients).length + Object.keys(worldsData[worldId].lobbyClients).length, ", Clients in lobby: ", Object.keys(worldsData[worldId].lobbyClients).length);
 
     socket.on("playerStartGame", function(data){
-
         data.username = data.username.slice(0, 15);
 
         if(!worldIds.contains(data.worldId)){
@@ -1900,7 +1899,7 @@ function newConnetcion(socket){
 
         if(worldsData[worldId])
         {
-            console.log('\x1b[31m%s\x1b[0m', "player disconected: ", socket.id,  " clients connected: ", worldsData[worldId].clients.length, "In loby: ", worldsData[worldId].lobbyClients.length);
+            console.log('\x1b[31m%s\x1b[0m', "player disconected: ", socket.id,  " Clients in game: ",  Object.keys(worldsData[worldId].clients).length, ", Clients in loby: ", Object.keys(worldsData[worldId].lobbyClients).length);
 
             if(Object.keys(worldsData[worldId].clients).length + Object.keys(worldsData[worldId].lobbyClients).length == 0 && worldIds.length > 1){
                 removeWorld(worldId);
@@ -1961,9 +1960,9 @@ function disconnectPlayer(id, killed, worldId){
     }
     else if(client)
     {
-
         var planets = worldsData[worldId].worldObjects.planets;
 
+        //If player is currently on a planet, change the planet back to a normal planet
         for (var planetId in planets) {
             if (planets.hasOwnProperty(planetId)) {
 
@@ -1974,6 +1973,7 @@ function disconnectPlayer(id, killed, worldId){
             }
         }
 
+        //If any planets belong to the player, set the respawn planet to it
         for (var planetId in planets) {
             if (planets.hasOwnProperty(planetId)) {
 
@@ -1986,10 +1986,12 @@ function disconnectPlayer(id, killed, worldId){
             }
         }
 
+        //If the player is the master, reset the master
         if(worldsData[worldId].master == client.id){
             resetMaster(worldId);
         }
 
+        //Drop the players items
         itemDropped(client.x, client.y, client.drops, worldId, 1);
 
         var noOxygen = worldsData[worldId].noOxygen;
@@ -2002,17 +2004,16 @@ function disconnectPlayer(id, killed, worldId){
             structureIds: []
         }
 
-        //destroy players structures on planets if disconnected or planet was the hive
+        //Destroy players structures on planets if disconnected or planet was the hive
         if(client.structures){
             client.structures.forEach(structure => {
-
                 var planet = worldsData[worldId].worldObjects.planets[structure.planetId];
 
                 if(planet){
 
                     planet.drops = {asteroidBits: Math.round(planet.radius * 12), water: Math.round(planet.radius * 4), earth: Math.round(planet.radius * 6), iron: Math.round(planet.radius * 5)};
 
-                    if(!killed || planet.id == "hive") //If the player disconects or they had control over hive with structures on it
+                    if(!killed || planet.id == "hive") //If the player disconects or this structure's planet is the hive
                     {
                         planet.owner = null;
                         planet.occupiedBy = null;
@@ -2293,7 +2294,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
 
                     if(possibleStructure){
                         planet.structures.splice(possibleStructure.index, 1);
-                        delete worldHittableObjects[target.id];
+                        delete worldsData[worldId].hittableObjects[target.id];
                     }
                 }
             }
@@ -2346,7 +2347,7 @@ function damageObject(worldId, id, damage, spawnItems, xHit, yHit, ignoreShield 
                         possiblePlanet.structures.forEach(structure => {
                             if(structure.type == "shield") //Structure is a shield
                             {
-                                delete worldHittableObjects[structure.id];
+                                delete worldsData[worldId].hittableObjects[structure.id];
                                 damageSyncIds.push(structure.id);
                             }
                         });
@@ -3217,8 +3218,8 @@ function spawnEnemy(x, y, type, level, worldId)
     enemy.velocity = {x: velX, y: velY};
     enemy.shootTimer = enemy.fireRate;
 
-    worldsData[worldId].enemies[enemy.id];
-    worldsData[worldId].hittableObjects[enemy.id];
+    worldsData[worldId].enemies[enemy.id] = enemy;
+    worldsData[worldId].hittableObjects[enemy.id] = enemy;
 
     syncDamage(worldId, [enemy.id]);
     io.to(worldId).emit('newPlayer', enemy);
