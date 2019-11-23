@@ -406,7 +406,7 @@ function setupLocalWorld(data){
     var existingPlayers = data.existingPlayers;
 
     for (var playerId in existingPlayers) {
-        if (existingPlayers.hasOwnProperty(shopsId)) {
+        if (existingPlayers.hasOwnProperty(playerId)) {
             var client = existingPlayers[playerId];
             
             if(client.id != clientId){
