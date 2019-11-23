@@ -1899,7 +1899,7 @@ function newConnetcion(socket){
 
         if(worldsData[worldId])
         {
-            console.log('\x1b[31m%s\x1b[0m', "player disconected: ", socket.id,  " Clients in game: ",  Object.keys(worldsData[worldId].clients).length, ", Clients in loby: ", Object.keys(worldsData[worldId].lobbyClients).length);
+            console.log('\x1b[31m%s\x1b[0m', "player disconected: ", socket.id,  " Clients in game: ",  Object.keys(worldsData[worldId].clients).length, ", Clients in lobby: ", Object.keys(worldsData[worldId].lobbyClients).length);
 
             if(Object.keys(worldsData[worldId].clients).length + Object.keys(worldsData[worldId].lobbyClients).length == 0 && worldIds.length > 1){
                 removeWorld(worldId);
