@@ -348,8 +348,8 @@ var checklist = {
 checklistFadeTime = 20;
 
 function setup(){
-    socket = io.connect('http://localhost:80');
-    // socket = io.connect('http://space-base.io/');
+    //socket = io.connect('http://localhost:80');
+    socket = io.connect('http://space-base.io/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
