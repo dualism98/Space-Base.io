@@ -321,7 +321,7 @@ var master = {id: null, obj: null};
 
 function infoPosY()
 {
-    return $(window).height() - $(window).height() / 6;
+    return $(window).height() - $(window).height() / 25;
 }
 
 var checklist = {
@@ -329,6 +329,12 @@ var checklist = {
         isActive: false
     },
     shoot:{
+        isActive: false
+    },
+    gather:{
+        isActive: false
+    },
+    upgradeShip:{
         isActive: false
     },
     landingPadDesc:{
@@ -342,8 +348,8 @@ var checklist = {
 checklistFadeTime = 20;
 
 function setup(){
-    //socket = io.connect('http://localhost:8080');
-    socket = io.connect('http://space-base.io/');
+    socket = io.connect('http://localhost:80');
+    // socket = io.connect('http://space-base.io/');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
@@ -913,6 +919,9 @@ function upgradeSync(data) {
         for (var cost in data.costs) {
             if (data.costs.hasOwnProperty(cost) && playerItems[cost]) {
                 playerItems[cost] -= data.costs[cost];
+
+                if(!checklist.upgradeShip.done)
+                    checklist.upgradeShip.done = true;
             }
         }
     }
@@ -1007,6 +1016,28 @@ function onAquiredItems(data){
             playerItems[drop] = data.drops[drop];
         }
     } 
+
+    if(!checklist.upgradeShip.done)
+    {
+        //Check if the player has enough items for the first upgrade
+        var neededItems =  0;
+        var itemsHave = 0;
+
+        for (var cost in playerUpgrades[1].costs) {
+            if (playerUpgrades[1].costs.hasOwnProperty(cost)) {
+
+                neededItems++;
+
+                if(playerItems[cost] >= playerUpgrades[1].costs[cost])
+                    itemsHave++;
+            }
+        }
+
+        if(itemsHave >= neededItems)
+        {
+            checklist.upgradeShip.isActive = true;
+        }
+    }
 }
 
 function updateItems(data){
@@ -1189,6 +1220,8 @@ function sendProjectileHit(projectileId, subjectId, hitX, hitY, ignoreShield = f
     }
 
     socket.emit('projectileHit', data);
+
+    checklist.gather.done = true;
 }
 
 //Events
@@ -1418,8 +1451,9 @@ $(document).keypress(function(e){
 
         if(e.keyCode == 32){ //SPACE
             
+            checklist.gather.isActive = true;
             checklist.shoot.done = true;
-
+            
             if(shootCooldownTimer >= shootCooldownTime){
 
                 var shootBullet = false;
@@ -2214,7 +2248,7 @@ function animate() {
 
         if(!currentPlanet){
             var width = canvas.width / 5;
-            var ypos = $(window).height() - $(window).height() / 7;
+            var ypos = infoPosY() + $(window).height() / 60;
             displayBar(centerX * scale - width / 2, ypos, width, 20, (spaceShip.fireRate - playerReloadTimer) / spaceShip.fireRate, "#ff5a51");
         }
 
@@ -2881,7 +2915,9 @@ function drawPlanetShopPanel(){
         
         var upgradeCosts;
         
-        if(upgrading && upgrades[level + 1] != null)
+        if(upgrading && type == "spaceShip" && level == 1)
+            upgradeCosts = upgrades[level].costs;
+        else if(upgrading && upgrades[level + 1] != null)
             upgradeCosts = upgrades[level + 1].costs;
         else if(!upgrading)
             upgradeCosts = upgrades[level].costs;
@@ -3270,9 +3306,6 @@ function drawChecklist()
         return checkItemY + (checkPadding + height) * index;
     }
 
-    var yPositions = {};
-    
-
     for (var check in checklist) {
 
         c.globalAlpha = 1;
@@ -3283,7 +3316,6 @@ function drawChecklist()
 
             if(checkItem.isActive)
             {
-
                 if(!checkItem.yPos)
                     checkItem.yPos = getCardYPos(i);
                 else if(checkItem.yPos != getCardYPos(i)){
@@ -3315,8 +3347,6 @@ function drawChecklist()
                 {
                     checkItem.size = checkItem.size + (1 / (i * .2 + 1) - checkItem.size) * checkItem.lerp;
                 }
-
-                //var size = 1 / (i * .2 + 1) * 1 - (getCardYPos(i) - checkItem.yPos) * checkItem.lerp / 10;
 
                 var fontsize = width / 20;
 
