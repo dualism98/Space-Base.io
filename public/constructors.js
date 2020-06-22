@@ -1,3 +1,16 @@
+function shortAngleDist(a0,a1) {
+    var max = Math.PI*2;
+    var da = (a1 - a0) % max;
+    return 2*da % max - da;
+}
+function isCollidingCircles(projectile, subject) {
+    a = projectile.pos.x - subject.x;
+    b = projectile.pos.y - subject.y;
+    var distance = Math.sqrt(Math.pow(a, 2) + Math.pow(b, 2));
+
+    return(distance < projectile.radius + subject.radius);
+}
+
 //------------------------------------------------------- Constructor Objects  ------------------------------------------------------
 function Planet(coordX, coordY, radius, color, health, maxHealth, id){
     this.x;
@@ -78,7 +91,7 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
                 powerNeeded += structure.level + 1;
         }
 
-        this.powered = powerAvailable >= powerNeeded && powerNeeded != 0;
+        this.powered = (powerAvailable >= powerNeeded) && powerNeeded != 0;
 
         if(this.lastPowered != this.powered)
         {
@@ -265,7 +278,6 @@ function Planet(coordX, coordY, radius, color, health, maxHealth, id){
 
     }
 }
-
 function Shield(planet, x, y, rotation, level, ownerId, id){
     this.planet = planet;
     this.x;
@@ -311,8 +323,10 @@ function Shield(planet, x, y, rotation, level, ownerId, id){
             ctx.fill();
             ctx.globalAlpha = 1;
 
-            if(this.health < this.maxHealth)
-                displayBar(this.planet.x - healthBarWidth / 2, this.planet.y - this.planet.radius - 150, healthBarWidth, 20, this.health / this.maxHealth, this.color);
+            console.log(this.health);
+
+            // if(this.health < this.maxHealth)
+            displayBar(this.planet.x - healthBarWidth / 2, this.planet.y - this.planet.radius - 150, healthBarWidth, 20, this.health / this.maxHealth, this.color);
         }
 
         //Draw Generators
@@ -598,6 +612,14 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
         if(context != null)
             ctx = context;
 
+
+        //Draw Base
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate((this.rotation - 90) / -57.2958);
+        ctx.drawImage(getImage(this.type + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.restore();
+
         if(ctx == c)
         {
             var l = this.x - this.planet.x;
@@ -670,13 +692,6 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
             ctx.strokeRect(-this.headLength / 2 + this.headLength / 4, -this.headWidth / 2, this.headLength, this.headWidth);
             ctx.restore();
         }
-
-        //Draw Base
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate((this.rotation - 90) / -57.2958);
-        ctx.drawImage(getImage(this.type + this.level), -this.size / 2, -this.size / 2, this.size, this.size);
-        ctx.restore();
     }
     this.update = function(){
 
@@ -708,7 +723,7 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
             
                 var player = allPlayers[id];
 
-                if(player.id == ownerId || player.alpha < 1)
+                if(player.id == this.ownerId || player.alpha < 1)
                     continue;
 
                 if((player.id.substring(0,5) == "enemy") && playerItems["crown"] >= 1)
@@ -732,7 +747,6 @@ function Turret(planet, x, y, rotation, level, isFacade, ownerId, id){
         }
     }
 }
-
 function Item(coordX, coordY, size, type, id) {
     this.speed = 10;
     this.x;
@@ -847,7 +861,6 @@ function Item(coordX, coordY, size, type, id) {
 
     }
 }
-
 function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
     this.pos = new Vector(0, 0);
     this.radius = radius;
@@ -918,8 +931,10 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
             if (hittableObjects.hasOwnProperty(id)) {
 
                 var hittableObj = hittableObjects[id];
+                //Checking if the object hit is a structure (the only time isShield will be true is if the structure is a shield because shields are the only hittable structure currently)
                 var isShield = allStructures[id];
 
+                //if the bullet hits a shield that is not powered, ignore it
                 if(isShield && isShield.type == "shield" && !isShield.planet.powered)
                 {
                     this.shieldIgnored = id;
@@ -977,15 +992,7 @@ function Projectile(x, y, velocity, radius, color, hitsLeft, facade, id){
     }
     
     this.isFriendly = function(id){
-        if(!friendlyObjectIds)
-            return false;
-
-        for(var i = 0; i < friendlyObjectIds.length; i++){
-            if(id === friendlyObjectIds[i])
-                return true;
-        }
-
-        return false;
+        return friendlyObjectIds.includes(id);
     }
 }
 function FacadeProjectile(x, y, velocity, size, color, id){
@@ -1009,14 +1016,6 @@ function FacadeProjectile(x, y, velocity, size, color, id){
         this.pos.add(this.vel);
         this.draw();
     }
-}
-
-function isCollidingCircles(projectile, subject) {
-    a = projectile.pos.x - subject.x;
-    b = projectile.pos.y - subject.y;
-    var distance = Math.sqrt(Math.pow(a, 2) + Math.pow(b, 2));
-
-    return(distance < projectile.radius + subject.radius);
 }
 function SpaceMatter(coordX, coordY, radius, color, maxHealth, health, type, id){
     this.x;
@@ -1312,7 +1311,6 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
     }
 
 }
-
 function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, level, radius, username, id){
     this.x;
     this.y;
@@ -1470,7 +1468,6 @@ function NetworkSpaceShip(coordX, coordY, maxHealth, health, targetRotation, lev
         }
     }
 }
-
 function Shop(coordX, coordY, radius, upgradeType){
     this.x;
     this.y;
@@ -1542,10 +1539,4 @@ function Shop(coordX, coordY, radius, upgradeType){
 
         
     }
-}
-
-function shortAngleDist(a0,a1) {
-    var max = Math.PI*2;
-    var da = (a1 - a0) % max;
-    return 2*da % max - da;
 }
