@@ -1200,8 +1200,6 @@ function SpaceShip(x, y, maxHealth, health, level, radius, speed, turningSpeed, 
         }
     }
 
-    this.level = level;
-
     this.statLevels = {
         speed: 0,
         fireRate: 0,

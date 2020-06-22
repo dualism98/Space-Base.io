@@ -1,6 +1,5 @@
 var express = require('express');
-var socket = require('socket.io');
-
+var fs = require('fs');
 var app = express();
 
 //Initalizing a server on port 80 using the ipv4 address of the machine it is running off of
@@ -54,6 +53,8 @@ var enemySpawnRate = 10000;
 var updateEnemiesRate = 10;
 var updateItemsRate = 20;
 var respawnCrownRate = 10000;
+var fauxEnemyUpdateRate = 20000;
+var fauxEnemyAmountUpdateRate = 200000;
 
 var itemCollectDist = 10;
 var itemMergeDist = 5;  
@@ -183,6 +184,7 @@ function addWorld(){
     worldsData[worldId] = {
         clients: {},
         lobbyClients: {},
+        fauxClients: {},
         worldObjects: objects.worldObjects,
         hittableObjects: objects.hittableObjects,
         projectiles: {},
@@ -1223,7 +1225,7 @@ function newConnetcion(socket){
         }
 
         // -----------------------------------------------------------------
-        socket.broadcast.to(data.worldId).emit('newPlayer', player);
+        socket.broadcast.to(data.worldId).emit("newPlayer", player);
         socket.emit("newPlayerStart", {player: player, planet: lobbyClient.planet});
 
         if(shipTurret)
@@ -2524,7 +2526,9 @@ setInterval(mineProduce, mineProductionRate);
 setInterval(spawnEnemies, enemySpawnRate);
 setInterval(updateEnemies, updateEnemiesRate);
 setInterval(updateItems, updateItemsRate);
-setInterval(respawnCrowns, respawnCrownRate)
+setInterval(respawnCrowns, respawnCrownRate);
+setInterval(updateFauxClients, fauxEnemyUpdateRate)
+setInterval(updateTargetFauxClients, fauxEnemyAmountUpdateRate);
 
 function updateEnemyProjectiles(worldId){
     var destroyedProjs = [];
@@ -3383,7 +3387,7 @@ function syncDamage(worldId, changedIds, _socket){
         });
         
         healthData.hittableObjects = changedObjects;
-        io.to(worldId).emit('damageSync', healthData);
+        io.to(worldId).emit("damageSync", healthData);
     }
     else{
 
@@ -3408,7 +3412,7 @@ function syncDamage(worldId, changedIds, _socket){
             healthData.hittableObjects.push(healthObj);
         }
 
-        _socket.emit('damageSync', healthData);
+        _socket.emit("damageSync", healthData);
     }
 }
 
@@ -3666,5 +3670,116 @@ process.on('uncaughtException', function(error) {
     console.log("--------------------------------------------------------------------------------");
     //process.exit(1);
 });
+
+//Faux Enemies ---------------
+var fauxCliendIds = [];
+var targetNumberOfClients = 0;
+
+function updateTargetFauxClients() {
+    targetNumberOfClients = Math.round(Math.random() * 20) + 10;
+}
+
+function updateFauxClients() {
+    for (let i = 0; i < worldIds.length; i++) {
+        const worldId = worldIds[i];
+
+        var world = worldsData[worldId];
+        var realClients = world.clients;
+        var numberOfRealClients = Object.keys(realClients).length;
+
+        if(numberOfRealClients <= 0)
+            return;
+
+        if(fauxCliendIds.length < targetNumberOfClients && Math.random() > 0.5)
+        {
+            spawnNewClient(worldId);
+        }
+
+        if(fauxCliendIds.length == 0)
+            return;
+
+        var randomId = fauxCliendIds[Math.round(Math.random() * (fauxCliendIds.length - 1))];
+        var randClient = world.fauxClients[randomId];
+        var randVal = Math.random();
+
+        if(randVal > 0.5)
+        {
+            //Client levels up :)
+
+            if(randClient.level >= playerUpgrades.length - 1)
+                return;
+
+            randClient.level++;
+
+            var upgradeData = {
+                upgrade: {},
+                id: randClient.id,
+                costs: {},
+                playerId: randClient.id,
+                level: randClient.level
+            }
+    
+            io.to(worldId).emit('upgradeSync', upgradeData);
+        }
+        else if (randVal > 0.15)
+        {
+            //Client dies :(
+
+            var data = {
+                clientId: randClient.id,
+                structureIds: []
+            }
+
+            io.to(worldId).emit('playerExited', data);
+
+            fauxCliendIds.splice(fauxCliendIds.indexOf(randClient.id), 1);
+            delete world.fauxClients[randomId];
+        }
+
+        fauxCliendIds.forEach(id => {
+            var client = world.fauxClients[id];
+            client.timeAlive++;
+        });
+    }
+}
+
+
+function spawnNewClient(worldId) {
+    var fauxClientId = uniqueId();
+    var player = new Player(-1000, -1000, 0, 0, fauxClientId, worldId); 
+    player.username = randomNameGiver();
+    console.log(player.username);
+    player.faux = true;
+    player.timeAlive = 0;
+
+    worldsData[worldId].fauxClients[fauxClientId] = player;
+    fauxCliendIds.push(fauxClientId);
+
+    io.to(worldId).emit("newPlayer", player);
+
+    console.log("new! now there are " + fauxCliendIds.length + ", " + fauxClientId);
+}
+
+var presetNames = [];
+
+function storeNames(){
+    fs.readFile('names.txt', function(err, data)
+    {
+        if (err) throw err;
+        presetNames = data.toString().split("\n");
+        console.log(presetNames.length + " usernames loaded");
+    });
+}
+
+function randomNameGiver()
+{
+    return presetNames[Math.round(Math.random() * (presetNames.length - 1))];
+}
+
+
+// -------------------
+
+storeNames();
+updateTargetFauxClients();
 
 addWorld();
