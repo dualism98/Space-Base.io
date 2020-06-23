@@ -3687,13 +3687,11 @@ function updateFauxClients() {
         var realClients = world.clients;
         var numberOfRealClients = Object.keys(realClients).length;
 
-        if(numberOfRealClients <= 0)
-            return;
+        // if(numberOfRealClients <= 0)
+        //     return;
 
         if(fauxCliendIds.length < targetNumberOfClients && Math.random() > 0.5)
-        {
             spawnNewClient(worldId);
-        }
 
         if(fauxCliendIds.length == 0)
             return;
