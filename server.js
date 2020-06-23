@@ -3621,7 +3621,7 @@ function newPlayerData(worldId, x, y) {
     }
 
     var data = {
-        existingPlayers: Object.assign({}, worldsData[worldId].clients, worldsData[worldId].enemies),
+        existingPlayers: Object.assign({}, worldsData[worldId].clients, worldsData[worldId].enemies, worldsData[worldId].fauxClients),
         worldObjects: worldsData[worldId].worldObjects,
         gridSize: gridSize,
         gridBoxScale: gridBoxScale,
@@ -3687,11 +3687,13 @@ function updateFauxClients() {
         var realClients = world.clients;
         var numberOfRealClients = Object.keys(realClients).length;
 
-        // if(numberOfRealClients <= 0)
-        //     return;
-
         if(fauxCliendIds.length < targetNumberOfClients && Math.random() > 0.5)
-            spawnNewClient(worldId);
+        {
+            var player = spawnNewClient(worldId);
+
+            if(numberOfRealClients >= 0)
+                io.to(worldId).emit("newPlayer", player);
+        }
 
         if(fauxCliendIds.length == 0)
             return;
@@ -3717,7 +3719,8 @@ function updateFauxClients() {
                 level: randClient.level
             }
     
-            io.to(worldId).emit('upgradeSync', upgradeData);
+            if(numberOfRealClients >= 0)
+                io.to(worldId).emit('upgradeSync', upgradeData);
         }
         else if (randVal > 0.15)
         {
@@ -3728,7 +3731,8 @@ function updateFauxClients() {
                 structureIds: []
             }
 
-            io.to(worldId).emit('playerExited', data);
+            if(numberOfRealClients >= 0)
+                io.to(worldId).emit('playerExited', data);
 
             fauxCliendIds.splice(fauxCliendIds.indexOf(randClient.id), 1);
             delete world.fauxClients[randomId];
@@ -3753,9 +3757,7 @@ function spawnNewClient(worldId) {
     worldsData[worldId].fauxClients[fauxClientId] = player;
     fauxCliendIds.push(fauxClientId);
 
-    io.to(worldId).emit("newPlayer", player);
-
-    console.log("new! now there are " + fauxCliendIds.length + ", " + fauxClientId);
+    return player;
 }
 
 var presetNames = [];
