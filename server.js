@@ -1,9 +1,10 @@
 var express = require('express');
 var fs = require('fs');
 var app = express();
+var CronJob = require('cron').CronJob;
 
 //Initalizing a server on port 80 using the ipv4 address of the machine it is running off of
-var server = app.listen(80, "0.0.0.0");
+var server = app.listen(8080, "0.0.0.0");
 app.use(express.static('public'));
 var io = require('socket.io').listen(server);   //socket(server);
 
@@ -2527,7 +2528,7 @@ setInterval(spawnEnemies, enemySpawnRate);
 setInterval(updateEnemies, updateEnemiesRate);
 setInterval(updateItems, updateItemsRate);
 setInterval(respawnCrowns, respawnCrownRate);
-setInterval(updateFauxClients, fauxEnemyUpdateRate)
+//setInterval(updateFauxClients, fauxEnemyUpdateRate)
 setInterval(updateTargetFauxClients, fauxEnemyAmountUpdateRate);
 
 function updateEnemyProjectiles(worldId){
@@ -3776,6 +3777,23 @@ function randomNameGiver()
     return presetNames[Math.round(Math.random() * (presetNames.length - 1))];
 }
 
+var resetWorld = new CronJob('0 2 0 ? * MON,WED,SAT *', function() {
+
+    console.log("--------------- cron reset world ---------------");
+
+    if(worldIds.length == 1)
+    {
+        if(worldsData[worldIds[0]].clients.length == 0)
+        {
+            removeWorld();
+            addWorld();
+        }
+        else
+            addWorld();
+    }
+}, null, true, 'America/Los_Angeles');
+
+resetWorld.start();
 
 // -------------------
 
@@ -3783,3 +3801,4 @@ storeNames();
 updateTargetFauxClients();
 
 addWorld();
+
