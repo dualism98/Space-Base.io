@@ -14,17 +14,30 @@ var worldIds = [];
 console.log("server started");
 
 //World Config Options
-var numOfAsteroids = 1200;
-var numOfPlanets = 35;
-var numOfMoons = 100;
-var numOfSuns = 5;
-var numOfCrystals = 100;
-var numOfBlackHoles = 5;
-var numOfScrapMetal = 100;
-var numOfDirtThings = 100;
-var numOfWormHoles = 6; //Not yet implemented
-var gridSize = 10000;
-var gridBoxScale = 100;
+// var numOfAsteroids = 1200;
+// var numOfPlanets = 35;
+// var numOfMoons = 100;
+// var numOfSuns = 5;
+// var numOfCrystals = 100;
+// var numOfBlackHoles = 5;
+// var numOfScrapMetal = 100;
+// var numOfDirtThings = 100;
+// var numOfWormHoles = 6; //Not yet implemented
+// var gridSize = 10000;
+// var gridBoxScale = 100;
+// var spawnTries = 5;
+
+var numOfAsteroids = 600;
+var numOfPlanets = 10;
+var numOfMoons = 40;
+var numOfSuns = 3;
+var numOfCrystals = 30;
+var numOfBlackHoles = 3;
+var numOfScrapMetal = 30;
+var numOfDirtThings = 30;
+var numOfWormHoles = 3; //Not yet implemented
+var gridSize = 5000;
+var gridBoxScale = 50;
 var spawnTries = 5;
 
 // //Testing values for ease of access
@@ -3777,7 +3790,7 @@ function randomNameGiver()
     return presetNames[Math.round(Math.random() * (presetNames.length - 1))];
 }
 
-var resetWorld = new CronJob('0 2 0 ? * MON,WED,SAT *', function() {
+var resetWorld = new CronJob('0 2 * * 1,3,5', function() {
 
     console.log("--------------- cron reset world ---------------");
 
