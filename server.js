@@ -4,7 +4,7 @@ var app = express();
 var CronJob = require('cron').CronJob;
 
 //Initalizing a server on port 80 using the ipv4 address of the machine it is running off of
-var server = app.listen(8080, "0.0.0.0");
+var server = app.listen(80, "0.0.0.0");
 app.use(express.static('public'));
 var io = require('socket.io').listen(server);   //socket(server);
 
