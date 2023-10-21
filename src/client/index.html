@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+
+        <meta name="description" content="space-base.io is a massively multiplayer online game in which the player tries to level up their spaceship by shooting asteroids, players, and other space matter. By doing so the player receives items which they can use to either level up their ship, purchase special abilities at shops around the map or create a base on a planet.">
+        <meta name="keywords" content=".io, webgames, games, io, HTML5, Canvas, JavaScript, WebSockets, Socket.io, Node.js">
+        <meta name="author" content="Zachary Richards">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <link rel="stylesheet" type="text/css" href="stylesheet.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.1/socket.io.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        
+        <title>
+            Space-Base.io
+        </title>
+
+        <link rel="shortcut icon" type="img/ico" href="images/favicon.ico">
+    </head>
+    
+    
+    <body>
+        <div id="content">
+            <canvas id="mainCanvas" style="position: absolute; left: 0; top: 0; z-index: -2;"></canvas>
+
+            <div id="vignetteOverlay"></div>
+
+            <div id="preGameContent">
+
+                <div id="mainContent">
+
+                    <div id="leftAd">
+                            <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+                            <!-- Space-Base Menu -->
+                            <ins class="adsbygoogle"
+                                 style="display:block; object-fit: contain"
+                                 data-ad-client="ca-pub-8311935788123693"
+                                 data-ad-slot="1681826843"
+                                 data-ad-format="auto"
+                                 data-full-width-responsive="true"></ins>
+                            <script>
+                            (adsbygoogle = window.adsbygoogle || []).push({});
+                            </script>
+                    </div>
+
+                    <div id="rightAd">
+                            <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+                            <!-- Space-Base Menu -->
+                            <ins class="adsbygoogle"
+                                 style="display:block"
+                                 data-ad-client="ca-pub-8311935788123693"
+                                 data-ad-slot="1681826843"
+                                 data-ad-format="auto"
+                                 data-full-width-responsive="true"></ins>
+                            <script>
+                            (adsbygoogle = window.adsbygoogle || []).push({});
+                            </script>
+                    </div>
+
+                    <li><img id="spacebase" src="images/spacebase.png" alt="Space-Base"></li>
+                    <li><input id="playerNameInput" type="text" name="images/playerNameInput"></li>
+                    <li><input id="startGame" type="button"></li>
+                    <li><img id="controls" src="images/controls.png" alt="controls"></li>
+
+                    
+                    <!--
+                        <li>
+                            <a href="https://www.iogames.space" class="nonDecoratedLink" target="_blank">
+                                <div id="moreIoGames">
+                                    <h2 style="margin-top: .2vh; margin-top: -.1vh; text-align:center">More IO Games</h2>
+                                </div>
+                            </a>
+                        </li>
+                    -->
+<!-- 
+                    <li>
+                        <a href="https://www.reddit.com/r/SpaceBaseIo" class="nonDecoratedLink">
+                            <div id="redditAnnouncement"> 
+                                <img src="images/reddit_icon.png" alt="reddit icon" style="float:right; width: 5vh; height: 5vh; vertical-align: middle; margin-right: .5vh;">
+                                <h2 style="margin-top: .2vh;">FEEDBACK & SUGGESTIONS</h2>
+                            </div>
+                        </a>
+                    </li> -->
+
+                    
+                </div>                
+
+                <!-- <div id="helpContent">
+
+                    <div id="helpScrollDiv">
+                        <img id="howTo" src="images/howTo.png" alt="helpInfo">
+                    </div>
+
+                    <input id="backHelp" type="button">
+                </div> -->
+
+                <div id="aboutContent">
+                    <img id="spacebaseAbout" src="images/spacebase.png" alt="Space-Base">
+                    <p id="about">Created by Zachary Richards</p>
+                    <p id="about">Found a bug? Have a suggestion? Contact me at spacebase.io@gmail.com or tweet it at me @SpaceBaseio</p>
+                    <p id="about">Check out more io games at <a href="https://www.iogames.space" target="_blank">www.iogames.space</a></p>
+                    <input id="backAbout" type="button">
+                </div>
+
+
+                <!-- <div id="news">
+                    <img src="images/news.png" alt="news" >
+                </div> -->
+
+            </div>
+
+            <div id="respawnPlanetWait">
+                <p id="respawnTimer"></p>
+                
+            </div>
+
+        </div>
+
+        <div id="hiddenFields">
+            <!-- Tooltip Checklist -->
+            <p style="visibility: hidden" id="fly">Press and hold the left mouse button to fly.</p>
+            <p style="visibility: hidden" id="shoot">Press and hold space to shoot.</p>
+            <p style="visibility: hidden" id="gather">Shoot space matter to gather materials.</p>
+            <p style="visibility: hidden" id="upgradeShip">Return to your base to upgrade you ship.</p>
+
+
+            <p style="visibility: hidden" id="aquiredCrown">You now control the hive in the center of the map where you can place spawners</p>
+
+            <!-- Landing Pointers -->
+            <p style="visibility: hidden" id="land">Press J to land</p>
+            <p style="visibility: hidden" id="takeOff">Press space to take off</p>
+            <p style="visibility: hidden" id="placeStructue">Click to place </p>
+
+            <!-- Shops -->
+            <p style="visibility: hidden" id="boost">Speed Boost</p>
+            <p style="visibility: hidden" id="boostDescription">Press and hold Shift to get a temoporaty speed boost.</p>
+
+            <p style="visibility: hidden" id="cloakTime">Invisibility</p>
+            <p style="visibility: hidden" id="cloakTimeDescription">Press C to get temporaty invisibility</p>
+
+            <p style="visibility: hidden" id="bulletPenetration">Bullet Penetration</p>
+            <p style="visibility: hidden" id="bulletPenetrationDescription">Bullets go through multiple objects, damaging each one.</p>
+
+            <p style="visibility: hidden" id="shipTurret">Ship Turret</p>
+            <p style="visibility: hidden" id="shipTurretDescription">Mounts an auto firing and aiming turret onto your ship.</p>
+
+            <p style="visibility: hidden" id="openShop">Press S to open shop</p>
+            <p style="visibility: hidden" id="closeShop">Press S to close shop</p>
+
+            <!-- Structure Definitions -->
+            <p style="visibility: hidden" id="mineDesc">Automatically produces resources</p>
+            <p style="visibility: hidden" id="turretDesc">Shoots enemies to protect the hive</p>
+            <p style="visibility: hidden" id="shieldDesc">Shields incoming projectiles</p>
+            <p style="visibility: hidden" id="electricityDesc">Provides electricity for structures</p>
+            <p style="visibility: hidden" id="satelliteDesc">Increases field of view and range of turrets</p>
+            <p style="visibility: hidden" id="landingPadDesc">Place landing pad to claim the planet</p>
+            <p style="visibility: hidden" id="spawnerScoutDesc">Spawns minions to attack other players</p>
+            <p style="visibility: hidden" id="spawnerDefenderDesc">Spawns minions to protect the base</p>
+            <p style="visibility: hidden" id="spawnerGuardDesc">Spawns minions to follow and protect you</p>
+            <p style="visibility: hidden" id="spaceShipDesc">Long range flight and powerful weaponry</p>
+
+            <!-- Other -->
+            <p style="visibility: hidden" id="oxygenWarning">Warning! Low oxygen. Return to base immediately</p>
+            <p style="visibility: hidden" id="leaderboard">Leaderboard</p>
+            <p style="visibility: hidden" id="structures">Structures</p>
+            <p style="visibility: hidden" id="upgrade">Upgrade</p>
+            <p style="visibility: hidden" id="buy">Buy</p>
+            <p style="visibility: hidden" id="fullyUpgraded">Fully Upgraded</p>
+            <p style="visibility: hidden" id="owner">Owner</p>
+            <p style="visibility: hidden" id="name">Name</p>
+
+            <!-- Return Mesages -->
+            <p style="visibility: hidden" id="NE">Not enough </p>
+            <p style="visibility: hidden" id="AFH">Already full health</p>
+            <p style="visibility: hidden" id="LP">Place landing pad first </p>
+            <p style="visibility: hidden" id="AH">Planet already has max </p>
+            <p style="visibility: hidden" id="S">s</p>
+            <p style="visibility: hidden" id="CO">Can only own</p>
+            <p style="visibility: hidden" id="P">planets</p>
+            <p style="visibility: hidden" id="NER">Not enough resources</p>
+            <p style="visibility: hidden" id="CA">Purchase cloak ability at shop first.</p>
+
+            <p style="visibility: hidden" id="mine">mine</p>
+            <p style="visibility: hidden" id="turret">turret</p>
+            <p style="visibility: hidden" id="shield">shield</p>
+            <p style="visibility: hidden" id="electricity">electricity</p>
+            <p style="visibility: hidden" id="satellite">satellite</p>
+            <p style="visibility: hidden" id="landingPad">landing pad</p>
+            <p style="visibility: hidden" id="spaceShipp">spaceship</p>
+            <p style="visibility: hidden" id="spawnerScout">scout Spawner</p>
+            <p style="visibility: hidden" id="spawnerDefender">defender Spawner</p>
+            <p style="visibility: hidden" id="spawnerGuard">guard Spawner</p>
+        </div>
+    </body>
+
+    <script src="constructors.js" type="text/javascript"></script>
+    <script src="script.js" type="text/javascript"></script>
+</html>
