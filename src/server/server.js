@@ -12,7 +12,7 @@ var app = express();
 
 //Initalizing a server on port 80 using the ipv4 address of the machine it is running off of
 var server = app.listen(8080, "0.0.0.0");
-app.use(express.static('../client'));
+app.use(express.static(path.join(__dirname, '../client')));
 var io = SocketIO.listen(server);   //socket(server);
 
 var worldsData = {};
