@@ -319,7 +319,7 @@ var checklist = {
 checklistFadeTime = 20;
 
 function setup() {
-    socket = io.connect('http://localhost:80');
+    socket = io.connect('http://localhost');
     socket.on('setupLocalWorld', setupLocalWorld);
     socket.on('showWorld', showWorld);
     socket.on('newPlayerStart', startLocalPlayer);
