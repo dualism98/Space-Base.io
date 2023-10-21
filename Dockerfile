@@ -13,4 +13,6 @@ FROM base as production
 
 COPY . .
 
+EXPOSE 80
+
 CMD ["pm2-runtime", "./src/server/server.js"]
